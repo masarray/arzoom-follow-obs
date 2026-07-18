@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ArZoom Privacy and Security — Local OBS Plugin</title>
+  <meta name="description" content="ArZoom processes screen zoom and mouse position locally inside OBS. It has no telemetry, analytics, accounts, cloud processing, or advertising SDKs.">
+  <meta name="keywords" content="ArZoom privacy, OBS plugin privacy, local OBS zoom plugin, no telemetry OBS plugin">
+  <meta name="theme-color" content="#07111f">
+  <link rel="canonical" href="https://masarray.github.io/arzoom-follow-obs/privacy.html">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header"><div class="container nav"><a class="brand" href="index.html">Ar<span>Zoom</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="index.html">Home</a><a href="guide.html">Setup guide</a><a href="troubleshooting.html">Troubleshooting</a><a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs">Source code</a></nav></div></header>
+
+  <main id="main" class="container">
+    <header class="page-hero">
+      <span class="eyebrow">Privacy and security</span>
+      <h1>Local processing. No telemetry. No cloud dependency.</h1>
+      <p class="lead">ArZoom performs its zoom, cursor mapping, animation, and video effect locally inside OBS Studio.</p>
+    </header>
+
+    <article class="prose">
+      <h2>Data ArZoom uses locally</h2>
+      <ul>
+        <li>The current mouse position while zoom-follow is active</li>
+        <li>The selected Display Capture dimensions and monitor coordinates</li>
+        <li>ArZoom filter settings stored by OBS</li>
+        <li>The configured ArZoom hotkey stored in the active OBS profile</li>
+      </ul>
+      <p>This data is used only to calculate the on-screen zoom and viewport position.</p>
+
+      <h2>Data ArZoom does not transmit</h2>
+      <ul>
+        <li>Captured video frames</li>
+        <li>Cursor coordinates</li>
+        <li>Hotkeys</li>
+        <li>OBS scenes, profiles, or source names</li>
+        <li>Application usage analytics</li>
+        <li>Hardware identifiers</li>
+        <li>Personal information</li>
+      </ul>
+
+      <h2>No external service requirement</h2>
+      <p>ArZoom does not require a user account, license server, analytics platform, advertising network, cloud API, OCR service, or AI inference provider. The runtime plugin is designed to function without an internet connection.</p>
+
+      <h2>Open-source inspection</h2>
+      <p>The source code is publicly available on <a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a>. Users and contributors can inspect how the plugin reads cursor position, stores settings, renders the video filter, and handles failure conditions.</p>
+
+      <h2>Security reports</h2>
+      <p>Do not post a suspected vulnerability publicly before the maintainer has had a reasonable opportunity to investigate. Follow the instructions in the repository <a href="https://github.com/masarray/arzoom-follow-obs/blob/main/SECURITY.md">Security Policy</a>.</p>
+
+      <h2>Important OBS reminder</h2>
+      <p>ArZoom changes how a Display Capture is framed; it does not redact confidential information. Anything visible inside the captured monitor may still be recorded or streamed. Protect passwords, notifications, private documents, customer data, and stream keys using appropriate OBS scenes and Windows privacy controls.</p>
+    </article>
+  </main>
+
+  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · Privacy overview</div><div class="footer-links"><a href="index.html">Home</a><a href="guide.html">Guide</a><a href="https://github.com/masarray/arzoom-follow-obs/blob/main/SECURITY.md">Security</a></div></div></footer>
+</body>
+</html>

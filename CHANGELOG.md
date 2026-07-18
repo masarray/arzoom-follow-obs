@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Public repository and website
+
+- Rebuilt the public README around the user problem, download flow, five-minute setup, recommended defaults, compatibility, privacy, troubleshooting, and honest preview status.
+- Added a responsive GitHub Pages product website with a landing page, beginner guide, troubleshooting guide, privacy overview, branded 404 page, sitemap, robots directives, structured data, and accessible reduced-motion behavior.
+- Added automated static-site deployment from `docs/` through GitHub Actions.
+- Added public support, contribution, security, and community conduct policies.
+- Added structured bug and feature request forms for actionable OBS, GPU, monitor, DPI, and reproduction data.
+
 ## v0.1.4 — Persistent hotkey and beginner-friendly setup
 
 - Restore the ArZoom frontend hotkey explicitly from the active OBS profile at startup.

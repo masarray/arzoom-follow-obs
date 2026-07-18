@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How to Install and Use ArZoom in OBS — Beginner Guide</title>
+  <meta name="description" content="Step-by-step beginner guide to install ArZoom, add the OBS Display Capture zoom filter, assign the mouse-follow zoom hotkey, and choose comfortable settings.">
+  <meta name="keywords" content="install ArZoom OBS, OBS zoom hotkey, OBS mouse follow setup, OBS Display Capture filter guide">
+  <meta name="theme-color" content="#07111f">
+  <link rel="canonical" href="https://masarray.github.io/arzoom-follow-obs/guide.html">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header"><div class="container nav"><a class="brand" href="index.html">Ar<span>Zoom</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="index.html">Home</a><a href="troubleshooting.html">Troubleshooting</a><a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a><a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs/releases">Download</a></nav></div></header>
+
+  <main id="main" class="container">
+    <header class="page-hero">
+      <span class="eyebrow">Beginner setup guide</span>
+      <h1>Install ArZoom and create your first smooth screen zoom.</h1>
+      <p class="lead">This guide assumes you already have OBS Studio and a Display Capture source. No Python, scripts, or programming knowledge is required.</p>
+    </header>
+
+    <article class="prose">
+      <div class="callout warning"><strong>Preview notice:</strong> ArZoom v0.1.4 is a Windows preview. Test it before an important production livestream and keep a normal OBS scene available as a backup.</div>
+
+      <h2>Before you begin</h2>
+      <ul>
+        <li>Windows 10 or Windows 11, 64-bit</li>
+        <li>OBS Studio with a working Display Capture source</li>
+        <li>Permission to install files into your OBS installation</li>
+        <li>The latest ArZoom Windows installer from GitHub Releases</li>
+      </ul>
+
+      <h2>1. Download ArZoom</h2>
+      <p>Open <a href="https://github.com/masarray/arzoom-follow-obs/releases">ArZoom Releases</a>. Download the newest Windows installer. Prefer the installer over the manual ZIP unless you specifically use a portable OBS installation.</p>
+
+      <h2>2. Close OBS completely</h2>
+      <p>Exit OBS before installing. Check the Windows system tray as well—OBS must not still be running in the background, because Windows cannot reliably replace a plugin DLL that is currently loaded.</p>
+
+      <h2>3. Run the installer</h2>
+      <p>Start the ArZoom installer and select your OBS installation directory if it is not detected automatically. The package must install both:</p>
+      <pre><code>obs-plugins/64bit/arzoom.dll
+data/obs-plugins/arzoom/...</code></pre>
+      <p>The DLL and data folder are both required. The data folder contains the shader and interface translations.</p>
+
+      <h2>4. Add ArZoom to Display Capture</h2>
+      <ol>
+        <li>Start OBS.</li>
+        <li>In <strong>Sources</strong>, select the Display Capture that shows the monitor you want to zoom.</li>
+        <li>Right-click the source and choose <strong>Filters</strong>.</li>
+        <li>Under <strong>Effect Filters</strong>, click <strong>+</strong>.</li>
+        <li>Select <strong>ArZoom - Smart Mouse Zoom</strong>.</li>
+      </ol>
+      <p>The right side of the Filters window should now show ArZoom controls. If it says “No properties available,” remove the filter and install v0.1.2 or newer.</p>
+
+      <h2>5. Assign the zoom hotkey</h2>
+      <ol>
+        <li>Inside the ArZoom filter panel, click <strong>Open OBS Hotkeys Settings</strong>.</li>
+        <li>Find <strong>ArZoom — Toggle Zoom &amp; Mouse Follow</strong>.</li>
+        <li>Click the empty input field.</li>
+        <li>Press your preferred shortcut, for example <kbd>Ctrl</kbd> + <kbd>~</kbd>.</li>
+        <li>Click <strong>Apply</strong> or <strong>OK</strong>.</li>
+      </ol>
+      <div class="callout"><strong>Choose a unique shortcut.</strong> Avoid a key combination already used by recording, streaming, scene switching, or the application you are demonstrating.</div>
+      <p>ArZoom v0.1.4 explicitly saves and restores this binding when OBS restarts and when the active OBS profile changes. The filter also includes a <strong>Save current hotkey now</strong> button for manual confirmation.</p>
+
+      <h2>6. Use the recommended first settings</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Setting</th><th>Start with</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Zoom amount</td><td><code>2.00×</code></td><td>Large enough for menus and text without feeling extreme.</td></tr>
+            <tr><td>Mouse follow</td><td><code>Smart</code></td><td>Keeps the view stable during small cursor movements.</td></tr>
+            <tr><td>Movement</td><td><code>Smooth</code></td><td>Comfortable for tutorials and longer explanations.</td></tr>
+            <tr><td>Stable safe zone</td><td><code>28%</code></td><td>Reduces constant micro-panning.</td></tr>
+            <tr><td>Target monitor</td><td><code>Auto</code></td><td>Uses the monitor selected in Display Capture.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>7. Test the complete motion</h2>
+      <ol>
+        <li>Move the mouse near the center of the captured monitor.</li>
+        <li>Press your ArZoom hotkey once.</li>
+        <li>Wait for the zoom-in to settle.</li>
+        <li>Move the cursor slowly around the safe zone.</li>
+        <li>Move it toward all four screen edges.</li>
+        <li>Press the same hotkey again.</li>
+      </ol>
+      <p>The view should zoom in smoothly, remain stable during small mouse movement, follow when the cursor leaves the safe zone, stop at valid monitor edges, then recenter and return to the full screen.</p>
+
+      <h2>How the follow modes differ</h2>
+      <h3>Smart — recommended</h3>
+      <p>The viewport remains still while the cursor stays inside a stable central zone. This is usually the most comfortable mode for viewers.</p>
+      <h3>Centered</h3>
+      <p>The viewport tries to keep the cursor closer to the configured anchor. It reacts more often and may feel more active.</p>
+      <h3>Fixed</h3>
+      <p>ArZoom changes magnification but does not follow new cursor positions. Use it when you want a static close-up.</p>
+
+      <h2>Choosing the zoom amount</h2>
+      <ul>
+        <li><strong>1.40×–1.70×:</strong> subtle presentation zoom with minimal motion.</li>
+        <li><strong>1.80×–2.20×:</strong> recommended for most software tutorials.</li>
+        <li><strong>2.30×–3.00×:</strong> small controls, dense engineering software, or high-resolution monitors.</li>
+        <li><strong>Above 3.00×:</strong> use carefully; the visible area becomes small and viewport movement becomes more noticeable.</li>
+      </ul>
+
+      <h2>Before recording or going live</h2>
+      <ul>
+        <li>Perform a short local recording and watch it at normal speed.</li>
+        <li>Check that your shortcut does not conflict with the demonstrated application.</li>
+        <li>Test every monitor used by Display Capture.</li>
+        <li>Confirm the hotkey after restarting OBS.</li>
+        <li>Check OBS Stats for rendering or encoding lag.</li>
+        <li>Keep a fallback scene without ArZoom for important live events.</li>
+      </ul>
+
+      <h2>Next steps</h2>
+      <p>When the basic setup works, adjust only one parameter at a time. Start with Zoom amount, then Stable safe zone, then Movement. Most users do not need to change the advanced anchor controls.</p>
+      <p><a class="button secondary" href="troubleshooting.html">Open troubleshooting</a></p>
+    </article>
+  </main>
+
+  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · Beginner guide</div><div class="footer-links"><a href="index.html">Home</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Report a problem</a></div></div></footer>
+</body>
+</html>
