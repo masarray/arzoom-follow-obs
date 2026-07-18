@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Beginner setup guide
+    url: https://masarray.github.io/arzoom-follow-obs/guide.html
+    about: Install ArZoom, add the filter, configure the hotkey, and choose recommended settings.
+  - name: Troubleshooting guide
+    url: https://masarray.github.io/arzoom-follow-obs/troubleshooting.html
+    about: Fix missing filters, hotkeys, monitor mapping, motion, and installation problems.
+  - name: Security report
+    url: https://github.com/masarray/arzoom-follow-obs/blob/main/SECURITY.md
+    about: Do not report suspected vulnerabilities in a public issue.
