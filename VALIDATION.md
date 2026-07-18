@@ -1,4 +1,4 @@
-# Validation Record — v0.1.3 source
+# Validation Record — v0.1.4 source
 
 Completed in the source-generation environment:
 
@@ -12,7 +12,7 @@ Completed in the source-generation environment:
 - GitHub Actions YAML parse: PASS
 - source package integrity check: PASS
 
-The v0.1.3 runtime contract is intentionally fail-safe:
+The v0.1.4 runtime contract is intentionally fail-safe:
 
 - the OBS hotkey row exists independently of filter instance creation;
 - a missing or invalid effect never creates a null/ghost filter;
@@ -28,3 +28,11 @@ Still required on Windows before stable release:
 - direct 1080p60 recording and streaming test
 - mixed-DPI physical monitor test
 - NVIDIA/AMD/Intel runtime verification
+
+## Hotkey persistence contract
+
+- The frontend hotkey is registered once under `arzoom.toggle`.
+- The saved JSON wrapper in the active OBS profile is loaded explicitly after registration.
+- The binding is saved before profile changes and on OBS exit/module unload.
+- The filter panel can open OBS Settings directly on the Hotkeys page.
+- Older CMake caches with frontend/Qt disabled are automatically reconfigured.

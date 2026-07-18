@@ -78,10 +78,20 @@ foreach ($item in $OverlayItems) {
     Copy-Item -LiteralPath $src -Destination $dst -Recurse -Force
 }
 
-if ($Reconfigure -or -not (Test-Path -LiteralPath $CMakeCache -PathType Leaf)) {
+$NeedsConfigure = $Reconfigure -or -not (Test-Path -LiteralPath $CMakeCache -PathType Leaf)
+if (-not $NeedsConfigure) {
+    $cacheText = Get-Content -LiteralPath $CMakeCache -Raw
+    if ($cacheText -notmatch 'ENABLE_FRONTEND_API:BOOL=ON' -or
+        $cacheText -notmatch 'ENABLE_QT:BOOL=ON') {
+        Write-Host '[INFO] Frontend/Qt support changed; refreshing the cached CMake configuration.'
+        $NeedsConfigure = $true
+    }
+}
+
+if ($NeedsConfigure) {
     Invoke-Logged cmake @('--preset', $Preset) $TemplateDir
 } else {
-    Write-Host '[FAST] Existing CMake configuration found; skipping dependency configure/build.'
+    Write-Host '[FAST] Existing compatible CMake configuration found.'
 }
 
 Invoke-Logged cmake @('--build', '--preset', $BuildPreset, '--config', $Configuration, '--parallel') $TemplateDir

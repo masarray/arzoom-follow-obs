@@ -155,3 +155,7 @@ Still requires real OBS runtime validation before calling v1.0 stable:
 ## License
 
 GPL-2.0-or-later.
+
+## Hotkey setup
+
+From the ArZoom filter panel, click **Open OBS Hotkeys Settings**. OBS opens directly on the Hotkeys page. Assign a shortcut to `ArZoom — Toggle Zoom & Mouse Follow`, then click Apply or OK. ArZoom explicitly restores the saved binding when OBS restarts and when the active profile changes.

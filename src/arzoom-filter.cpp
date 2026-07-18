@@ -1,5 +1,16 @@
 #include <obs-module.h>
+#include <obs-frontend-api.h>
 #include <graphics/vec2.h>
+#include <util/config-file.h>
+
+#include <QAction>
+#include <QApplication>
+#include <QListWidget>
+#include <QMetaObject>
+#include <QObject>
+#include <QString>
+#include <QTimer>
+#include <QWidget>
 
 #include "arzoom-math.hpp"
 
@@ -35,6 +46,11 @@
 #define MOVEMENT_FAST "fast"
 
 #define MONITOR_AUTO "auto"
+
+#define HOTKEY_CONFIG_SECTION "Hotkeys"
+#define HOTKEY_CONFIG_NAME "arzoom.toggle"
+#define HOTKEY_CONFIG_BINDINGS "bindings"
+#define HOTKEYS_PAGE_INDEX 6
 
 namespace {
 
@@ -233,6 +249,7 @@ struct ArZoomFilter {
 
 obs_hotkey_id global_toggle_hotkey = OBS_INVALID_HOTKEY_ID;
 std::atomic<bool> global_hotkey_down{false};
+bool frontend_event_registered = false;
 std::mutex filter_registry_mutex;
 std::vector<ArZoomFilter *> filter_registry;
 
@@ -305,6 +322,199 @@ void global_hotkey_toggle(void *, obs_hotkey_id, obs_hotkey_t *, bool pressed)
 
         filter->requested_zoom.store(next_zoom,
                                      std::memory_order_release);
+    }
+}
+
+
+bool hotkey_has_binding()
+{
+    if (global_toggle_hotkey == OBS_INVALID_HOTKEY_ID)
+        return false;
+
+    obs_data_array_t *bindings = obs_hotkey_save(global_toggle_hotkey);
+    const bool configured = bindings && obs_data_array_count(bindings) > 0;
+    if (bindings)
+        obs_data_array_release(bindings);
+    return configured;
+}
+
+bool save_hotkey_to_profile()
+{
+    if (global_toggle_hotkey == OBS_INVALID_HOTKEY_ID)
+        return false;
+
+    config_t *config = obs_frontend_get_profile_config();
+    if (!config)
+        return false;
+
+    obs_data_array_t *bindings = obs_hotkey_save(global_toggle_hotkey);
+    obs_data_t *wrapper = obs_data_create();
+    if (!wrapper) {
+        if (bindings)
+            obs_data_array_release(bindings);
+        return false;
+    }
+
+    if (bindings)
+        obs_data_set_array(wrapper, HOTKEY_CONFIG_BINDINGS, bindings);
+
+    const char *json = obs_data_get_json(wrapper);
+    config_set_string(config, HOTKEY_CONFIG_SECTION, HOTKEY_CONFIG_NAME,
+                      json ? json : "");
+    const int save_result = config_save_safe(config, "tmp", nullptr);
+
+    if (bindings)
+        obs_data_array_release(bindings);
+    obs_data_release(wrapper);
+
+    if (save_result != CONFIG_SUCCESS) {
+        blog(LOG_WARNING,
+             "[ArZoom] Failed to persist hotkey binding to the OBS profile");
+        return false;
+    }
+
+    blog(LOG_INFO, "[ArZoom] Hotkey binding saved to the OBS profile");
+    return true;
+}
+
+bool load_hotkey_from_profile()
+{
+    if (global_toggle_hotkey == OBS_INVALID_HOTKEY_ID)
+        return false;
+
+    config_t *config = obs_frontend_get_profile_config();
+    if (!config)
+        return false;
+
+    /* A profile without an ArZoom binding must clear a binding inherited
+     * from the previously active profile. */
+    obs_hotkey_load_bindings(global_toggle_hotkey, nullptr, 0);
+
+    const char *json = config_get_string(
+        config, HOTKEY_CONFIG_SECTION, HOTKEY_CONFIG_NAME);
+    if (!json || !*json) {
+        blog(LOG_INFO, "[ArZoom] No saved hotkey binding in this profile");
+        return true;
+    }
+
+    obs_data_t *wrapper = obs_data_create_from_json(json);
+    if (!wrapper) {
+        blog(LOG_WARNING,
+             "[ArZoom] Saved hotkey data is invalid; binding was cleared");
+        return false;
+    }
+
+    obs_data_array_t *bindings =
+        obs_data_get_array(wrapper, HOTKEY_CONFIG_BINDINGS);
+    if (bindings)
+        obs_hotkey_load(global_toggle_hotkey, bindings);
+
+    const bool configured = bindings && obs_data_array_count(bindings) > 0;
+    if (bindings)
+        obs_data_array_release(bindings);
+    obs_data_release(wrapper);
+
+    blog(LOG_INFO, "[ArZoom] Hotkey binding restored: %s",
+         configured ? "configured" : "not configured");
+    return true;
+}
+
+void refresh_filter_properties()
+{
+    std::lock_guard<std::mutex> lock(filter_registry_mutex);
+    for (ArZoomFilter *filter : filter_registry) {
+        if (filter && filter->context)
+            obs_source_update_properties(filter->context);
+    }
+}
+
+bool focus_existing_hotkeys_page()
+{
+    const auto widgets = QApplication::topLevelWidgets();
+    for (QWidget *widget : widgets) {
+        if (!widget)
+            continue;
+
+        const bool is_settings_dialog =
+            widget->objectName() == QStringLiteral("OBSBasicSettings") ||
+            QString::fromLatin1(widget->metaObject()->className()) ==
+                QStringLiteral("OBSBasicSettings");
+        if (!is_settings_dialog)
+            continue;
+
+        auto *navigation =
+            widget->findChild<QListWidget *>(QStringLiteral("listWidget"));
+        if (!navigation || navigation->count() <= HOTKEYS_PAGE_INDEX)
+            continue;
+
+        navigation->setCurrentRow(HOTKEYS_PAGE_INDEX);
+        widget->show();
+        widget->raise();
+        widget->activateWindow();
+        return true;
+    }
+
+    return false;
+}
+
+void retry_focus_hotkeys_page(QWidget *lifetime_context,
+                               int attempts_remaining)
+{
+    if (focus_existing_hotkeys_page() || attempts_remaining <= 0 ||
+        !lifetime_context)
+        return;
+
+    QTimer::singleShot(50, lifetime_context,
+                       [lifetime_context, attempts_remaining]() {
+                           retry_focus_hotkeys_page(
+                               lifetime_context, attempts_remaining - 1);
+                       });
+}
+
+bool open_hotkeys_settings()
+{
+    if (focus_existing_hotkeys_page())
+        return true;
+
+    auto *main_window =
+        static_cast<QWidget *>(obs_frontend_get_main_window());
+    if (!main_window) {
+        blog(LOG_WARNING, "[ArZoom] OBS main window is unavailable");
+        return false;
+    }
+
+    QTimer::singleShot(50, main_window, [main_window]() {
+        retry_focus_hotkeys_page(main_window, 40);
+    });
+
+    if (QAction *settings_action =
+            main_window->findChild<QAction *>(QStringLiteral("action_Settings"))) {
+        QMetaObject::invokeMethod(settings_action, "trigger",
+                                  Qt::QueuedConnection);
+        return true;
+    }
+
+    const bool invoked = QMetaObject::invokeMethod(
+        main_window, "on_action_Settings_triggered", Qt::QueuedConnection);
+    if (!invoked)
+        blog(LOG_WARNING, "[ArZoom] Could not open OBS Settings");
+    return invoked;
+}
+
+void frontend_event(enum obs_frontend_event event, void *)
+{
+    switch (event) {
+    case OBS_FRONTEND_EVENT_FINISHED_LOADING:
+    case OBS_FRONTEND_EVENT_PROFILE_CHANGED:
+        load_hotkey_from_profile();
+        refresh_filter_properties();
+        break;
+    case OBS_FRONTEND_EVENT_PROFILE_CHANGING:
+    case OBS_FRONTEND_EVENT_EXIT:
+        save_hotkey_to_profile();
+        break;
+    default:
+        break;
     }
 }
 
@@ -506,6 +716,20 @@ bool reset_clicked(obs_properties_t *, obs_property_t *, void *data)
     return false;
 }
 
+
+bool open_hotkeys_clicked(obs_properties_t *, obs_property_t *, void *)
+{
+    open_hotkeys_settings();
+    return false;
+}
+
+bool save_hotkey_clicked(obs_properties_t *, obs_property_t *, void *)
+{
+    save_hotkey_to_profile();
+    refresh_filter_properties();
+    return true;
+}
+
 void update(void *data, obs_data_t *settings)
 {
     auto *filter = static_cast<ArZoomFilter *>(data);
@@ -638,9 +862,24 @@ obs_properties_t *properties(void *data)
         obs_module_text("ArZoom.SafeZone"), 10, 60, 1);
     obs_property_int_set_suffix(safe_zone, " %");
 
-    obs_properties_add_text(
-        props, "hotkey_info",
-        obs_module_text("ArZoom.HotkeyInfo"), OBS_TEXT_INFO);
+    const bool hotkey_configured = hotkey_has_binding();
+    obs_property_t *hotkey_status = obs_properties_add_text(
+        props, "hotkey_status",
+        obs_module_text(hotkey_configured
+                            ? "ArZoom.HotkeyStatus.Configured"
+                            : "ArZoom.HotkeyStatus.NotConfigured"),
+        OBS_TEXT_INFO);
+    obs_property_text_set_info_type(
+        hotkey_status,
+        hotkey_configured ? OBS_TEXT_INFO_NORMAL : OBS_TEXT_INFO_WARNING);
+    obs_property_text_set_info_word_wrap(hotkey_status, true);
+
+    obs_properties_add_button(
+        props, "open_hotkeys", obs_module_text("ArZoom.OpenHotkeys"),
+        open_hotkeys_clicked);
+    obs_properties_add_button(
+        props, "save_hotkey", obs_module_text("ArZoom.SaveHotkeyNow"),
+        save_hotkey_clicked);
 
     if (filter) {
         obs_properties_add_button2(
@@ -941,7 +1180,7 @@ bool arzoom_register_global_hotkey()
         return true;
 
     global_toggle_hotkey = obs_hotkey_register_frontend(
-        "arzoom.toggle",
+        HOTKEY_CONFIG_NAME,
         obs_module_text("ArZoom.Hotkey.Toggle"),
         global_hotkey_toggle, nullptr);
 
@@ -951,13 +1190,29 @@ bool arzoom_register_global_hotkey()
         return false;
     }
 
+    if (!frontend_event_registered) {
+        obs_frontend_add_event_callback(frontend_event, nullptr);
+        frontend_event_registered = true;
+    }
+
+    /* OBS initializes profile hotkeys before third-party modules are loaded.
+     * Explicitly restore this late-registered frontend hotkey. */
+    load_hotkey_from_profile();
+
     blog(LOG_INFO,
-         "[ArZoom] Global frontend hotkey registered");
+         "[ArZoom] Global frontend hotkey registered with profile persistence");
     return true;
 }
 
 void arzoom_unregister_global_hotkey()
 {
+    save_hotkey_to_profile();
+
+    if (frontend_event_registered) {
+        obs_frontend_remove_event_callback(frontend_event, nullptr);
+        frontend_event_registered = false;
+    }
+
     if (global_toggle_hotkey != OBS_INVALID_HOTKEY_ID) {
         obs_hotkey_unregister(global_toggle_hotkey);
         global_toggle_hotkey = OBS_INVALID_HOTKEY_ID;

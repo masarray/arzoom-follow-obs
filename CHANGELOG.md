@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.4 — Persistent hotkey and beginner-friendly setup
+
+- Restore the ArZoom frontend hotkey explicitly from the active OBS profile at startup.
+- Save the binding on profile changes, OBS exit, module unload, and on-demand from the filter panel.
+- Clear or reload bindings correctly when the active OBS profile changes.
+- Add **Open OBS Hotkeys Settings** directly in the filter properties and jump to the Hotkeys page.
+- Add visible configured/not-configured hotkey status in the filter panel.
+- Enable the required OBS frontend API and Qt Widgets dependencies.
+- Automatically reconfigure an older cached build when frontend/Qt support was previously disabled.
+
 
 ## Repository hygiene
 

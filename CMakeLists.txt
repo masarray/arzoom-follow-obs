@@ -7,22 +7,28 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake")
   include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
   project(${_name} VERSION ${_version} LANGUAGES C CXX)
 
-  option(ENABLE_FRONTEND_API "Use obs-frontend-api" OFF)
-  option(ENABLE_QT "Use Qt" OFF)
+  option(ENABLE_FRONTEND_API "Use obs-frontend-api" ON)
+  option(ENABLE_QT "Use Qt" ON)
 
   include(compilerconfig)
   include(defaults)
   include(helpers)
 else()
-  project(arzoom VERSION 0.1.3 LANGUAGES C CXX)
-  option(ENABLE_FRONTEND_API "Use obs-frontend-api" OFF)
-  option(ENABLE_QT "Use Qt" OFF)
+  project(arzoom VERSION 0.1.4 LANGUAGES C CXX)
+  option(ENABLE_FRONTEND_API "Use obs-frontend-api" ON)
+  option(ENABLE_QT "Use Qt" ON)
 endif()
 
 add_library(${CMAKE_PROJECT_NAME} MODULE)
 
 find_package(libobs REQUIRED)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
+
+find_package(obs-frontend-api REQUIRED)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
+
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
 
 target_sources(
   ${CMAKE_PROJECT_NAME}
