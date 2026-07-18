@@ -1,0 +1,71 @@
+name: Feature request
+description: Suggest an improvement that supports smooth, beginner-friendly OBS screen zoom
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ArZoom intentionally keeps a focused scope. Strong requests explain the viewer or presenter problem first, not only the desired control.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and requests.
+          required: true
+        - label: This request supports screen tutorials, demonstrations, teaching, recording, or livestreaming.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What is difficult, confusing, uncomfortable, or impossible in the current workflow?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful solution from a user's point of view.
+    validations:
+      required: true
+
+  - type: textarea
+    id: audience
+    attributes:
+      label: Who benefits?
+      placeholder: e.g. teachers, software trainers, engineering presenters, coding streamers
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Explain current workarounds or why existing settings do not solve the problem.
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Impact
+      options:
+        - Small usability improvement
+        - Important workflow improvement
+        - Blocks a common use case
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Performance or motion risks
+      description: Could this add per-frame cost, visual instability, platform complexity, or confusing setup?
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context or mockups
