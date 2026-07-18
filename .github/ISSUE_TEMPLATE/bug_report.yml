@@ -1,0 +1,126 @@
+name: Bug report
+description: Report a reproducible ArZoom problem in OBS
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve ArZoom. Please remove confidential screen content, passwords, private URLs, customer data, and stream keys before submitting.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I installed the newest available ArZoom release and restarted OBS completely.
+          required: true
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: I tested with an OBS Display Capture source.
+          required: true
+
+  - type: input
+    id: arzoom-version
+    attributes:
+      label: ArZoom version
+      placeholder: e.g. 0.1.4
+    validations:
+      required: true
+
+  - type: input
+    id: obs-version
+    attributes:
+      label: OBS Studio version
+      placeholder: e.g. 32.1.2
+    validations:
+      required: true
+
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      placeholder: e.g. Windows 11 24H2
+    validations:
+      required: true
+
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU
+      placeholder: e.g. NVIDIA RTX 3060, Intel UHD 770, AMD RX 7600
+    validations:
+      required: true
+
+  - type: textarea
+    id: displays
+    attributes:
+      label: Monitor layout and Windows scaling
+      description: Include monitor resolutions, orientation, relative arrangement, and scale percentages.
+      placeholder: "Display 1: 1920x1080 at 100%, primary. Display 2: 2560x1440 at 150%, positioned left."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: symptom
+    attributes:
+      label: Main symptom
+      options:
+        - Filter is missing
+        - Filter controls are missing
+        - Hotkey row is missing
+        - Hotkey is not saved after restart
+        - Hotkey does not trigger zoom
+        - Zoom works but mouse follow is wrong
+        - Viewport or edge behavior is wrong
+        - Black frame or source disappears
+        - Crash or OBS instability
+        - High CPU/GPU usage or lag
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the shortest exact sequence that causes the problem.
+      placeholder: |
+        1. Add Display Capture...
+        2. Add ArZoom...
+        3. Set...
+        4. Press...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Relevant OBS log
+      description: Paste only the relevant lines around ArZoom, shader, plugin, graphics, or crash errors.
+      render: text
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshot or short recording
+      description: Drag files here when safe to share. Do not upload confidential content.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
