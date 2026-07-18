@@ -1,0 +1,59 @@
+/*
+ * ArZoom - Smart Mouse Zoom for OBS
+ * One-pass GPU viewport transform.
+ * GPL-2.0-or-later
+ */
+
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+/* ABI v2 names prevent an old DLL/new effect mixture from partially running. */
+uniform float zoom_amount;
+uniform float2 zoom_center;
+
+sampler_state textureSampler {
+    Filter   = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
+struct VertData {
+    float4 pos : POSITION;
+    float2 uv  : TEXCOORD0;
+};
+
+struct VertOut {
+    float2 uv  : TEXCOORD0;
+    float4 pos : POSITION;
+};
+
+struct FragData {
+    float2 uv : TEXCOORD0;
+};
+
+VertOut VSDefault(VertData v_in)
+{
+    VertOut v_out;
+    v_out.uv = v_in.uv;
+    v_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+    return v_out;
+}
+
+float4 PSZoom(FragData f_in) : TARGET
+{
+    const float safe_zoom = max(zoom_amount, 1.0);
+    const float2 sample_uv =
+        zoom_center + (f_in.uv - float2(0.5, 0.5)) / safe_zoom;
+
+    /* CPU clamping is authoritative; saturate is only a numerical guard. */
+    return image.Sample(textureSampler, saturate(sample_uv));
+}
+
+technique Draw
+{
+    pass
+    {
+        vertex_shader = VSDefault(v_in);
+        pixel_shader  = PSZoom(f_in);
+    }
+}

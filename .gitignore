@@ -1,0 +1,180 @@
+# =============================================================================
+# ArZoom repository hygiene
+# Keep source, official documentation, and GitHub Actions YAML tracked.
+# Ignore all local bootstrap/build/package/patch/report output.
+# =============================================================================
+
+# OBS template bootstrap and dependency caches
+.build/
+.obs-build/
+.obs-deps/
+.cache/
+**/_deps/
+**/.cache/
+
+# Build trees (root or nested)
+build/
+build-*/
+build_*/
+cmake-build-*/
+out/
+**/build/
+**/build-*/
+**/build_*/
+**/cmake-build-*/
+**/out/
+
+# CMake / Ninja generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+compile_commands.json
+Testing/
+build.ninja
+rules.ninja
+.ninja_deps
+.ninja_log
+
+# Visual Studio / MSBuild generated files
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.vcproj
+*.user
+*.suo
+*.VC.db
+*.VC.VC.opendb
+*.tlog
+*.lastbuildstate
+ipch/
+
+# Release, staging, installer, and workflow artifacts
+release/
+dist/
+stage/
+artifacts/
+.artifacts/
+packages/
+package/
+installer-output/
+Output/
+**/release/
+**/dist/
+**/stage/
+**/artifacts/
+
+# Compiled binaries and debug symbols
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+*.msi
+*.msix
+*.appx
+*.appxbundle
+
+# Generated archives and checksums
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+*.sha256
+*.sha512
+SHA256SUMS
+SHA512SUMS
+
+# Patch, hotfix, merge, and rejected-file debris
+*.patch
+*.diff
+*.rej
+*.orig
+*.mine
+*.theirs
+*.base
+patches/
+patch/
+hotfix/
+hotfixes/
+_patch/
+_patches/
+_hotfix/
+
+# Locally generated patch/workflow/build markdown reports
+# Official README/CHANGELOG/VALIDATION/docs remain tracked below.
+*patch*.md
+*PATCH*.md
+*hotfix*.md
+*HOTFIX*.md
+*workflow*.md
+*WORKFLOW*.md
+*build-report*.md
+*BUILD-REPORT*.md
+.github/workflows/*.md
+
+# Scratch reports and temporary workspaces
+.local/
+.scratch/
+scratch/
+tmp/
+temp/
+reports/
+*.tmp
+*.temp
+*.bak
+*.old
+*.log
+*.trace
+*.dmp
+*.stackdump
+
+# PowerShell / command transcripts
+*.transcript.txt
+*.buildlog.txt
+*.binlog
+
+# Python and test caches (some local validation scripts may create these)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+coverage/
+
+# IDE and editor settings
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# Operating system metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Explicitly retain canonical project documentation
+!README.md
+!CHANGELOG.md
+!VALIDATION.md
+!docs/
+!docs/**/*.md
+
+# Explicitly retain official GitHub Actions definitions
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
+!.github/workflows/*.yaml
