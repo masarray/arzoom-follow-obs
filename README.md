@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/masarray/arzoom-follow-obs/releases"><img alt="Download ArZoom" src="https://img.shields.io/badge/Download-Windows%20installer-2563eb?style=for-the-badge&logo=windows11&logoColor=white"></a>
+  <a href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe"><img alt="Download ArZoom installer" src="https://img.shields.io/badge/Download-Windows%20installer-2563eb?style=for-the-badge&logo=windows11&logoColor=white"></a>
   <a href="https://masarray.github.io/arzoom-follow-obs/"><img alt="ArZoom website" src="https://img.shields.io/badge/Open-Beginner%20guide-0f766e?style=for-the-badge"></a>
 </p>
 
@@ -54,7 +54,9 @@ ArZoom is designed to make screen recordings easier to watch—not to move the f
 
 ### 1. Download
 
-Open [GitHub Releases](https://github.com/masarray/arzoom-follow-obs/releases) and download the newest Windows installer.
+[Download the latest ArZoom Windows installer](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe). The download starts directly—no need to browse the repository or choose between multiple files.
+
+For version history and checksums, see the [latest release notes](https://github.com/masarray/arzoom-follow-obs/releases/latest).
 
 ### 2. Install
 
@@ -185,6 +187,7 @@ The deterministic test checks 200,000 zoom and viewport combinations and verifie
 
 - [Getting started](https://masarray.github.io/arzoom-follow-obs/guide.html)
 - [Troubleshooting](https://masarray.github.io/arzoom-follow-obs/troubleshooting.html)
+- [Latest release notes](https://github.com/masarray/arzoom-follow-obs/releases/latest)
 - [Support policy](SUPPORT.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)

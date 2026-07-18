@@ -1,31 +1,144 @@
-name: Release
+name: Release Windows installer
 
 on:
+  workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+    paths:
+      - ".github/workflows/release.yml"
+      - "buildspec.json"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "src/**"
+      - "data/**"
+      - "scripts/**"
+      - "packaging/windows/**"
 
 permissions:
   contents: write
 
+concurrency:
+  group: arzoom-release
+  cancel-in-progress: false
+
 jobs:
   windows:
+    name: Build and publish Windows installer
     runs-on: windows-2022
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read release version
+        id: version
+        shell: pwsh
+        run: |
+          $spec = Get-Content -LiteralPath "buildspec.json" -Raw | ConvertFrom-Json
+          $version = [string]$spec.version
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "buildspec.json does not contain a valid version."
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Check whether release already exists
+        id: existing
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            Write-Host "Release $env:RELEASE_TAG already exists; build and publishing will be skipped."
+          } else {
+            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
+          exit 0
 
       - name: Install Inno Setup
+        if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         run: choco install innosetup --no-progress -y
 
       - name: Build and package
+        if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         run: ./scripts/build-local-windows.ps1 -VisualStudio 2022 -Ci
 
-      - name: Create GitHub release
+      - name: Prepare clear release assets
+        if: steps.existing.outputs.exists != 'true'
+        id: assets
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $releaseDir = Join-Path $PWD "release"
+          $installer = Get-ChildItem -LiteralPath $releaseDir -Filter "*.exe" -File |
+            Sort-Object LastWriteTimeUtc -Descending |
+            Select-Object -First 1
+
+          if (-not $installer) {
+            throw "The Windows installer was not generated."
+          }
+
+          $stableInstaller = Join-Path $releaseDir "ArZoom-OBS-Setup-windows-x64.exe"
+          Copy-Item -LiteralPath $installer.FullName -Destination $stableInstaller -Force
+
+          $zip = Get-ChildItem -LiteralPath $releaseDir -Filter "*.zip" -File |
+            Sort-Object LastWriteTimeUtc -Descending |
+            Select-Object -First 1
+
+          if ($zip) {
+            $manualZip = Join-Path $releaseDir "ArZoom-OBS-Manual-v$env:VERSION-windows-x64.zip"
+            if ($zip.FullName -ne $manualZip) {
+              Copy-Item -LiteralPath $zip.FullName -Destination $manualZip -Force
+            }
+            "manual_zip=$manualZip" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
+
+          $hashLines = @()
+          foreach ($file in Get-ChildItem -LiteralPath $releaseDir -File |
+            Where-Object { $_.Name -eq "ArZoom-OBS-Setup-windows-x64.exe" -or $_.Name -like "ArZoom-OBS-Manual-*.zip" }) {
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName).Hash.ToLowerInvariant()
+            $hashLines += "$hash  $($file.Name)"
+          }
+          $hashLines | Set-Content -LiteralPath (Join-Path $releaseDir "SHA256SUMS.txt") -Encoding ascii
+
+      - name: Publish GitHub release
+        if: steps.existing.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ArZoom v${{ steps.version.outputs.version }}
+          make_latest: true
           generate_release_notes: true
+          body: |
+            ## ArZoom for OBS v${{ steps.version.outputs.version }}
+
+            Windows preview release of the native OBS Display Capture zoom filter.
+
+            ### Recommended download
+
+            Download **`ArZoom-OBS-Setup-windows-x64.exe`**. Close OBS completely, run the installer, then start OBS again.
+
+            The manual ZIP is intended only for portable or custom OBS installations.
+
+            ### Highlights
+
+            - one hotkey toggles smooth zoom-in and zoom-out;
+            - Smart Mouse Follow keeps motion comfortable for viewers;
+            - edge-safe framing prevents black borders near screen edges;
+            - persistent global OBS hotkey;
+            - native GPU video filter with idle pass-through;
+            - Windows 10/11 x64 and OBS Display Capture.
+
+            This is a public preview. Test it before an important production livestream.
           files: |
-            release/*.zip
-            release/*.exe
+            release/ArZoom-OBS-Setup-windows-x64.exe
+            release/ArZoom-OBS-Manual-v${{ steps.version.outputs.version }}-windows-x64.zip
+            release/SHA256SUMS.txt
+          fail_on_unmatched_files: false
