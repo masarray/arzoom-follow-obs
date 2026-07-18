@@ -7,6 +7,9 @@
 - Added automated static-site deployment from `docs/` through GitHub Actions.
 - Added public support, contribution, security, and community conduct policies.
 - Added structured bug and feature request forms for actionable OBS, GPU, monitor, DPI, and reproduction data.
+- Added automatic Windows release publishing from `buildspec.json`.
+- Added the stable release asset name `ArZoom-OBS-Setup-windows-x64.exe` so every public Download button can point directly to the latest installer.
+- Added a clearly named manual-install ZIP and SHA-256 checksums for advanced users.
 
 ## v0.1.4 — Persistent hotkey and beginner-friendly setup
 
@@ -17,7 +20,6 @@
 - Add visible configured/not-configured hotkey status in the filter panel.
 - Enable the required OBS frontend API and Qt Widgets dependencies.
 - Automatically reconfigure an older cached build when frontend/Qt support was previously disabled.
-
 
 ## Repository hygiene
 
