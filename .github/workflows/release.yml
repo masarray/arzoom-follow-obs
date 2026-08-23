@@ -11,6 +11,7 @@ on:
       - "CMakePresets.json"
       - "src/**"
       - "data/**"
+      - "tests/**"
       - "scripts/**"
       - "packaging/windows/**"
 
@@ -57,6 +58,11 @@ jobs:
             "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           }
           exit 0
+
+      - name: Phase 0 deterministic motion validation
+        if: steps.existing.outputs.exists != 'true'
+        shell: pwsh
+        run: ./scripts/run-phase0-validation.ps1
 
       - name: Install Inno Setup
         if: steps.existing.outputs.exists != 'true'
