@@ -11,7 +11,7 @@ uniform texture2d image;
 uniform float zoom_amount;
 uniform float2 zoom_center;
 
-/* Phase 2 click ABI: xy=content position, z=age seconds, w=click type.
+/* Click ABI: xy=content position, z=age seconds, w=click type.
  * type: 0=inactive, 1=left, 2=right, 3=middle. */
 uniform float2 viewport_size;
 uniform float4 click_event0;
@@ -66,68 +66,160 @@ float glow_mask(float distance_px, float radius_px, float width_px)
     return 1.0 - smoothstep(width_px + 1.0, width_px + 10.0, edge);
 }
 
-float warped_distance(float2 delta_px, float progress)
+/* Low-frequency angular lobes give the ring visible surface-tension motion
+ * without particles, textures, random state, or another render pass. */
+float liquid_distance(float2 delta_px, float progress, float phase_bias)
 {
-    const float base_distance = length(delta_px);
-    const float ripple =
-        sin(delta_px.x * 0.105 + progress * 7.0) *
-        sin(delta_px.y * 0.092 - progress * 6.0);
-    return base_distance + ripple * 1.15 * (1.0 - progress);
+    const float base_distance = max(length(delta_px), 0.001);
+    const float2 direction = delta_px / base_distance;
+    const float x = direction.x;
+    const float y = direction.y;
+    const float x2 = x * x;
+    const float y2 = y * y;
+    const float x3 = x2 * x;
+    const float y3 = y2 * y;
+    const float x5 = x3 * x2;
+    const float y5 = y3 * y2;
+
+    const float cos3 = 4.0 * x3 - 3.0 * x;
+    const float sin3 = 3.0 * y - 4.0 * y3;
+    const float cos5 = 16.0 * x5 - 20.0 * x3 + 5.0 * x;
+    const float sin5 = 16.0 * y5 - 20.0 * y3 + 5.0 * y;
+
+    const float phase3 = progress * 5.4 + phase_bias;
+    const float phase5 = -progress * 3.8 + phase_bias * 1.7;
+    const float wave3 = cos3 * cos(phase3) - sin3 * sin(phase3);
+    const float wave5 = cos5 * cos(phase5) - sin5 * sin(phase5);
+
+    /* Deformation is intentionally obvious at launch, then surface tension
+     * settles the ring as it expands and fades. */
+    const float envelope = 1.0 - smoothstep(0.68, 1.0, progress);
+    const float deformation =
+        (3.8 * wave3 + 1.7 * wave5) * envelope;
+    return base_distance + deformation;
 }
 
-float3 left_click(float2 delta_px, float age)
+float liquid_width(float2 delta_px, float base_width, float progress)
 {
-    const float p = saturate(age / 0.38);
+    const float base_distance = max(length(delta_px), 0.001);
+    const float2 direction = delta_px / base_distance;
+    const float x2 = direction.x * direction.x;
+    const float cos4 = 8.0 * x2 * x2 - 8.0 * x2 + 1.0;
+    const float variation =
+        0.82 + 0.28 * (0.5 + 0.5 * cos(cos4 * 2.2 + progress * 4.0));
+    return base_width * variation;
+}
+
+/* x=colored body, y=soft glow, z=contrast support, w=liquid sheen. */
+float4 left_click_masks(float2 delta_px, float age)
+{
+    const float p = saturate(age / 0.42);
     const float travel = ease_out_cubic(p);
-    const float distance_px = warped_distance(delta_px, p);
-    const float radius = 10.0 + 42.0 * travel;
-    const float width = 2.8 - 0.8 * p;
-    const float fade = 1.0 - smoothstep(0.58, 1.0, p);
+    const float distance_px = liquid_distance(delta_px, p, 0.35);
+    const float radius = 8.0 + 45.0 * travel;
+    const float width = liquid_width(delta_px, 3.0 - 0.55 * p, p);
+    const float fade = 1.0 - smoothstep(0.60, 1.0, p);
+
     const float ring = ring_mask(distance_px, radius, width);
+    const float membrane = ring_mask(
+        distance_px, radius - 5.0 * (1.0 - p), 1.0) *
+        (1.0 - p) * 0.28;
     const float glow = glow_mask(distance_px, radius, width);
-    const float3 cyan = float3(0.20, 0.78, 1.00);
-    return cyan * fade * (ring * 0.82 + glow * 0.20);
+    const float support = ring_mask(distance_px, radius, width + 3.6);
+    const float sheen = ring_mask(distance_px, radius - 1.15, 0.75);
+
+    return float4(
+        saturate(ring + membrane) * fade,
+        glow * fade,
+        support * fade,
+        sheen * fade);
 }
 
-float3 right_click(float2 delta_px, float age)
+float4 right_click_masks(float2 delta_px, float age)
 {
-    const float p = saturate(age / 0.48);
+    const float p = saturate(age / 0.50);
     const float travel = ease_out_cubic(p);
-    const float distance_px = warped_distance(delta_px, p);
-    const float radius = 11.0 + 39.0 * travel;
+    const float distance_px = liquid_distance(delta_px, p, 1.60);
+    const float radius = 10.0 + 41.0 * travel;
+    const float width = liquid_width(delta_px, 2.75 - 0.45 * p, p);
     const float fade = 1.0 - smoothstep(0.62, 1.0, p);
 
-    const float first = ring_mask(distance_px, radius, 2.5);
-    const float first_glow = glow_mask(distance_px, radius, 2.5);
+    const float first = ring_mask(distance_px, radius, width);
+    const float first_glow = glow_mask(distance_px, radius, width);
+    const float first_support = ring_mask(
+        distance_px, radius, width + 3.4);
 
-    const float p2 = saturate((age - 0.065) / 0.39);
-    const float radius2 = 8.0 + 31.0 * ease_out_cubic(p2);
+    const float p2 = saturate((age - 0.060) / 0.41);
+    const float radius2 = 7.0 + 33.0 * ease_out_cubic(p2);
     const float second = p2 > 0.0
         ? ring_mask(distance_px, radius2, 1.9) * (1.0 - p2)
         : 0.0;
+    const float second_support = p2 > 0.0
+        ? ring_mask(distance_px, radius2, 4.2) * (1.0 - p2)
+        : 0.0;
 
-    const float3 violet = float3(0.70, 0.43, 1.00);
-    return violet * fade * (first * 0.72 + first_glow * 0.16) +
-           float3(0.92, 0.86, 1.00) * second * 0.46;
+    return float4(
+        saturate(first * 0.92 + second * 0.70) * fade,
+        first_glow * fade,
+        saturate(first_support + second_support * 0.55) * fade,
+        second * fade);
 }
 
-float3 middle_click(float2 delta_px, float age)
+float4 middle_click_masks(float2 delta_px, float age)
 {
     const float p = saturate(age / 0.34);
-    const float distance_px = length(delta_px);
-    const float radius = 7.0 + 25.0 * ease_out_cubic(p);
+    const float distance_px = liquid_distance(delta_px, p, 2.45);
+    const float radius = 6.0 + 27.0 * ease_out_cubic(p);
     const float fade = 1.0 - smoothstep(0.52, 1.0, p);
-    const float ring = ring_mask(distance_px, radius, 2.2);
-    const float core = 1.0 - smoothstep(2.0, 5.5, distance_px);
-    return float3(1.00, 0.82, 0.28) * fade *
-           (ring * 0.68 + core * (1.0 - p) * 0.42);
+    const float ring = ring_mask(distance_px, radius, 2.35);
+    const float core = 1.0 - smoothstep(2.0, 5.5, length(delta_px));
+    const float support = ring_mask(distance_px, radius, 5.0);
+    return float4(
+        saturate(ring * 0.82 + core * (1.0 - p) * 0.40) * fade,
+        glow_mask(distance_px, radius, 2.35) * fade,
+        support * fade,
+        core * (1.0 - p) * fade);
 }
 
-float3 click_overlay(float2 output_uv, float4 event_data, float safe_zoom)
+float3 composite_click(float3 base, float4 masks, float3 accent)
+{
+    const float luminance = dot(
+        base, float3(0.2126, 0.7152, 0.0722));
+    const float bright_surface = smoothstep(0.58, 0.90, luminance);
+
+    /* A darker chromatic ink is selected on bright surfaces. This is the
+     * opposite of the old additive blend, which necessarily clipped to white
+     * on Explorer and other white applications. */
+    const float3 visible_accent =
+        lerp(accent, accent * 0.62, bright_surface);
+    const float3 support_color = visible_accent * 0.09;
+    const float support_alpha =
+        saturate(masks.z * (0.18 + 0.48 * bright_surface));
+    base = lerp(base, support_color, support_alpha);
+
+    const float body_alpha =
+        saturate(masks.x * (0.88 + 0.08 * bright_surface));
+    base = lerp(base, visible_accent, body_alpha);
+
+    /* Glow remains additive only where the background has headroom; on white
+     * surfaces the contrast-support/body blend remains authoritative. */
+    const float glow_alpha =
+        masks.y * 0.13 * (1.0 - 0.84 * bright_surface);
+    base = saturate(base + accent * glow_alpha);
+
+    const float3 cool_sheen =
+        lerp(float3(0.72, 0.94, 1.00),
+             visible_accent * 0.78, bright_surface);
+    base = lerp(base, cool_sheen, saturate(masks.w * 0.24));
+    return base;
+}
+
+float3 apply_click(float3 base, float2 output_uv,
+                   float4 event_data, float safe_zoom)
 {
     const float type = event_data.w;
     if (type < 0.5)
-        return float3(0.0, 0.0, 0.0);
+        return base;
 
     /* Content anchoring: convert the stored source coordinate through the
      * current camera transform every frame. */
@@ -137,10 +229,16 @@ float3 click_overlay(float2 output_uv, float4 event_data, float safe_zoom)
     const float2 delta_px = (output_uv - output_center) * safe_viewport;
 
     if (type < 1.5)
-        return left_click(delta_px, event_data.z);
+        return composite_click(
+            base, left_click_masks(delta_px, event_data.z),
+            float3(0.00, 0.73, 1.00));
     if (type < 2.5)
-        return right_click(delta_px, event_data.z);
-    return middle_click(delta_px, event_data.z);
+        return composite_click(
+            base, right_click_masks(delta_px, event_data.z),
+            float3(0.62, 0.30, 1.00));
+    return composite_click(
+        base, middle_click_masks(delta_px, event_data.z),
+        float3(1.00, 0.67, 0.08));
 }
 
 float4 PSZoom(FragData f_in) : TARGET
@@ -152,15 +250,12 @@ float4 PSZoom(FragData f_in) : TARGET
     /* CPU clamping is authoritative; saturate is only a numerical guard. */
     float4 color = image.Sample(textureSampler, saturate(sample_uv));
 
-    float3 overlay = float3(0.0, 0.0, 0.0);
-    overlay += click_overlay(f_in.uv, click_event0, safe_zoom);
-    overlay += click_overlay(f_in.uv, click_event1, safe_zoom);
-    overlay += click_overlay(f_in.uv, click_event2, safe_zoom);
-    overlay += click_overlay(f_in.uv, click_event3, safe_zoom);
-
-    /* Additive analytic glow preserves the underlying capture and avoids a
-     * separate bloom/render pass. */
-    color.rgb = saturate(color.rgb + overlay);
+    /* Sequential fixed-slot compositing preserves saturated click color on
+     * both dark and bright content while remaining in the same GPU pass. */
+    color.rgb = apply_click(color.rgb, f_in.uv, click_event0, safe_zoom);
+    color.rgb = apply_click(color.rgb, f_in.uv, click_event1, safe_zoom);
+    color.rgb = apply_click(color.rgb, f_in.uv, click_event2, safe_zoom);
+    color.rgb = apply_click(color.rgb, f_in.uv, click_event3, safe_zoom);
     return color;
 }
 
