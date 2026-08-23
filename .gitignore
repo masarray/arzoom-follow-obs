@@ -18,6 +18,7 @@ build-*/
 build_*/
 cmake-build-*/
 out/
+.phase0-tests/
 **/build/
 **/build-*/
 **/build_*/
@@ -128,6 +129,7 @@ scratch/
 tmp/
 temp/
 reports/
+phase0-benchmark.txt
 *.tmp
 *.temp
 *.bak
