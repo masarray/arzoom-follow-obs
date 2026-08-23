@@ -1,6 +1,6 @@
 /*
  * ArZoom - Smart Zone Camera + GPU Click Visualization for OBS
- * One-pass viewport transform and procedural click overlay.
+ * One-pass viewport transform + water-surface click refraction.
  * GPL-2.0-or-later
  */
 
@@ -54,208 +54,235 @@ float ease_out_cubic(float t)
     return 1.0 - q * q * q;
 }
 
+float ease_in_out(float t)
+{
+    t = saturate(t);
+    return t * t * (3.0 - 2.0 * t);
+}
+
 float ring_mask(float distance_px, float radius_px, float width_px)
 {
     const float edge = abs(distance_px - radius_px);
     return 1.0 - smoothstep(width_px, width_px + 1.25, edge);
 }
 
-float glow_mask(float distance_px, float radius_px, float width_px)
+float event_lifetime(float type)
 {
-    const float edge = abs(distance_px - radius_px);
-    return 1.0 - smoothstep(width_px + 1.0, width_px + 10.0, edge);
+    if (type < 1.5)
+        return 0.46;
+    if (type < 2.5)
+        return 0.54;
+    return 0.38;
 }
 
-/* Low-frequency angular lobes give the ring visible surface-tension motion
- * without particles, textures, random state, or another render pass. */
-float liquid_distance(float2 delta_px, float progress, float phase_bias)
+float2 event_center(float4 event_data, float safe_zoom)
 {
-    const float base_distance = max(length(delta_px), 0.001);
-    const float2 direction = delta_px / base_distance;
-    const float x = direction.x;
-    const float y = direction.y;
-    const float x2 = x * x;
-    const float y2 = y * y;
-    const float x3 = x2 * x;
-    const float y3 = y2 * y;
-    const float x5 = x3 * x2;
-    const float y5 = y3 * y2;
-
-    const float cos3 = 4.0 * x3 - 3.0 * x;
-    const float sin3 = 3.0 * y - 4.0 * y3;
-    const float cos5 = 16.0 * x5 - 20.0 * x3 + 5.0 * x;
-    const float sin5 = 16.0 * y5 - 20.0 * y3 + 5.0 * y;
-
-    const float phase3 = progress * 5.4 + phase_bias;
-    const float phase5 = -progress * 3.8 + phase_bias * 1.7;
-    const float wave3 = cos3 * cos(phase3) - sin3 * sin(phase3);
-    const float wave5 = cos5 * cos(phase5) - sin5 * sin(phase5);
-
-    /* Deformation is intentionally obvious at launch, then surface tension
-     * settles the ring as it expands and fades. */
-    const float envelope = 1.0 - smoothstep(0.68, 1.0, progress);
-    const float deformation =
-        (3.8 * wave3 + 1.7 * wave5) * envelope;
-    return base_distance + deformation;
+    return float2(0.5, 0.5) +
+           (event_data.xy - zoom_center) * safe_zoom;
 }
 
-float liquid_width(float2 delta_px, float base_width, float progress)
+float2 event_delta_px(float2 output_uv, float4 event_data,
+                      float safe_zoom, float2 safe_viewport)
 {
-    const float base_distance = max(length(delta_px), 0.001);
-    const float2 direction = delta_px / base_distance;
-    const float x2 = direction.x * direction.x;
-    const float cos4 = 8.0 * x2 * x2 - 8.0 * x2 + 1.0;
-    const float variation =
-        0.82 + 0.28 * (0.5 + 0.5 * cos(cos4 * 2.2 + progress * 4.0));
-    return base_width * variation;
+    return (output_uv - event_center(event_data, safe_zoom)) *
+           safe_viewport;
 }
 
-/* x=colored body, y=soft glow, z=contrast support, w=liquid sheen. */
-float4 left_click_masks(float2 delta_px, float age)
+/* A click is modelled as a short finger press into a flexible water surface:
+ *   1) contact pressure builds a local dimple;
+ *   2) the dimple releases;
+ *   3) one clean refractive wave travels outward and settles.
+ *
+ * The returned vector is a pixel-space displacement used BEFORE sampling the
+ * captured frame. This is the key difference from the old overlay-only ring:
+ * content itself bends around the click, creating actual visual depth. */
+float2 water_displacement_px(float2 delta_px, float age, float type)
 {
-    const float p = saturate(age / 0.42);
-    const float travel = ease_out_cubic(p);
-    const float distance_px = liquid_distance(delta_px, p, 0.35);
-    const float radius = 8.0 + 45.0 * travel;
-    const float width = liquid_width(delta_px, 3.0 - 0.55 * p, p);
-    const float fade = 1.0 - smoothstep(0.60, 1.0, p);
+    if (type < 0.5)
+        return float2(0.0, 0.0);
 
-    const float ring = ring_mask(distance_px, radius, width);
-    const float membrane = ring_mask(
-        distance_px, radius - 5.0 * (1.0 - p), 1.0) *
-        (1.0 - p) * 0.28;
-    const float glow = glow_mask(distance_px, radius, width);
-    const float support = ring_mask(distance_px, radius, width + 3.6);
-    const float sheen = ring_mask(distance_px, radius - 1.15, 0.75);
+    const float distance_px = max(length(delta_px), 0.001);
+    const float2 direction = delta_px / distance_px;
 
-    return float4(
-        saturate(ring + membrane) * fade,
-        glow * fade,
-        support * fade,
-        sheen * fade);
+    const float type_scale =
+        type < 1.5 ? 1.0 : (type < 2.5 ? 0.88 : 0.70);
+
+    /* Soft contact: fast enough to feel responsive, slow enough that the eye
+     * reads a surface being pressed rather than a flash. */
+    const float press_in = smoothstep(0.0, 0.030, age);
+    const float press_out = 1.0 - smoothstep(0.070, 0.125, age);
+    const float press = press_in * press_out;
+    const float dimple_radius = 29.0 * type_scale;
+    const float dimple_shape =
+        1.0 - smoothstep(0.0, dimple_radius, distance_px);
+    const float dimple_displacement =
+        3.8 * type_scale * press * dimple_shape * dimple_shape;
+
+    /* Rebound wave. The signed profile bends pixels in opposite directions on
+     * the leading/trailing sides of the crest, which reads as refraction rather
+     * than as a painted ring. */
+    const float wave_t = saturate((age - 0.065) /
+                                  (event_lifetime(type) - 0.065));
+    const float wave_active = age > 0.055 ? 1.0 : 0.0;
+    const float wave_radius =
+        10.0 + (type < 1.5 ? 68.0 : (type < 2.5 ? 62.0 : 43.0)) *
+        ease_out_cubic(wave_t);
+    const float wave_width = type < 2.5 ? 13.0 : 10.0;
+    const float q = (distance_px - wave_radius) / wave_width;
+    const float compact = 1.0 - smoothstep(0.0, 1.0, abs(q));
+    const float signed_wave = -q * compact * compact;
+    const float wave_fade =
+        (1.0 - smoothstep(0.58, 1.0, wave_t)) * wave_active;
+    float ripple_displacement =
+        5.2 * type_scale * signed_wave * wave_fade;
+
+    /* Right click gets a restrained secondary echo instead of a noisy outline. */
+    if (type >= 1.5 && type < 2.5) {
+        const float echo_t = saturate((age - 0.115) / 0.38);
+        const float echo_radius = 8.0 + 48.0 * ease_out_cubic(echo_t);
+        const float echo_q = (distance_px - echo_radius) / 10.5;
+        const float echo_compact =
+            1.0 - smoothstep(0.0, 1.0, abs(echo_q));
+        ripple_displacement +=
+            1.8 * (-echo_q) * echo_compact * echo_compact *
+            (1.0 - smoothstep(0.50, 1.0, echo_t));
+    }
+
+    return direction * (dimple_displacement + ripple_displacement);
 }
 
-float4 right_click_masks(float2 delta_px, float age)
+/* Visual depth lighting for the dimple and travelling refractive crest.
+ * This stays deliberately subtle: refraction is the hero, color is only an
+ * accessibility/contrast cue for flat white or flat dark surfaces. */
+float3 shade_water_click(float3 base, float2 delta_px, float age,
+                         float type)
 {
-    const float p = saturate(age / 0.50);
-    const float travel = ease_out_cubic(p);
-    const float distance_px = liquid_distance(delta_px, p, 1.60);
-    const float radius = 10.0 + 41.0 * travel;
-    const float width = liquid_width(delta_px, 2.75 - 0.45 * p, p);
-    const float fade = 1.0 - smoothstep(0.62, 1.0, p);
-
-    const float first = ring_mask(distance_px, radius, width);
-    const float first_glow = glow_mask(distance_px, radius, width);
-    const float first_support = ring_mask(
-        distance_px, radius, width + 3.4);
-
-    const float p2 = saturate((age - 0.060) / 0.41);
-    const float radius2 = 7.0 + 33.0 * ease_out_cubic(p2);
-    const float second = p2 > 0.0
-        ? ring_mask(distance_px, radius2, 1.9) * (1.0 - p2)
-        : 0.0;
-    const float second_support = p2 > 0.0
-        ? ring_mask(distance_px, radius2, 4.2) * (1.0 - p2)
-        : 0.0;
-
-    return float4(
-        saturate(first * 0.92 + second * 0.70) * fade,
-        first_glow * fade,
-        saturate(first_support + second_support * 0.55) * fade,
-        second * fade);
-}
-
-float4 middle_click_masks(float2 delta_px, float age)
-{
-    const float p = saturate(age / 0.34);
-    const float distance_px = liquid_distance(delta_px, p, 2.45);
-    const float radius = 6.0 + 27.0 * ease_out_cubic(p);
-    const float fade = 1.0 - smoothstep(0.52, 1.0, p);
-    const float ring = ring_mask(distance_px, radius, 2.35);
-    const float core = 1.0 - smoothstep(2.0, 5.5, length(delta_px));
-    const float support = ring_mask(distance_px, radius, 5.0);
-    return float4(
-        saturate(ring * 0.82 + core * (1.0 - p) * 0.40) * fade,
-        glow_mask(distance_px, radius, 2.35) * fade,
-        support * fade,
-        core * (1.0 - p) * fade);
-}
-
-float3 composite_click(float3 base, float4 masks, float3 accent)
-{
-    const float luminance = dot(
-        base, float3(0.2126, 0.7152, 0.0722));
-    const float bright_surface = smoothstep(0.58, 0.90, luminance);
-
-    /* A darker chromatic ink is selected on bright surfaces. This is the
-     * opposite of the old additive blend, which necessarily clipped to white
-     * on Explorer and other white applications. */
-    const float3 visible_accent =
-        lerp(accent, accent * 0.62, bright_surface);
-    const float3 support_color = visible_accent * 0.09;
-    const float support_alpha =
-        saturate(masks.z * (0.18 + 0.48 * bright_surface));
-    base = lerp(base, support_color, support_alpha);
-
-    const float body_alpha =
-        saturate(masks.x * (0.88 + 0.08 * bright_surface));
-    base = lerp(base, visible_accent, body_alpha);
-
-    /* Glow remains additive only where the background has headroom; on white
-     * surfaces the contrast-support/body blend remains authoritative. */
-    const float glow_alpha =
-        masks.y * 0.13 * (1.0 - 0.84 * bright_surface);
-    base = saturate(base + accent * glow_alpha);
-
-    const float3 cool_sheen =
-        lerp(float3(0.72, 0.94, 1.00),
-             visible_accent * 0.78, bright_surface);
-    base = lerp(base, cool_sheen, saturate(masks.w * 0.24));
-    return base;
-}
-
-float3 apply_click(float3 base, float2 output_uv,
-                   float4 event_data, float safe_zoom)
-{
-    const float type = event_data.w;
     if (type < 0.5)
         return base;
 
-    /* Content anchoring: convert the stored source coordinate through the
-     * current camera transform every frame. */
-    const float2 output_center =
-        float2(0.5, 0.5) + (event_data.xy - zoom_center) * safe_zoom;
-    const float2 safe_viewport = max(viewport_size, float2(1.0, 1.0));
-    const float2 delta_px = (output_uv - output_center) * safe_viewport;
+    const float distance_px = max(length(delta_px), 0.001);
+    const float2 direction = delta_px / distance_px;
+    const float type_scale =
+        type < 1.5 ? 1.0 : (type < 2.5 ? 0.88 : 0.70);
 
-    if (type < 1.5)
-        return composite_click(
-            base, left_click_masks(delta_px, event_data.z),
-            float3(0.00, 0.73, 1.00));
-    if (type < 2.5)
-        return composite_click(
-            base, right_click_masks(delta_px, event_data.z),
-            float3(0.62, 0.30, 1.00));
-    return composite_click(
-        base, middle_click_masks(delta_px, event_data.z),
-        float3(1.00, 0.67, 0.08));
+    const float press_in = smoothstep(0.0, 0.030, age);
+    const float press_out = 1.0 - smoothstep(0.070, 0.135, age);
+    const float press = press_in * press_out;
+    const float dimple_radius = 29.0 * type_scale;
+    const float dimple =
+        (1.0 - smoothstep(0.0, dimple_radius, distance_px)) * press;
+    const float dimple_rim =
+        ring_mask(distance_px, dimple_radius * 0.74, 4.8) * press;
+
+    const float3 light_dir3 = normalize(float3(-0.62, -0.78, 0.0));
+    const float rim_light =
+        saturate(dot(float3(direction, 0.0), -light_dir3));
+    const float rim_shadow =
+        saturate(dot(float3(direction, 0.0), light_dir3));
+
+    const float luminance = dot(base, float3(0.2126, 0.7152, 0.0722));
+    const float bright_surface = smoothstep(0.58, 0.90, luminance);
+
+    /* Depression: gentle center darkening plus directional rim light/shadow.
+     * On white UIs the shadow carries the shape; on dark UIs the highlight does. */
+    const float center_depth = dimple * (0.045 + 0.045 * bright_surface);
+    base *= 1.0 - center_depth;
+    base *= 1.0 - dimple_rim * rim_shadow *
+                  (0.055 + 0.070 * bright_surface);
+    base += (1.0 - base) * dimple_rim * rim_light *
+            (0.075 + 0.035 * (1.0 - bright_surface));
+
+    const float wave_t = saturate((age - 0.065) /
+                                  (event_lifetime(type) - 0.065));
+    const float wave_active = age > 0.055 ? 1.0 : 0.0;
+    const float wave_radius =
+        10.0 + (type < 1.5 ? 68.0 : (type < 2.5 ? 62.0 : 43.0)) *
+        ease_out_cubic(wave_t);
+    const float wave_fade =
+        (1.0 - smoothstep(0.58, 1.0, wave_t)) * wave_active;
+
+    const float crest = ring_mask(distance_px, wave_radius, 2.2) * wave_fade;
+    const float inner_shadow =
+        ring_mask(distance_px, wave_radius - 3.6, 2.6) * wave_fade;
+    const float outer_sheen =
+        ring_mask(distance_px, wave_radius + 2.9, 2.4) * wave_fade;
+
+    const float3 accent =
+        type < 1.5 ? float3(0.05, 0.69, 0.92) :
+        (type < 2.5 ? float3(0.57, 0.32, 0.91) :
+                      float3(0.95, 0.62, 0.10));
+
+    /* On bright surfaces use a chromatic shadow edge; on dark surfaces use a
+     * soft caustic highlight. No thick neon ring and no random/noise wobble. */
+    const float3 dark_accent = accent * 0.28;
+    base = lerp(base, dark_accent,
+                inner_shadow * (0.035 + 0.16 * bright_surface));
+    base += (1.0 - base) * outer_sheen *
+            (0.085 + 0.065 * (1.0 - bright_surface));
+    base = lerp(base, accent,
+                crest * (0.055 + 0.055 * bright_surface));
+
+    return saturate(base);
+}
+
+float2 click_displacement(float2 output_uv, float4 event_data,
+                          float safe_zoom, float2 safe_viewport)
+{
+    if (event_data.w < 0.5)
+        return float2(0.0, 0.0);
+    const float2 delta_px = event_delta_px(
+        output_uv, event_data, safe_zoom, safe_viewport);
+    return water_displacement_px(delta_px, event_data.z, event_data.w);
+}
+
+float3 apply_click_shading(float3 base, float2 output_uv,
+                           float4 event_data, float safe_zoom,
+                           float2 safe_viewport)
+{
+    if (event_data.w < 0.5)
+        return base;
+    const float2 delta_px = event_delta_px(
+        output_uv, event_data, safe_zoom, safe_viewport);
+    return shade_water_click(base, delta_px, event_data.z, event_data.w);
 }
 
 float4 PSZoom(FragData f_in) : TARGET
 {
     const float safe_zoom = max(zoom_amount, 1.0);
-    const float2 sample_uv =
-        zoom_center + (f_in.uv - float2(0.5, 0.5)) / safe_zoom;
+    const float2 safe_viewport = max(viewport_size, float2(1.0, 1.0));
 
-    /* CPU clamping is authoritative; saturate is only a numerical guard. */
+    /* Sum the tiny fixed-slot water displacement fields, then sample the frame
+     * once. This keeps Phase 2 in the same single GPU pass with no frame
+     * readback, particles, temporary textures, or extra OBS source. */
+    float2 displacement_px = float2(0.0, 0.0);
+    displacement_px += click_displacement(
+        f_in.uv, click_event0, safe_zoom, safe_viewport);
+    displacement_px += click_displacement(
+        f_in.uv, click_event1, safe_zoom, safe_viewport);
+    displacement_px += click_displacement(
+        f_in.uv, click_event2, safe_zoom, safe_viewport);
+    displacement_px += click_displacement(
+        f_in.uv, click_event3, safe_zoom, safe_viewport);
+    displacement_px = clamp(
+        displacement_px, float2(-8.0, -8.0), float2(8.0, 8.0));
+
+    const float2 warped_output_uv =
+        f_in.uv + displacement_px / safe_viewport;
+    const float2 sample_uv =
+        zoom_center +
+        (warped_output_uv - float2(0.5, 0.5)) / safe_zoom;
+
+    /* Clamp sampler + saturate guard guarantee fail-safe edge behavior. */
     float4 color = image.Sample(textureSampler, saturate(sample_uv));
 
-    /* Sequential fixed-slot compositing preserves saturated click color on
-     * both dark and bright content while remaining in the same GPU pass. */
-    color.rgb = apply_click(color.rgb, f_in.uv, click_event0, safe_zoom);
-    color.rgb = apply_click(color.rgb, f_in.uv, click_event1, safe_zoom);
-    color.rgb = apply_click(color.rgb, f_in.uv, click_event2, safe_zoom);
-    color.rgb = apply_click(color.rgb, f_in.uv, click_event3, safe_zoom);
+    color.rgb = apply_click_shading(
+        color.rgb, f_in.uv, click_event0, safe_zoom, safe_viewport);
+    color.rgb = apply_click_shading(
+        color.rgb, f_in.uv, click_event1, safe_zoom, safe_viewport);
+    color.rgb = apply_click_shading(
+        color.rgb, f_in.uv, click_event2, safe_zoom, safe_viewport);
+    color.rgb = apply_click_shading(
+        color.rgb, f_in.uv, click_event3, safe_zoom, safe_viewport);
     return color;
 }
 
