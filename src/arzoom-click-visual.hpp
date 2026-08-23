@@ -29,11 +29,11 @@ inline float click_lifetime_seconds(ClickType type)
 {
     switch (type) {
     case ClickType::Right:
-        return 0.48f;
+        return 0.54f;
     case ClickType::Middle:
-        return 0.34f;
-    case ClickType::Left:
         return 0.38f;
+    case ClickType::Left:
+        return 0.46f;
     case ClickType::None:
     default:
         return 0.0f;
