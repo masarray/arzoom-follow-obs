@@ -1,25 +1,26 @@
 # Changelog
 
-## v0.2.0 — Smart Gimbal Camera 2.0 + portable-aware installer
+## v0.2.0 — Smart Zone Gimbal Camera + portable-aware installer
 
-- Replaced the v0.1.x edge-triggered follower runtime with a shared platform-neutral Smart Camera core.
-- Added focus-preserving zoom activation: edge/corner zoom moves toward the latched pointer focus as zoom opens the legal pan range instead of zooming into unrelated center content first.
-- Rejected the first Phase 1 ballistic/spring experiment after visual trial showed follow snapping and zoom-out hunting near the finish.
-- Replaced ballistic camera motion with a super-steady gimbal model built from a stable moving destination plus cascaded monotonic low-pass stages.
-- Added coordinated quintic minimum-jerk zoom-in and zoom-out trajectories with slow start, smooth middle travel, slow finish, and exact final lock.
-- Zoom-out now treats center + magnification as one cinematic shot; no ballistic return, no braking oscillation, and no late center correction.
-- During follow, a fixed reference is held for each continuous shot so a stationary mouse produces a stationary destination instead of a target that collapses while the viewport approaches it.
-- Mid-flight mouse retargeting changes only the desired destination; filter state is retained so the camera bends toward the new point without stop/start/relaunch behavior.
-- Kept intent observation/hysteresis so ordinary hand jitter and explanatory cursor gestures do not shake framing.
-- Kept edge urgency, but it now only shortens the same gimbal time constants through a filtered urgency value; there is no mode switch to different physics.
-- Removed default predictive look-ahead to prioritize stability over anticipation and eliminate unnecessary correction motion.
-- Added exact settle lock so completed zoom/follow shots cannot breathe or micro-correct.
-- Added deterministic perceptual gates for monotonic/no-overshoot follow, soft launch, continuous retargeting, wobble-free minimum-jerk return, post-settle zero movement, edge/corner activation, and 30/60/120/144 fps consistency.
-- Renamed motion characters in the UI to Cinematic, Balanced, and Responsive while preserving old persisted setting values for profile compatibility.
+- Replaced the v0.1.x edge-triggered follower with a shared platform-neutral Smart Camera core.
+- Rejected the early ballistic/spring experiment after visual trial showed follow snapping and zoom-out hunting; the final camera is a super-steady gimbal model.
+- Added focus-preserving zoom activation so edge/corner zoom goes directly toward the intended subject instead of detouring through unrelated center content.
+- Added affine-transform zoom-in and zoom-out with quintic minimum-jerk easing; fixed source pixels follow straight screen-space paths with soft start and soft finish.
+- Added **Smart Zone** semantics: ArZoom follows presentation-area changes rather than ordinary local mouse movement.
+- Added **SmoothIdle**: circles, repeated pointing, jitter, and explanatory cursor movement inside the current area keep the viewport exact-stable without waiting for the mouse to stop.
+- Added **Coast** handoff so Follow does not snap to steady; live-pointer influence fades while camera speed decays naturally before exact idle lock.
+- Added inner/outer zone hysteresis and short relocation dwell so boundary movement does not chatter between Follow and Idle.
+- Leaving the outer Smart Zone starts a new follow with a soft first movement step; edge risk and semantic emphasis may shorten the delay without changing physics.
+- Preserved continuous retargeting during real travel: moving the mouse again changes only the destination while gimbal filter state remains continuous.
+- Removed default predictive look-ahead to prioritize stability and avoid unnecessary correction movement.
+- Kept edge urgency, but it only shortens the same gimbal time constants through a filtered urgency value; there is no alternate high-energy motion mode.
+- Added deterministic closeout gates for straight zoom paths, local explanation lock, Follow → Coast → SmoothIdle, soft idle wake-up, continuous retargeting, rapid zone switching, 2x/3x/4x corner zoom-out, and 30/60/120/144 fps behavior.
+- Retained Phase 0 randomized edge/math invariants and benchmark gates.
+- Motion styles are presented as Cinematic, Balanced, and Responsive while preserving old persisted setting values for profile compatibility.
 - Added a fool-proof Windows installer mode selector for Standard OBS Studio or OBS Portable/custom folders.
 - Standard mode auto-detects common OBS install locations; portable/custom mode lets the user browse to a specific OBS root.
 - Installer validates `bin\\64bit\\obs64.exe` before copying plugin files, remembers the last valid custom root, and launches the selected OBS installation after setup.
-- Windows PR CI installs Inno Setup and compiles the actual EXE installer in addition to the manual ZIP.
+- Windows CI compiles the actual Inno Setup installer in addition to the manual ZIP.
 
 ## Unreleased — Public repository and website
 
