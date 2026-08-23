@@ -22,6 +22,20 @@ function Invoke-Checked {
     }
 }
 
+function Resolve-BenchmarkExecutable {
+    param([Parameter(Mandatory = $true)][string] $Name)
+
+    $candidates = @(
+        (Join-Path $BuildPath "Release/$Name.exe"),
+        (Join-Path $BuildPath "$Name.exe"),
+        (Join-Path $BuildPath "Release/$Name"),
+        (Join-Path $BuildPath $Name)
+    )
+    return $candidates |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+        Select-Object -First 1
+}
+
 Push-Location $RepoRoot
 try {
     if (Test-Path -LiteralPath $BuildPath) {
@@ -33,30 +47,34 @@ try {
     Invoke-Checked ctest @('--test-dir', $BuildPath, '-C', 'Release', '--output-on-failure')
 
     if (-not $SkipBenchmark) {
-        $benchmarkCandidates = @(
-            (Join-Path $BuildPath 'Release/arzoom-motion-benchmark.exe'),
-            (Join-Path $BuildPath 'arzoom-motion-benchmark.exe'),
-            (Join-Path $BuildPath 'Release/arzoom-motion-benchmark'),
-            (Join-Path $BuildPath 'arzoom-motion-benchmark')
-        )
-        $benchmarkExe = $benchmarkCandidates |
-            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
-            Select-Object -First 1
-
-        if (-not $benchmarkExe) {
-            throw 'arzoom-motion-benchmark executable was not generated.'
+        if (Test-Path -LiteralPath $BenchmarkOutput) {
+            Remove-Item -LiteralPath $BenchmarkOutput -Force
         }
 
-        Write-Host "> $benchmarkExe"
-        & $benchmarkExe 2>&1 | Tee-Object -FilePath $BenchmarkOutput
-        if ($LASTEXITCODE -ne 0) {
-            throw "arzoom-motion-benchmark failed with exit code $LASTEXITCODE"
+        $benchmarks = @(
+            @{ Name = 'arzoom-motion-benchmark'; Heading = '=== Phase 0 v0.1.4 baseline camera ===' },
+            @{ Name = 'arzoom-smart-camera-benchmark'; Heading = '=== Phase 1 Smart Camera Motion 2.0 ===' }
+        )
+
+        foreach ($benchmark in $benchmarks) {
+            $benchmarkExe = Resolve-BenchmarkExecutable -Name $benchmark.Name
+            if (-not $benchmarkExe) {
+                throw "$($benchmark.Name) executable was not generated."
+            }
+
+            $benchmark.Heading | Tee-Object -FilePath $BenchmarkOutput -Append
+            Write-Host "> $benchmarkExe"
+            & $benchmarkExe 2>&1 | Tee-Object -FilePath $BenchmarkOutput -Append
+            if ($LASTEXITCODE -ne 0) {
+                throw "$($benchmark.Name) failed with exit code $LASTEXITCODE"
+            }
+            '' | Tee-Object -FilePath $BenchmarkOutput -Append
         }
 
         Write-Host "Benchmark report: $BenchmarkOutput"
     }
 
-    Write-Host 'ArZoom Phase 0 validation: PASS'
+    Write-Host 'ArZoom deterministic motion validation: PASS'
 }
 finally {
     Pop-Location

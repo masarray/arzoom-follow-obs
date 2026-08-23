@@ -1,68 +1,128 @@
-# Smart Camera Motion 2.0 — Tuning Gates
+# Smart Zone Gimbal Camera — Phase 1 Closeout Gates
 
-This document turns Phase 1 behavior into observable release gates. Values are starting engineering targets and may be refined from public-trial evidence; they are not marketing claims.
+These are perceptual engineering gates for the v0.2.0 public trial.
 
-## Activation focus continuity
+## Core rule
 
-For a zoom activation latched to a cursor focus point:
+ArZoom follows **presentation-area changes**, not ordinary pointer motion.
 
-- the focus point must stay inside the visible output throughout the transition;
-- its screen-space trajectory should move monotonically toward its final legal framing region rather than detouring toward unrelated center content;
-- edge/corner activation must never reveal invalid source pixels;
-- normal cursor jitter during activation must not continuously retarget the transition.
+Priority order:
 
-## Viewer-comfort traces
+1. stability;
+2. seamless Follow → Coast → SmoothIdle handoff;
+3. straight zoom paths;
+4. soft launch / soft finish;
+5. timely relocation;
+6. raw responsiveness.
 
-- stationary jitter: effectively zero camera displacement;
-- repeated pointing inside one UI region: effectively zero camera displacement;
-- small circular explanation gesture: target is materially lower motion than the v0.1.4 Phase 0 baseline (`0.004671` normalized max displacement);
-- after SETTLE, camera velocity is exactly/near zero until intent crosses the re-entry threshold.
+## SmoothIdle
 
-## Intent latency
+When the presenter remains in one explanation area:
 
-Suggested starting ranges for Balanced mode:
+- viewport must be exact-stable;
+- circles, repeated pointing, and local hand motion do not move the camera;
+- the mouse does not need to stop;
+- destination filters do not advance unnecessarily;
+- no camera breathing is allowed.
 
-- ordinary candidate motion: Observe window roughly `70–130 ms` before committed travel;
-- high-urgency edge approach: shortened response;
-- future click-at-new-location event: may immediately raise intent confidence without forcing a teleport.
+## Smart Zone hysteresis
 
-The final values must be selected from replay traces and visual trials rather than hard-coded to these initial ranges.
+Use separate local/exit semantics:
 
-## Ballistic character
+- local explanation motion stays inside SmoothIdle;
+- crossing the outer zone begins Observe, not an immediate pan;
+- short dwell confirms a real area relocation;
+- edge risk or semantic emphasis may shorten the dwell;
+- boundary hovering must not chatter between idle and follow.
 
-- no instantaneous jump from rest to max pan speed;
-- acceleration increases smoothly with bounded jerk;
-- long travel may reach an urgency-scaled cruise/max speed;
-- braking begins before target arrival;
-- default motion should be critically or near-critically damped: visible bounce/oscillation is a failure;
-- direction reversal must first shed incompatible velocity before accelerating strongly in the new direction.
+## Coast handoff
 
-## Catch-up vs comfort
+Follow must never snap to steady.
 
-Balanced mode must preserve both:
+Release gates:
 
-1. small explanation gestures do not cause frame wander;
-2. a long intentional cursor relocation reaches useful framing before the presenter interaction is visually lost.
+- camera enters Coast after the new area is usefully reacquired;
+- presenter may immediately move/circle the mouse during Coast;
+- live-pointer influence fades rather than disappearing in one frame;
+- camera speed is already visually negligible before exact SmoothIdle lock;
+- there is no visible stop event when the state changes.
 
-The intent system should raise urgency based on output-edge risk and distance rather than using one globally faster smoothing constant.
+## SmoothIdle wake-up
+
+Leaving the outer Smart Zone must start another follow shot with:
+
+- short intent dwell;
+- very small first visible movement step;
+- preserved destination-filter continuity;
+- no teleport, snap, or instant cruise-speed launch.
+
+## Straight screen-space zoom
+
+Zoom-in/out are tested in viewer coordinates:
+
+```text
+output = scale * source + offset
+```
+
+`scale` and `offset` share one quintic minimum-jerk progress value.
+
+Required:
+
+- no sideways bow or curve;
+- no direction reversal;
+- monotonic magnification;
+- focus-preserving zoom-in at edges/corners;
+- zoom-out exact-locks to `1.0x / (0.5,0.5)`;
+- post-return frames remain exact-stable.
+
+## Continuous retargeting
+
+During a real follow shot:
+
+- moving the mouse again changes the destination without restarting animation;
+- no one-frame jump;
+- no abrupt reversal;
+- path bends progressively;
+- repeated updates do not create a stop/start cadence.
+
+## Styles
+
+### Cinematic
+Largest steady zone, longest Coast, softest travel.
+
+### Balanced
+Recommended default. Strong presentation-area stability with useful catch-up.
+
+### Responsive
+Smaller steady zone and shorter dwell/time constants, but still no snap or alternate physics.
+
+## Automated closeout matrix
+
+CI must cover:
+
+- 30/60/120/144 fps;
+- 2x/3x/4x;
+- repeated relocations across multiple presentation zones;
+- local explanation orbit after each settle;
+- rapid zone switching;
+- center/edge/corner safety;
+- corner zoom-out at all supported zoom levels;
+- exact full-frame lock after return;
+- existing Phase 0 math and edge invariants.
 
 ## Performance
 
-Compare Phase 1 microbenchmark output against the recorded Phase 0 Windows baseline. Investigate any large regression in motion-core cost. The algorithm should remain fixed-state/O(1) with no heap allocation in the per-frame camera update.
+The camera core remains fixed-state/O(1), allocation-free, with no frame readback, image analysis, or file/settings I/O in the hot path.
 
-## Required visual trial matrix
+Hosted-runner nanosecond measurements are diagnostics only. A small math-cost increase is acceptable when it materially improves stability, provided the cost remains negligible relative to an OBS frame budget.
 
-Test at least:
+## Human closeout trial
 
-- 1080p60 Display Capture;
-- cursor center → each edge;
-- cursor center → each corner;
-- edge → opposite edge;
-- rapid direction reversal;
-- slow text explanation gesture;
-- small circle around a UI element;
-- rapid pointing between nearby controls;
-- mouse held at edge while zoom activates;
-- 2x, 3x, 4x zoom;
-- Smooth/Cinematic, Balanced, Responsive tuning profiles;
-- multi-monitor including negative desktop coordinates where available.
+Before Phase 1 is considered final, verify in OBS:
+
+- long mouse relocation feels smooth;
+- presenter can start circling immediately after relocation without viewport chasing;
+- Follow → steady cannot be visually identified as a mode switch;
+- leaving the current zone launches another smooth follow;
+- zoom-in/out remain straight and quiet;
+- no visible edge exposure or post-settle breathing.

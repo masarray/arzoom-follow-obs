@@ -59,7 +59,7 @@ jobs:
           }
           exit 0
 
-      - name: Phase 0 deterministic motion validation
+      - name: Deterministic motion validation
         if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         run: ./scripts/run-phase0-validation.ps1
@@ -125,24 +125,34 @@ jobs:
           body: |
             ## ArZoom for OBS v${{ steps.version.outputs.version }}
 
-            Windows preview release of the native OBS Display Capture zoom filter.
+            Public-trial release of the **Smart Zone Gimbal Camera** for OBS Display Capture.
 
             ### Recommended download
 
-            Download **`ArZoom-OBS-Setup-windows-x64.exe`**. Close OBS completely, run the installer, then start OBS again.
+            Download **`ArZoom-OBS-Setup-windows-x64.exe`**. Close OBS completely and run the installer.
 
-            The manual ZIP is intended only for portable or custom OBS installations.
+            The same installer supports:
+            - **Standard OBS Studio** — auto-detected when possible.
+            - **OBS Portable / custom OBS folder** — browse to the OBS root that contains `bin\\64bit\\obs64.exe`.
+
+            A manual ZIP remains available for users who prefer direct extraction.
 
             ### Highlights
 
-            - one hotkey toggles smooth zoom-in and zoom-out;
-            - Smart Mouse Follow keeps motion comfortable for viewers;
-            - edge-safe framing prevents black borders near screen edges;
+            - focus-preserving, straight screen-space zoom-in with soft minimum-jerk easing;
+            - straight, wobble-free zoom-out to exact full-frame lock;
+            - **Smart Zone** behavior that follows presentation-area changes instead of every pointer movement;
+            - **Coast → SmoothIdle** handoff so camera movement fades naturally while the presenter can immediately circle or point in the new area;
+            - local explanation gestures, repeated pointing, and hand jitter remain steady inside the active presentation zone;
+            - soft wake-up when the pointer intentionally leaves the outer Smart Zone;
+            - continuous gimbal retargeting without stop/start/relaunch behavior;
+            - edge-safe framing across supported zoom/follow operation;
+            - Cinematic, Balanced, and Responsive camera characters;
             - persistent global OBS hotkey;
             - native GPU video filter with idle pass-through;
             - Windows 10/11 x64 and OBS Display Capture.
 
-            This is a public preview. Test it before an important production livestream.
+            This is a public trial. Validate it on your own OBS scene before an important production livestream.
           files: |
             release/ArZoom-OBS-Setup-windows-x64.exe
             release/ArZoom-OBS-Manual-v${{ steps.version.outputs.version }}-windows-x64.zip

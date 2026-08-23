@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.2.0 — Smart Zone Gimbal Camera + portable-aware installer
+
+- Replaced the v0.1.x edge-triggered follower with a shared platform-neutral Smart Camera core.
+- Rejected the early ballistic/spring experiment after visual trial showed follow snapping and zoom-out hunting; the final camera is a super-steady gimbal model.
+- Added focus-preserving zoom activation so edge/corner zoom goes directly toward the intended subject instead of detouring through unrelated center content.
+- Added affine-transform zoom-in and zoom-out with quintic minimum-jerk easing; fixed source pixels follow straight screen-space paths with soft start and soft finish.
+- Added **Smart Zone** semantics: ArZoom follows presentation-area changes rather than ordinary local mouse movement.
+- Added **SmoothIdle**: circles, repeated pointing, jitter, and explanatory cursor movement inside the current area keep the viewport exact-stable without waiting for the mouse to stop.
+- Added **Coast** handoff so Follow does not snap to steady; live-pointer influence fades while camera speed decays naturally before exact idle lock.
+- Added inner/outer zone hysteresis and short relocation dwell so boundary movement does not chatter between Follow and Idle.
+- Leaving the outer Smart Zone starts a new follow with a soft first movement step; edge risk and semantic emphasis may shorten the delay without changing physics.
+- Preserved continuous retargeting during real travel: moving the mouse again changes only the destination while gimbal filter state remains continuous.
+- Removed default predictive look-ahead to prioritize stability and avoid unnecessary correction movement.
+- Kept edge urgency, but it only shortens the same gimbal time constants through a filtered urgency value; there is no alternate high-energy motion mode.
+- Added deterministic closeout gates for straight zoom paths, local explanation lock, Follow → Coast → SmoothIdle, soft idle wake-up, continuous retargeting, rapid zone switching, 2x/3x/4x corner zoom-out, and 30/60/120/144 fps behavior.
+- Retained Phase 0 randomized edge/math invariants and benchmark gates.
+- Motion styles are presented as Cinematic, Balanced, and Responsive while preserving old persisted setting values for profile compatibility.
+- Added a fool-proof Windows installer mode selector for Standard OBS Studio or OBS Portable/custom folders.
+- Standard mode auto-detects common OBS install locations; portable/custom mode lets the user browse to a specific OBS root.
+- Installer validates `bin\\64bit\\obs64.exe` before copying plugin files, remembers the last valid custom root, and launches the selected OBS installation after setup.
+- Windows CI compiles the actual Inno Setup installer in addition to the manual ZIP.
+
 ## Unreleased — Public repository and website
 
 - Rebuilt the public README around the user problem, download flow, five-minute setup, recommended defaults, compatibility, privacy, troubleshooting, and honest preview status.

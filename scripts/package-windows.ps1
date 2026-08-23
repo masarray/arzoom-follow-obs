@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $StageRoot,
 
-    [string] $Version = '0.1.4',
+    [string] $Version = '0.2.0',
     [string] $Configuration = 'RelWithDebInfo'
 )
 
@@ -25,11 +25,6 @@ if (Test-Path -LiteralPath $PackageRoot) {
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot 'obs-plugins/64bit') | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot 'data/obs-plugins/arzoom') | Out-Null
 
-# The official OBS plugin template currently installs Windows plugins as:
-#   <prefix>\arzoom\bin\64bit\arzoom.dll
-#   <prefix>\arzoom\data\...
-# Older/direct libobs layouts use obs-plugins/64bit and data/obs-plugins.
-# Support both layouts, then fall back to a bounded recursive lookup.
 $DllCandidates = @(
     (Join-Path $StageRoot 'arzoom/bin/64bit/arzoom.dll'),
     (Join-Path $StageRoot 'obs-plugins/64bit/arzoom.dll'),
@@ -98,15 +93,27 @@ foreach ($relative in $Required) {
 }
 
 @"
-ArZoom - Smart Mouse Zoom for OBS
+ArZoom v$Version - Smart Camera Zoom & Follow for OBS
 
-Manual installation:
-1. Close OBS.
-2. Copy the folders in this package into:
-   C:\Program Files\obs-studio\
-3. Restart OBS.
-4. Add "ArZoom - Smart Mouse Zoom" to a Display Capture source.
-5. Set "ArZoom - Toggle Zoom & Mouse Follow" in OBS Settings > Hotkeys.
+RECOMMENDED: use the EXE installer.
+The installer supports two modes:
+  1. Standard OBS Studio - auto detected.
+  2. OBS Portable / custom OBS folder - browse to the OBS root folder.
+
+The correct OBS root folder contains:
+  bin\64bit\obs64.exe
+
+Manual ZIP installation:
+1. Close OBS completely.
+2. Open your OBS root folder.
+   Standard example: C:\Program Files\obs-studio\
+   Portable example: D:\PortableApps\OBS\
+3. Copy the obs-plugins and data folders from this ZIP into that OBS root.
+4. Restart OBS.
+5. Add "ArZoom - Smart Camera Zoom & Follow" to a Display Capture source.
+6. Set "ArZoom - Toggle Smart Camera Zoom" in OBS Settings > Hotkeys.
+
+Do not copy the package into bin\64bit or obs-plugins directly; merge it at the OBS root.
 "@ | Set-Content -LiteralPath (Join-Path $PackageRoot 'README-INSTALL.txt') -Encoding UTF8
 
 if (Test-Path -LiteralPath $ZipPath) {
@@ -114,7 +121,6 @@ if (Test-Path -LiteralPath $ZipPath) {
 }
 Compress-Archive -Path (Join-Path $PackageRoot '*') -DestinationPath $ZipPath -Force
 
-# Verify that packaging really produced all required payload files.
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $Archive = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
 try {

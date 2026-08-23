@@ -12,20 +12,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Phase 0 deterministic motion validation
+      - name: Deterministic motion validation
         shell: pwsh
         run: |
           ./scripts/run-phase0-validation.ps1
 
-      - name: Upload Phase 0 benchmark report
+      - name: Upload motion benchmark report
         uses: actions/upload-artifact@v4
         with:
-          name: arzoom-phase0-motion-benchmark-windows-x64
+          name: arzoom-motion-benchmark-windows-x64
           path: phase0-benchmark.txt
           if-no-files-found: error
           retention-days: 14
 
-      - name: Build
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build plugin and fool-proof installer
         shell: pwsh
         run: |
           ./scripts/build-local-windows.ps1 -VisualStudio 2022 -Ci
