@@ -1,15 +1,23 @@
 /*
- * ArZoom - Smart Mouse Zoom for OBS
- * One-pass GPU viewport transform.
+ * ArZoom - Smart Zone Camera + GPU Click Visualization for OBS
+ * One-pass viewport transform and procedural click overlay.
  * GPL-2.0-or-later
  */
 
 uniform float4x4 ViewProj;
 uniform texture2d image;
 
-/* ABI v2 names prevent an old DLL/new effect mixture from partially running. */
+/* Camera ABI. */
 uniform float zoom_amount;
 uniform float2 zoom_center;
+
+/* Phase 2 click ABI: xy=content position, z=age seconds, w=click type.
+ * type: 0=inactive, 1=left, 2=right, 3=middle. */
+uniform float2 viewport_size;
+uniform float4 click_event0;
+uniform float4 click_event1;
+uniform float4 click_event2;
+uniform float4 click_event3;
 
 sampler_state textureSampler {
     Filter   = Linear;
@@ -39,6 +47,102 @@ VertOut VSDefault(VertData v_in)
     return v_out;
 }
 
+float ease_out_cubic(float t)
+{
+    t = saturate(t);
+    const float q = 1.0 - t;
+    return 1.0 - q * q * q;
+}
+
+float ring_mask(float distance_px, float radius_px, float width_px)
+{
+    const float edge = abs(distance_px - radius_px);
+    return 1.0 - smoothstep(width_px, width_px + 1.25, edge);
+}
+
+float glow_mask(float distance_px, float radius_px, float width_px)
+{
+    const float edge = abs(distance_px - radius_px);
+    return 1.0 - smoothstep(width_px + 1.0, width_px + 10.0, edge);
+}
+
+float warped_distance(float2 delta_px, float progress)
+{
+    const float base_distance = length(delta_px);
+    const float ripple =
+        sin(delta_px.x * 0.105 + progress * 7.0) *
+        sin(delta_px.y * 0.092 - progress * 6.0);
+    return base_distance + ripple * 1.15 * (1.0 - progress);
+}
+
+float3 left_click(float2 delta_px, float age)
+{
+    const float p = saturate(age / 0.38);
+    const float travel = ease_out_cubic(p);
+    const float distance_px = warped_distance(delta_px, p);
+    const float radius = 10.0 + 42.0 * travel;
+    const float width = 2.8 - 0.8 * p;
+    const float fade = 1.0 - smoothstep(0.58, 1.0, p);
+    const float ring = ring_mask(distance_px, radius, width);
+    const float glow = glow_mask(distance_px, radius, width);
+    const float3 cyan = float3(0.20, 0.78, 1.00);
+    return cyan * fade * (ring * 0.82 + glow * 0.20);
+}
+
+float3 right_click(float2 delta_px, float age)
+{
+    const float p = saturate(age / 0.48);
+    const float travel = ease_out_cubic(p);
+    const float distance_px = warped_distance(delta_px, p);
+    const float radius = 11.0 + 39.0 * travel;
+    const float fade = 1.0 - smoothstep(0.62, 1.0, p);
+
+    const float first = ring_mask(distance_px, radius, 2.5);
+    const float first_glow = glow_mask(distance_px, radius, 2.5);
+
+    const float p2 = saturate((age - 0.065) / 0.39);
+    const float radius2 = 8.0 + 31.0 * ease_out_cubic(p2);
+    const float second = p2 > 0.0
+        ? ring_mask(distance_px, radius2, 1.9) * (1.0 - p2)
+        : 0.0;
+
+    const float3 violet = float3(0.70, 0.43, 1.00);
+    return violet * fade * (first * 0.72 + first_glow * 0.16) +
+           float3(0.92, 0.86, 1.00) * second * 0.46;
+}
+
+float3 middle_click(float2 delta_px, float age)
+{
+    const float p = saturate(age / 0.34);
+    const float distance_px = length(delta_px);
+    const float radius = 7.0 + 25.0 * ease_out_cubic(p);
+    const float fade = 1.0 - smoothstep(0.52, 1.0, p);
+    const float ring = ring_mask(distance_px, radius, 2.2);
+    const float core = 1.0 - smoothstep(2.0, 5.5, distance_px);
+    return float3(1.00, 0.82, 0.28) * fade *
+           (ring * 0.68 + core * (1.0 - p) * 0.42);
+}
+
+float3 click_overlay(float2 output_uv, float4 event_data, float safe_zoom)
+{
+    const float type = event_data.w;
+    if (type < 0.5)
+        return float3(0.0, 0.0, 0.0);
+
+    /* Content anchoring: convert the stored source coordinate through the
+     * current camera transform every frame. */
+    const float2 output_center =
+        float2(0.5, 0.5) + (event_data.xy - zoom_center) * safe_zoom;
+    const float2 safe_viewport = max(viewport_size, float2(1.0, 1.0));
+    const float2 delta_px = (output_uv - output_center) * safe_viewport;
+
+    if (type < 1.5)
+        return left_click(delta_px, event_data.z);
+    if (type < 2.5)
+        return right_click(delta_px, event_data.z);
+    return middle_click(delta_px, event_data.z);
+}
+
 float4 PSZoom(FragData f_in) : TARGET
 {
     const float safe_zoom = max(zoom_amount, 1.0);
@@ -46,7 +150,18 @@ float4 PSZoom(FragData f_in) : TARGET
         zoom_center + (f_in.uv - float2(0.5, 0.5)) / safe_zoom;
 
     /* CPU clamping is authoritative; saturate is only a numerical guard. */
-    return image.Sample(textureSampler, saturate(sample_uv));
+    float4 color = image.Sample(textureSampler, saturate(sample_uv));
+
+    float3 overlay = float3(0.0, 0.0, 0.0);
+    overlay += click_overlay(f_in.uv, click_event0, safe_zoom);
+    overlay += click_overlay(f_in.uv, click_event1, safe_zoom);
+    overlay += click_overlay(f_in.uv, click_event2, safe_zoom);
+    overlay += click_overlay(f_in.uv, click_event3, safe_zoom);
+
+    /* Additive analytic glow preserves the underlying capture and avoids a
+     * separate bloom/render pass. */
+    color.rgb = saturate(color.rgb + overlay);
+    return color;
 }
 
 technique Draw

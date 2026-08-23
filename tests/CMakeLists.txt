@@ -29,8 +29,15 @@ add_executable(arzoom-phase1-closeout-test arzoom-phase1-closeout-test.cpp)
 arzoom_configure_test_target(arzoom-phase1-closeout-test)
 add_test(NAME arzoom-phase1-closeout-stress COMMAND arzoom-phase1-closeout-test)
 
+add_executable(arzoom-phase2-click-test arzoom-phase2-click-test.cpp)
+arzoom_configure_test_target(arzoom-phase2-click-test)
+add_test(NAME arzoom-phase2-click-visual COMMAND arzoom-phase2-click-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 
 add_executable(arzoom-smart-camera-benchmark arzoom-smart-camera-benchmark.cpp)
 arzoom_configure_test_target(arzoom-smart-camera-benchmark)
+
+add_executable(arzoom-click-benchmark arzoom-click-benchmark.cpp)
+arzoom_configure_test_target(arzoom-click-benchmark)

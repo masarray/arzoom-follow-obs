@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.3.0 — GPU Click Visualization public trial
+
+- Added procedural GPU click feedback to the existing ArZoom presentation pass; no PNG generation, temporary files, particle system, extra OBS image source, frame readback, or separate bloom pass.
+- Left click uses a compact liquid-like cyan expanding ring with subtle analytic deformation and soft glow.
+- Right click uses a visually distinct violet dual/delayed ring so it is recognizable without text labels.
+- Middle click uses a compact gold pulse.
+- Click events are stored in normalized source/content coordinates and reprojected through the live camera transform every frame, so feedback stays attached to the clicked content while zoom/pan moves.
+- Added a fixed four-slot, allocation-free click event core with deterministic expiry and bounded overwrite behavior.
+- Windows click capture uses compact mouse-button edge sampling and records only clicks inside the mapped Display Capture monitor.
+- Click visualization remains independent of Smart Zone intent: click events do not set camera emphasis, urgency, wake SmoothIdle, or retarget Follow by default.
+- Rendering remains one filter pass whether zoom, click feedback, or both are visible; when neither is visible the OBS pass-through path remains active.
+- Added a simple **Show click visualization** toggle without exposing shader-engineering controls in the Basic UI.
+- Added deterministic Phase 2 gates for click ordering/capacity, expiry, content anchoring under 1x/2x/3x/4x camera transforms, finite edge/corner projection, and camera-output isolation.
+- Retained the complete Phase 0 + Phase 1 regression and closeout matrix unchanged.
+- Added Phase 2 microbenchmarks; hosted Windows diagnostics are approximately 7 ns/update for idle/one-click state and 9 ns/update for four overlapping clicks. Absolute timings are runner-specific engineering diagnostics.
+
 ## v0.2.0 — Smart Zone Gimbal Camera + portable-aware installer
 
 - Replaced the v0.1.x edge-triggered follower with a shared platform-neutral Smart Camera core.
@@ -62,7 +78,7 @@
 - Fixed the blank “No properties available” filter panel.
 - Registers properties and the per-source hotkey even when the GPU effect cannot load.
 - Replaced the effect interface with an OBS-reference-compatible vertex/fragment contract.
-- Added ABI-v2 uniform names to prevent mixed old DLL/effect packages from partially running.
+- Added ABI-v2 uniform names to prevent mixed old DLL/new effect packages from partially running.
 - Uses texture-backed filter processing for reliable Display Capture input.
 - Shows a clear ready/error status inside the filter instead of creating a ghost instance.
 - Keeps fail-safe pass-through behavior on every graphics-resource failure.

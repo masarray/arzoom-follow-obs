@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $StageRoot,
 
-    [string] $Version = '0.2.0',
+    [string] $Version = '0.3.0',
     [string] $Configuration = 'RelWithDebInfo'
 )
 
@@ -93,7 +93,7 @@ foreach ($relative in $Required) {
 }
 
 @"
-ArZoom v$Version - Smart Camera Zoom & Follow for OBS
+ArZoom v$Version - Smart Zone Camera + GPU Click Visualization for OBS
 
 RECOMMENDED: use the EXE installer.
 The installer supports two modes:
@@ -112,6 +112,9 @@ Manual ZIP installation:
 4. Restart OBS.
 5. Add "ArZoom - Smart Camera Zoom & Follow" to a Display Capture source.
 6. Set "ArZoom - Toggle Smart Camera Zoom" in OBS Settings > Hotkeys.
+7. Leave "Show click visualization" enabled to display GPU-rendered left/right/middle click feedback.
+
+Click visualization does not retarget the Smart Zone camera. It is rendered procedurally in the same presentation pass and stays anchored to clicked content while zoom/pan moves.
 
 Do not copy the package into bin\64bit or obs-plugins directly; merge it at the OBS root.
 "@ | Set-Content -LiteralPath (Join-Path $PackageRoot 'README-INSTALL.txt') -Encoding UTF8

@@ -1,8 +1,8 @@
 # ArZoom for OBS
 
 <p align="center">
-  <strong>Smart Zone presentation camera for OBS screen capture.</strong><br>
-  Zoom where you are presenting, stay steady while you explain, and glide smoothly when you move to another area.
+  <strong>Smart Zone presentation camera + GPU click feedback for OBS screen capture.</strong><br>
+  Zoom where you are presenting, stay steady while you explain, and make clicks readable without distracting camera motion.
 </p>
 
 <p align="center">
@@ -11,28 +11,42 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.2.0 public trial" src="https://img.shields.io/badge/version-0.2.0%20public%20trial-f59e0b">
+  <img alt="Version 0.3.0 public trial" src="https://img.shields.io/badge/version-0.3.0%20public%20trial-f59e0b">
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?logo=windows11&logoColor=white">
   <img alt="OBS Studio plugin" src="https://img.shields.io/badge/OBS%20Studio-native%20plugin-302e31?logo=obsstudio&logoColor=white">
   <a href="LICENSE"><img alt="GPL 2.0 or later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue"></a>
 </p>
 
-ArZoom is a native **OBS presentation-camera plugin** for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming. It applies zoom/pan to a Display Capture source through a GPU filter while the camera interprets cursor movement as **presentation intent**, not as a command to chase every mouse movement.
+ArZoom is a native **OBS presentation-camera plugin** for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming. The Smart Zone camera interprets cursor movement as **presentation intent**, not as a command to chase every mouse movement, while v0.3.0 adds lightweight procedural click feedback in the same GPU presentation pass.
 
-> **Current status:** v0.2.0 public trial for Windows. Smart Zone camera motion, straight zoom transitions, edge safety, global hotkey persistence, standard/portable-aware installation, deterministic motion tests, and fail-safe rendering are implemented. Broader hardware and OBS-version validation continues before v1.0.
+> **Current status:** v0.3.0 public trial for Windows. Smart Zone camera motion, straight minimum-jerk zoom transitions, GPU click visualization, edge safety, global hotkey persistence, standard/portable-aware installation, deterministic regression tests, and fail-safe rendering are implemented. Broader hardware and OBS-version validation continues before v1.0.
 
-## What changed in v0.2.0
+## GPU Click Visualization — v0.3.0
 
-The v0.1.x runtime behaved like an edge follower. v0.2.0 replaces that behavior with a **Smart Zone Gimbal Camera**.
+Click feedback is designed to make tutorials easier to follow without turning ArZoom into a particle effect plugin.
+
+- **Left click:** compact liquid-like cyan expanding ring with subtle analytic deformation and soft glow.
+- **Right click:** visually distinct violet dual/delayed ring, readable without LEFT/RIGHT text.
+- **Middle click:** compact gold pulse.
+- **Content anchored:** click positions are stored in source/content coordinates and reprojected through the live camera transform every frame, so the pulse stays attached to what was clicked while the viewport moves.
+- **Camera isolated:** click events do not wake SmoothIdle, increase urgency, retarget Follow, or otherwise change Smart Zone camera behavior by default.
+- **One GPU pass:** click visuals are composed inside the same presentation shader used for zoom/pan.
+- **Fixed cost:** four allocation-free event slots allow overlapping clicks without a growing particle/history container.
+- **No asset churn:** no generated PNG, temporary files, extra OBS image sources, CPU rasterization, frame readback, or separate bloom pass.
+
+The filter exposes one simple **Show click visualization** toggle. Shader-engineering controls stay out of the Basic UI.
+
+## Smart Zone Gimbal Camera — v0.2 baseline
+
+The Phase 1 camera baseline remains frozen underneath Phase 2.
 
 - **Focus-preserving zoom-in:** edge/corner activation goes directly toward the intended subject instead of zooming into unrelated center content first.
-- **Straight screen-space zoom:** zoom-in and zoom-out interpolate one affine screen transform with quintic minimum-jerk easing, so the visible image does not bow sideways during the transition.
+- **Straight screen-space zoom:** zoom-in and zoom-out interpolate one affine screen transform with quintic minimum-jerk easing, preventing visible sideways bowing.
 - **Smart Zone:** ArZoom follows meaningful presentation-area changes, not every local pointer movement.
 - **SmoothIdle:** circling a button, pointing around a diagram, or moving the mouse while explaining keeps the viewport steady.
 - **Coast handoff:** after a real relocation, camera influence fades gradually into SmoothIdle instead of visibly snapping from moving to steady.
 - **Soft wake-up:** leaving the outer Smart Zone starts a new follow shot with a gentle first movement step.
-- **Continuous retargeting:** changing destination while the camera is already moving bends the existing path instead of restarting animation.
-- **Filtered edge urgency:** when the pointer is genuinely at risk of being lost, the same gimbal response becomes smoothly more responsive without switching to different physics.
+- **Continuous retargeting:** changing destination while the camera is moving bends the existing path instead of restarting animation.
 - **Exact settle:** completed idle and zoom-out states do not breathe or micro-correct.
 
 Conceptually:
@@ -104,14 +118,15 @@ ArZoom — Toggle Smart Camera Zoom
 
 The filter also includes **Open OBS Hotkeys Settings** and explicit hotkey persistence.
 
-## Recommended v0.2.0 settings
+## Recommended v0.3.0 settings
 
 | Setting | Recommended | Purpose |
 |---|---:|---|
 | Zoom amount | `2.00×` | Useful detail without excessive crop |
 | Camera follow | `Smart Camera` | Presentation-area tracking |
 | Camera character | `Balanced` | Recommended stability and travel speed |
-| Stable comfort zone | `28%` | Lets normal explanatory pointer movement happen without camera shake |
+| Stable comfort zone | `28%` | Allows explanatory pointer movement without camera shake |
+| Click visualization | `On` | GPU click feedback without changing camera intent |
 | Target monitor | `Auto` | Maps the Display Capture monitor automatically |
 
 Camera character options:
@@ -122,27 +137,28 @@ Camera character options:
 
 ## Why ArZoom stays lightweight
 
-Smart Camera intelligence is deterministic vector math; it does not require AI, OCR, computer vision, or frame analysis.
+ArZoom uses deterministic vector math and procedural GPU rendering; it does not require AI, OCR, computer vision, or frame analysis.
 
 The hot path is designed around:
 
 - one cursor sample per active video tick;
-- fixed-size camera state;
-- no growing history containers;
+- fixed-size Smart Camera state;
+- four fixed click-event slots;
+- no growing history/particle containers;
 - no frame readback;
 - no image analysis;
 - no per-frame file I/O;
 - no per-frame OBS settings writes;
 - no scene-item transform mutation;
-- GPU zoom/pan rendering;
-- cheap SmoothIdle camera logic while the presenter remains in one area;
-- OBS pass-through while zoom is inactive.
+- one GPU presentation pass for active zoom/click feedback;
+- cheap SmoothIdle logic while the presenter remains in one area;
+- OBS pass-through when neither camera transform nor click feedback is visible.
 
-Hosted-runner microbenchmark numbers are engineering diagnostics, not cross-machine marketing claims.
+Hosted-runner microbenchmark numbers are engineering diagnostics, not cross-machine marketing claims. Phase 2 fixed click-state updates measure roughly 7–9 ns/update on the current Windows hosted runner.
 
 ## Scene safety
 
-ArZoom v0.2.0 remains a video filter for Display Capture. Camera calculations drive the filter shader and **do not rewrite the original OBS scene-item transforms**. Invalid/missing shader resources fall back to safe pass-through instead of intentionally blacking the source.
+ArZoom v0.3.0 remains a video filter for Display Capture. Camera calculations and click feedback drive the filter shader and **do not rewrite the original OBS scene-item transforms**. Invalid/missing shader resources fall back to safe pass-through instead of intentionally blacking the source.
 
 ## Compatibility
 
@@ -154,6 +170,7 @@ ArZoom v0.2.0 remains a video filter for Display Capture. Camera calculations dr
 | OBS 32.x | Forward validation in progress |
 | Zoom range | `1.10×` to `4.00×` |
 | Follow modes | Smart Camera, Centered, Fixed |
+| Click input | Left / Right / Middle mouse buttons on Windows |
 | Multi-monitor | Supported, including negative desktop coordinates |
 | Mixed DPI | Implemented; broader physical-device validation in progress |
 | Normal OBS installer | Supported |
@@ -167,17 +184,18 @@ Before Windows packaging, CI runs platform-neutral tests covering:
 
 - 200,000 randomized viewport/edge invariants;
 - hand jitter and explanation gestures;
-- straight focus-preserving zoom-in;
-- straight wobble-free zoom-out;
+- straight focus-preserving zoom-in and wobble-free zoom-out;
 - Follow → Coast → SmoothIdle while the mouse may continue moving;
 - local explanation orbit remaining stationary after relocation;
-- soft SmoothIdle wake-up for the next presentation area;
-- continuous retargeting with no one-frame snap;
+- soft SmoothIdle wake-up and continuous retargeting;
 - rapid zone switching;
 - 2×/3×/4× Smart Zone and corner-return stress;
 - 30/60/120/144 fps behavior;
-- multi-monitor normalized-coordinate traces;
-- motion microbenchmarks.
+- fixed click-slot capacity and deterministic expiry;
+- click content anchoring under synthetic camera transforms;
+- edge/corner click coordinate safety;
+- direct regression that click subsystem activity leaves camera center, zoom, state, and urgency unchanged;
+- camera and click-state microbenchmarks.
 
 Run locally on Windows PowerShell:
 
@@ -209,6 +227,7 @@ package-existing-build.bat
 
 ## Project documentation
 
+- [Phase 2 GPU Click Visualization tracker](https://github.com/masarray/arzoom-follow-obs/issues/7)
 - [Smart Zone Phase 1 specification](docs/SMART_CAMERA_PHASE1_SPEC.md)
 - [Phase 1 closeout/tuning gates](docs/SMART_CAMERA_PHASE1_TUNING.md)
 - [Phase 0 baseline](docs/PHASE0_BASELINE.md)
@@ -222,7 +241,7 @@ package-existing-build.bat
 
 ## Privacy
 
-ArZoom does not send analytics, cursor data, captured video, or presentation content anywhere.
+ArZoom does not send analytics, cursor data, captured video, click data, or presentation content anywhere.
 
 ## License
 
