@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.1 — Liquid contrast click fix candidate
+
+- Reworked the left-click ring from a near-perfect neon circle into a visibly deforming surface-tension pulse using deterministic low-frequency GPU lobes and variable ring thickness.
+- Replaced the old additive-only click compositing that necessarily clipped to white on Explorer and other bright applications.
+- Added luminance-aware contrast compositing: saturated click color remains visible on dark content, while bright/white content receives a darker chromatic support edge and darker accent body instead of white clipping.
+- Kept glow additive only where the underlying content has luminance headroom; white surfaces use the contrast/body blend as the authoritative visual.
+- Preserved the existing one-pass GPU architecture, fixed four-slot CPU click state, content-space anchoring, and frozen Smart Zone camera contract.
+- No global mouse hook was added in this patch. The Explorer report is first isolated against the confirmed white-compositing bug; input capture will only be replaced if clicks still disappear after contrast is fixed.
+
 ## v0.3.0 — GPU Click Visualization public trial
 
 - Added procedural GPU click feedback to the existing ArZoom presentation pass; no PNG generation, temporary files, particle system, extra OBS image source, frame readback, or separate bloom pass.
