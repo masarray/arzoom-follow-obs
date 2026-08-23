@@ -1,68 +1,124 @@
-# Smart Camera Motion 2.0 — Tuning Gates
+# Smart Gimbal Camera 2.0 — Tuning Gates
 
-This document turns Phase 1 behavior into observable release gates. Values are starting engineering targets and may be refined from public-trial evidence; they are not marketing claims.
+These are perceptual engineering gates for the Phase 1 public trial. They are not marketing claims.
+
+## Core rule
+
+A good ArZoom movement should be noticed for its result, not for the camera motion itself.
+
+Priority order:
+
+1. stability;
+2. seamless path continuity;
+3. soft start / soft finish;
+4. useful catch-up;
+5. raw responsiveness.
 
 ## Activation focus continuity
 
-For a zoom activation latched to a cursor focus point:
-
-- the focus point must stay inside the visible output throughout the transition;
-- its screen-space trajectory should move monotonically toward its final legal framing region rather than detouring toward unrelated center content;
-- edge/corner activation must never reveal invalid source pixels;
-- normal cursor jitter during activation must not continuously retarget the transition.
+- focus remains visible throughout zoom-in;
+- edge/corner activation never detours toward unrelated center content;
+- normal cursor jitter during activation does not retarget the latched shot;
+- zoom and center share one minimum-jerk transition.
 
 ## Viewer-comfort traces
 
-- stationary jitter: effectively zero camera displacement;
-- repeated pointing inside one UI region: effectively zero camera displacement;
-- small circular explanation gesture: target is materially lower motion than the v0.1.4 Phase 0 baseline (`0.004671` normalized max displacement);
-- after SETTLE, camera velocity is exactly/near zero until intent crosses the re-entry threshold.
+- stationary jitter: zero camera displacement;
+- repeated nearby pointing: effectively zero movement;
+- small explanation circle: zero or visually negligible movement;
+- after settle: exact lock with no residual breathing.
 
 ## Intent latency
 
-Suggested starting ranges for Balanced mode:
+Balanced starting target:
 
-- ordinary candidate motion: Observe window roughly `70–130 ms` before committed travel;
-- high-urgency edge approach: shortened response;
-- future click-at-new-location event: may immediately raise intent confidence without forcing a teleport.
+- ordinary candidate motion: roughly `80–130 ms` observation before a new follow shot;
+- edge-risk may shorten this smoothly;
+- future click/emphasis event may raise confidence without teleporting.
 
-The final values must be selected from replay traces and visual trials rather than hard-coded to these initial ranges.
+## Gimbal follow character
 
-## Ballistic character
+For a stationary new destination:
 
-- no instantaneous jump from rest to max pan speed;
-- acceleration increases smoothly with bounded jerk;
-- long travel may reach an urgency-scaled cruise/max speed;
-- braking begins before target arrival;
-- default motion should be critically or near-critically damped: visible bounce/oscillation is a failure;
-- direction reversal must first shed incompatible velocity before accelerating strongly in the new direction.
+- first visible camera speed is very small;
+- travel is monotonic toward destination;
+- no overshoot;
+- speed rises and falls gradually through cascaded filters;
+- finish converges to exact stable lock.
+
+The engine must not use a spring/ballistic braking cycle.
+
+## Continuous retargeting
+
+When the user moves the mouse again before arrival:
+
+- no animation restart;
+- no one-frame position jump;
+- no instant direction reversal;
+- current path bends progressively toward the new destination;
+- repeated mouse updates do not create a stop/start cadence.
+
+## Zoom-out / return
+
+This is the strictest comfort gate.
+
+- one coordinated center + zoom trajectory;
+- quintic minimum-jerk easing;
+- center distance to full-frame center decreases monotonically;
+- zoom decreases monotonically;
+- no late horizontal/vertical correction;
+- no overshoot;
+- exact `1.0x` and `(0.5,0.5)` finish;
+- 120 subsequent frames remain exactly stable.
+
+Any visible final wobble is a release blocker.
 
 ## Catch-up vs comfort
 
-Balanced mode must preserve both:
+Edge urgency may make the **same gimbal filters** more responsive, but urgency itself must be smoothed. There is no alternate high-energy motion mode.
 
-1. small explanation gestures do not cause frame wander;
-2. a long intentional cursor relocation reaches useful framing before the presenter interaction is visually lost.
+Balanced must preserve both:
 
-The intent system should raise urgency based on output-edge risk and distance rather than using one globally faster smoothing constant.
+1. ordinary presenter gestures do not move the viewport;
+2. a long intentional relocation reaches useful framing before the cursor becomes visually lost.
+
+## Default style intent
+
+### Cinematic
+
+Maximum stability and the slowest, softest path. Best for teaching and detailed explanation.
+
+### Balanced
+
+Recommended default. Should already feel like a stabilized motorized camera, not a mouse follower.
+
+### Responsive
+
+Shorter time constants for fast presentation while preserving no-overshoot, continuous-retarget behavior.
 
 ## Performance
 
-Compare Phase 1 microbenchmark output against the recorded Phase 0 Windows baseline. Investigate any large regression in motion-core cost. The algorithm should remain fixed-state/O(1) with no heap allocation in the per-frame camera update.
+Keep camera update fixed-state/O(1), allocation-free, with no frame readback, image analysis, or file/settings I/O in the hot path.
 
-## Required visual trial matrix
+Performance regressions are investigated, but do not replace perceptually correct gimbal motion with visibly harsher movement to save negligible CPU time.
 
-Test at least:
+## Required OBS visual trial matrix
+
+Test at minimum:
 
 - 1080p60 Display Capture;
-- cursor center → each edge;
-- cursor center → each corner;
+- center → every edge;
+- center → every corner;
 - edge → opposite edge;
-- rapid direction reversal;
 - slow text explanation gesture;
 - small circle around a UI element;
-- rapid pointing between nearby controls;
-- mouse held at edge while zoom activates;
-- 2x, 3x, 4x zoom;
-- Smooth/Cinematic, Balanced, Responsive tuning profiles;
+- rapid nearby pointing;
+- mouse changes destination while camera is mid-travel;
+- rapid direction reversal;
+- mouse held at edge during zoom-in;
+- zoom-out from each edge/corner;
+- 2x, 3x, 4x;
+- Cinematic / Balanced / Responsive;
 - multi-monitor including negative desktop coordinates where available.
+
+The final tuning decision is based on human visual comfort after deterministic gates are green.
