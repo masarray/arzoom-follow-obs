@@ -8,19 +8,11 @@
 
 /*
  * Phase 2 deliberately layers click visualization around the frozen Phase 1
- * runtime instead of editing the Smart Zone camera implementation. The macro
- * aliases let us reuse the proven create/tick/destroy implementation inside
- * this translation unit and replace only the callbacks that need click state.
+ * runtime instead of editing the Smart Zone camera implementation. The Phase 1
+ * implementation is compiled once inside this translation unit; the callback
+ * table is then replaced with thin wrappers that own only click-visual state.
  */
-#define create arzoom_phase1_create
-#define destroy arzoom_phase1_destroy
-#define tick arzoom_phase1_tick
-#define render arzoom_phase1_render
 #include "arzoom-filter-v2.cpp"
-#undef create
-#undef destroy
-#undef tick
-#undef render
 
 #define SETTING_CLICK_VISUAL "click_visual_enabled"
 
@@ -159,7 +151,7 @@ void phase2_deactivate(void *data)
 void phase2_tick(void *data, float seconds)
 {
     auto *filter = static_cast<Phase2Filter *>(data);
-    arzoom_phase1_tick(filter->phase1, seconds);
+    tick(filter->phase1, seconds);
     capture_clicks(filter, std::clamp(seconds, 0.0f, 0.10f));
 }
 
@@ -235,20 +227,19 @@ void phase2_destroy(void *data)
     auto *filter = static_cast<Phase2Filter *>(data);
     if (!filter)
         return;
-    arzoom_phase1_destroy(filter->phase1);
+    destroy(filter->phase1);
     delete filter;
 }
 
 void *phase2_create(obs_data_t *settings, obs_source_t *context)
 {
-    auto *phase1 = static_cast<ArZoomFilter *>(
-        arzoom_phase1_create(settings, context));
+    auto *phase1 = static_cast<ArZoomFilter *>(create(settings, context));
     if (!phase1)
         return nullptr;
 
     auto *filter = new (std::nothrow) Phase2Filter();
     if (!filter) {
-        arzoom_phase1_destroy(phase1);
+        destroy(phase1);
         return nullptr;
     }
     filter->phase1 = phase1;
