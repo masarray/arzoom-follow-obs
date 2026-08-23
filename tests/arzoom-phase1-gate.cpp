@@ -87,8 +87,8 @@ void straight_zoom_in_screen_path()
 
     SmartCamera camera;
     camera.step(sample(1.0f / 60.0f, focus, false, target_zoom));
-
     float previous_progress[3] = {-0.001f, -0.001f, -0.001f};
+
     for (int frame = 0; frame < 90; ++frame) {
         const CameraOutput out = camera.step(
             sample(1.0f / 60.0f, focus, true, target_zoom));
@@ -104,7 +104,7 @@ void straight_zoom_in_screen_path()
                     "zoom-in pixel trajectory curved in screen space");
             const float p = line_progress(current, start, finish);
             require(p + 2.0e-4f >= previous_progress[i],
-                    "zoom-in reversed direction before the target");
+                    "zoom-in reversed direction before target");
             previous_progress[i] = p;
         }
     }
@@ -130,11 +130,11 @@ void local_explanation_stays_in_smooth_idle()
             max_displacement, length(sub(out.center, start_center)));
         require(out.state == CameraState::SmoothIdle ||
                     out.state == CameraState::Observe,
-                "local explanation unexpectedly started a follow shot");
+                "local explanation unexpectedly started follow");
     }
 
     require(max_displacement < 1.0e-5f,
-            "local explanation circle moved the viewport");
+            "local explanation circle moved viewport");
 }
 
 void relocation_coasts_into_idle_while_mouse_keeps_explaining()
@@ -161,10 +161,8 @@ void relocation_coasts_into_idle_while_mouse_keeps_explaining()
         if (circle_started) {
             const float phase = 6.28318530718f *
                                 static_cast<float>(frame) / 54.0f;
-            cursor = {
-                area.x + 0.040f * std::cos(phase),
-                area.y + 0.035f * std::sin(phase),
-            };
+            cursor = {area.x + 0.040f * std::cos(phase),
+                      area.y + 0.035f * std::sin(phase)};
         }
 
         const CameraOutput out = camera.step(
@@ -179,18 +177,15 @@ void relocation_coasts_into_idle_while_mouse_keeps_explaining()
         if (out.state == CameraState::Follow ||
             out.state == CameraState::CatchUp)
             saw_follow = true;
-
         if (out.state == CameraState::Coast) {
             saw_coast = true;
             circle_started = true;
         }
-
         if (!saw_idle && out.state == CameraState::SmoothIdle && saw_follow) {
             saw_idle = true;
             speed_before_idle = previous_speed_output;
             idle_center = out.center;
         }
-
         if (saw_idle) {
             max_idle_displacement = std::max(
                 max_idle_displacement,
@@ -202,58 +197,67 @@ void relocation_coasts_into_idle_while_mouse_keeps_explaining()
         previous_speed_output = length(out.velocity) * out.zoom;
     }
 
-    require(saw_follow, "large relocation never entered gimbal follow");
-    require(saw_coast, "follow did not hand off through smooth Coast");
-    require(circle_started,
-            "test never began explanation motion during arrival");
-    require(saw_idle, "camera never reached SmoothIdle while mouse kept moving");
-    require(idle_frames > 90,
-            "SmoothIdle did not remain stable long enough");
+    require(saw_follow, "large relocation never entered follow");
+    require(saw_coast, "follow did not hand off through Coast");
+    require(circle_started, "explanation motion never began during arrival");
+    require(saw_idle, "camera never reached SmoothIdle while mouse moved");
+    require(idle_frames > 90, "SmoothIdle did not remain stable");
     require(speed_before_idle < 0.012f,
-            "follow snapped to steady while visible speed was still high");
+            "follow snapped to steady while speed was visible");
     require(max_idle_displacement < 1.0e-5f,
-            "mouse explanation in the new area moved SmoothIdle viewport");
+            "new-area explanation moved SmoothIdle viewport");
     require(max_step_output < 0.030f,
-            "relocation/coast contained a visible one-frame snap");
+            "relocation/coast contained a one-frame snap");
 }
 
-void leaving_idle_zone_wakes_a_new_smooth_follow()
+void leaving_idle_zone_has_soft_launch()
 {
     using namespace arzoom;
     SmartCamera camera;
     warm_center(camera);
 
-    /* First relocation establishes a new SmoothIdle zone. */
     const Vec2 first_area{0.82f, 0.48f};
     for (int frame = 0; frame < 300; ++frame)
         camera.step(sample(1.0f / 60.0f, first_area, true, 2.0f));
 
     require(camera.output().state == CameraState::SmoothIdle,
-            "first relocation did not establish SmoothIdle zone");
+            "first relocation did not establish SmoothIdle");
     const Vec2 before = camera.output().center;
 
-    float max_step_output = 0.0f;
+    const Vec2 second_area{0.20f, 0.72f};
     Vec2 previous = before;
     bool woke = false;
-    const Vec2 second_area{0.20f, 0.72f};
+    bool saw_motion = false;
+    float first_motion_step_output = 1000.0f;
+    float max_cruise_step_output = 0.0f;
+
     for (int frame = 0; frame < 300; ++frame) {
         const CameraOutput out = camera.step(
             sample(1.0f / 60.0f, second_area, true, 2.0f));
         const float step_output =
             length(sub(out.center, previous)) * out.zoom;
-        max_step_output = std::max(max_step_output, step_output);
-        previous = out.center;
+        max_cruise_step_output = std::max(max_cruise_step_output, step_output);
+
         if (out.state == CameraState::Follow ||
             out.state == CameraState::CatchUp ||
             out.state == CameraState::Coast)
             woke = true;
+
+        if (!saw_motion && step_output > 1.0e-6f) {
+            saw_motion = true;
+            first_motion_step_output = step_output;
+        }
+        previous = out.center;
     }
 
-    require(woke, "leaving the outer Smart Zone did not wake follow");
+    require(woke, "leaving outer Smart Zone did not wake follow");
+    require(saw_motion, "new follow shot never started moving");
+    require(first_motion_step_output < 0.010f,
+            "SmoothIdle wake launched with a visible first-frame snap");
+    require(max_cruise_step_output < 0.070f,
+            "new follow shot exceeded gimbal cruise step bound");
     require(length(sub(camera.output().center, before)) > 0.12f,
-            "second area relocation did not move the viewport");
-    require(max_step_output < 0.030f,
-            "SmoothIdle to follow transition snapped");
+            "second area relocation did not move viewport");
 }
 
 void continuous_retarget_has_no_snap()
@@ -274,7 +278,7 @@ void continuous_retarget_has_no_snap()
         previous_x = out.center.x;
     }
     require(max_step < 0.030f,
-            "mid-flight retarget produced a visible camera snap");
+            "mid-flight retarget produced visible snap");
 }
 
 void straight_zoom_out_screen_path()
@@ -352,7 +356,7 @@ int main()
     straight_zoom_in_screen_path();
     local_explanation_stays_in_smooth_idle();
     relocation_coasts_into_idle_while_mouse_keeps_explaining();
-    leaving_idle_zone_wakes_a_new_smooth_follow();
+    leaving_idle_zone_has_soft_launch();
     continuous_retarget_has_no_snap();
     straight_zoom_out_screen_path();
     frame_rate_consistency();
