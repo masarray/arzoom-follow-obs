@@ -1,8 +1,8 @@
 # ArZoom for OBS
 
 <p align="center">
-  <strong>Smooth mouse-follow zoom for OBS screen capture.</strong><br>
-  Press one hotkey to zoom in and follow the cursor. Press it again to glide back to the full screen.
+  <strong>Intent-driven Smart Camera zoom & follow for OBS screen capture.</strong><br>
+  Zoom where you are presenting, ignore distracting mouse jitter, and move the frame with controlled cinematic motion.
 </p>
 
 <p align="center">
@@ -11,98 +11,135 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.1.4 preview" src="https://img.shields.io/badge/version-0.1.4%20preview-f59e0b">
+  <img alt="Version 0.2.0 public trial" src="https://img.shields.io/badge/version-0.2.0%20public%20trial-f59e0b">
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?logo=windows11&logoColor=white">
   <img alt="OBS Studio plugin" src="https://img.shields.io/badge/OBS%20Studio-native%20plugin-302e31?logo=obsstudio&logoColor=white">
   <a href="LICENSE"><img alt="GPL 2.0 or later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue"></a>
 </p>
 
-ArZoom is a native **OBS zoom plugin** for tutorials, software demonstrations, engineering training, online classes, product walkthroughs, and live streaming. It enlarges a Display Capture source in real time, follows the mouse smoothly, and prevents the viewport from exposing black edges near the sides or corners of the screen.
+ArZoom is a native **OBS presentation-camera plugin** for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming. It applies zoom/pan to a Display Capture source through a GPU filter while the Smart Camera interprets cursor movement as **presenter intent**, not as a command to mechanically chase every mouse movement.
 
-> **Current status:** Windows preview release. The core motion, edge-safety, hotkey persistence, packaging, and fail-safe paths are implemented. Broader hardware and OBS runtime validation is still in progress before v1.0.
+> **Current status:** v0.2.0 public trial for Windows. Smart Camera Motion 2.0, edge safety, global hotkey persistence, standard/portable-aware installation, deterministic motion tests, and fail-safe rendering are implemented. Broader hardware and OBS-version validation continues before v1.0.
 
-## What it feels like
+## What changed in Smart Camera Motion 2.0
+
+The v0.1.x motion model behaved like a stable edge follower. v0.2.0 replaces that runtime with an intent-driven camera model.
+
+- **Focus-preserving activation:** if the pointer is near an edge/corner when zoom begins, ArZoom moves toward that focus as the zoom opens legal pan room. It no longer intentionally zooms into unrelated center content first and only then searches for the pointer.
+- **Viewer-comfort filtering:** normal hand jitter and small explanatory cursor gestures inside the comfort region do not continuously move the frame.
+- **Intent observation:** a possible relocation is observed briefly before the camera commits, reducing robotic reactions to incidental pointer motion.
+- **Ballistic movement:** persistent velocity and acceleration produce controlled launch, travel, braking, and settle instead of position-only smoothing.
+- **Adaptive catch-up:** large relocation and output-edge risk increase urgency without bypassing jerk/edge limits.
+- **Settle lock:** once useful framing is reached, residual micro-motion is stopped.
+- **Restrained look-ahead:** sustained cursor travel can bias framing slightly forward without turning the camera into a sticky cursor follower.
+
+The runtime states are conceptually:
 
 ```text
-Press your ArZoom hotkey
-        ↓
-Smooth zoom-in
-        ↓
-Smart Follow keeps the cursor comfortably visible
-        ↓
-Move to any screen edge without revealing black borders
-        ↓
-Press the same hotkey again
-        ↓
-Smooth recenter and zoom-out to the full screen
+REST → OBSERVE → FOLLOW → CATCH-UP → BRAKE → SETTLE
+  ↘             focus-preserving activation            ↗
 ```
 
-## Why viewers stay comfortable
+## Install — normal OBS or OBS Portable
 
-ArZoom is designed to make screen recordings easier to watch—not to move the frame every time the mouse moves by one pixel.
+### 1. Download the installer
 
-- **Smart Follow:** the viewport stays still while the cursor moves inside a stable safe zone.
-- **Smooth motion:** zoom and pan use frame-rate-independent animation.
-- **Edge protection:** the visible area is mathematically clamped inside the captured monitor.
-- **One-key control:** the same OBS hotkey zooms in and returns to normal.
-- **GPU rendering:** active zoom uses a single-pass video effect with no CPU frame readback.
-- **Idle bypass:** when zoom is inactive, ArZoom returns the original frame through OBS pass-through.
-- **Fail-safe behavior:** a shader or monitor-mapping problem keeps the source visible instead of producing a black frame.
-- **No telemetry:** ArZoom does not send analytics, cursor data, or captured video anywhere.
+[Download the latest ArZoom Windows installer](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe).
 
-## Install in 5 minutes
+Close OBS completely before installation.
 
-### 1. Download
+### 2. Choose the correct installation mode
 
-[Download the latest ArZoom Windows installer](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe). The download starts directly—no need to browse the repository or choose between multiple files.
+The same EXE supports both:
 
-For version history and checksums, see the [latest release notes](https://github.com/masarray/arzoom-follow-obs/releases/latest).
+**Standard OBS Studio**
 
-### 2. Install
+- choose **Standard OBS Studio**;
+- the installer auto-detects common OBS installation locations;
+- the destination is validated before files are copied.
 
-Close OBS completely, run the installer, then start OBS again.
+**OBS Portable / custom OBS folder**
 
-### 3. Add the filter
+- choose **OBS Portable / custom OBS folder**;
+- browse to the **OBS root folder** you actually launch;
+- a valid root contains:
+
+```text
+bin\64bit\obs64.exe
+```
+
+For example:
+
+```text
+D:\PortableApps\OBS\
+├─ bin\64bit\obs64.exe
+├─ obs-plugins\
+└─ data\
+```
+
+Select `D:\PortableApps\OBS\`, **not** `bin\64bit` and not `obs-plugins`.
+
+The installer remembers the last valid custom OBS root for future upgrades.
+
+### Manual ZIP
+
+A manual ZIP remains available in Releases. Merge its `obs-plugins` and `data` folders into the OBS root folder. This is useful for users who prefer direct extraction or maintain multiple portable OBS copies.
+
+## Add ArZoom to OBS
 
 ```text
 Display Capture
 → Filters
 → Effect Filters
 → +
-→ ArZoom - Smart Mouse Zoom
+→ ArZoom - Smart Camera Zoom & Follow
 ```
 
-### 4. Assign the hotkey
-
-Inside the ArZoom filter, click **Open OBS Hotkeys Settings**. Assign a shortcut to:
+Then open **OBS Settings → Hotkeys** and assign a shortcut to:
 
 ```text
-ArZoom — Toggle Zoom & Mouse Follow
+ArZoom — Toggle Smart Camera Zoom
 ```
 
-A practical example is `Ctrl + ~`, although any non-conflicting shortcut is fine. Click **Apply** or **OK**. ArZoom restores the saved binding after OBS restarts and when the active OBS profile changes.
+The filter also includes **Open OBS Hotkeys Settings** and explicit hotkey persistence.
 
-### 5. Start with the recommended settings
+## Recommended v0.2.0 settings
 
-| Setting | Recommended value | Purpose |
+| Setting | Recommended | Purpose |
 |---|---:|---|
-| Zoom amount | `2.00×` | Clear detail without excessive motion |
-| Mouse follow | `Smart` | Comfortable tracking for tutorials |
-| Movement | `Smooth` | Gentle motion for viewers |
-| Stable safe zone | `28%` | Prevents constant micro-panning |
-| Target monitor | `Auto` | Reads the monitor used by Display Capture |
+| Zoom amount | `2.00×` | Useful detail without excessive crop |
+| Camera follow | `Smart Camera` | Intent-driven presentation tracking |
+| Camera character | `Balanced` | Recommended launch/catch-up/brake balance |
+| Stable comfort zone | `28%` | Lets normal explanatory pointer motion happen without camera shake |
+| Target monitor | `Auto` | Maps the Display Capture monitor automatically |
 
-Press the hotkey once to zoom and follow the mouse. Press it again to return smoothly to the normal full-screen view.
+Camera character options:
 
-## Best use cases
+- **Cinematic** — strongest stability and gentlest motion.
+- **Balanced** — recommended default.
+- **Responsive** — faster catch-up while retaining ballistic movement.
 
-- OBS screen zoom for software tutorials
-- coding and engineering demonstrations
-- live product walkthroughs
-- online teaching and webinars
-- spreadsheet and dashboard explanations
-- control-system, CAD, SCADA, HMI, and technical application training
-- livestream presentations where small interface elements must remain readable
+## Why ArZoom stays lightweight
+
+Smart Camera intelligence is deterministic vector math; it does not require AI, OCR, computer vision, or frame analysis.
+
+The hot path is designed around:
+
+- one cursor sample per active video tick;
+- fixed-size camera state;
+- no frame readback;
+- no image analysis;
+- no per-frame file I/O;
+- no per-frame OBS settings writes;
+- no scene-item transform mutation;
+- GPU zoom/pan rendering;
+- OBS pass-through while visually idle.
+
+A Windows CI microbenchmark is published with the build. Hosted-runner timing is diagnostic rather than a cross-machine marketing claim.
+
+## Scene safety
+
+ArZoom v0.2.0 remains a video filter for Display Capture. Camera calculations drive the filter shader and **do not rewrite the original OBS scene-item transforms**. Invalid/missing shader resources fall back to safe pass-through instead of intentionally blacking the source.
 
 ## Compatibility
 
@@ -110,44 +147,36 @@ Press the hotkey once to zoom and follow the mouse. Press it again to return smo
 |---|---|
 | Operating system | Windows 10/11 x64 |
 | OBS source | Display Capture |
-| Build target | OBS Studio 31.1.1 |
+| Current build target | OBS Studio 31.1.1 |
 | OBS 32.x | Forward validation in progress |
 | Zoom range | `1.10×` to `4.00×` |
-| Follow modes | Smart, Centered, Fixed |
+| Follow modes | Smart Camera, Centered, Fixed |
 | Multi-monitor | Supported, including negative desktop coordinates |
 | Mixed DPI | Implemented; broader physical-device validation in progress |
-| macOS / Linux | Not available in the current preview |
-| Window Capture / Game Capture | Not part of the current MVP |
+| Normal OBS installer | Supported |
+| OBS Portable/custom root installer | Supported |
+| macOS / Linux | Not available in the current public trial |
+| Window Capture / Game Capture | Not part of the current filter MVP |
 
-## Common questions
+## Deterministic engineering gates
 
-### The filter does not appear
+Before Windows packaging, CI runs platform-neutral motion tests covering:
 
-Close OBS completely and reinstall the full package. Confirm that the OBS installation directory contains both the ArZoom plugin DLL and its `data` folder.
+- 200,000 randomized viewport/edge invariants;
+- hand jitter and explanatory gestures;
+- focus-preserving activation at center, edges, and corners for 2×/3×/4×;
+- activation focus latch and handoff;
+- ballistic long relocation and full settle;
+- edge-safe zoom-out/return;
+- 30/60/120/144 fps convergence;
+- multi-monitor normalized-coordinate traces;
+- motion microbenchmarks.
 
-### The ArZoom hotkey row does not appear
+Run locally on Windows PowerShell:
 
-Confirm the ArZoom filter controls are visible, restart OBS, then search `ArZoom` in **Settings → Hotkeys**. The current plugin registers one global frontend hotkey.
-
-### The shortcut disappears after restart
-
-Use v0.1.4 or newer. Assign the shortcut, click **Apply** or **OK**, then use **Save current hotkey now** in the filter panel if required.
-
-### Zoom works, but the mouse is not followed
-
-Set **Mouse follow** to `Smart` or `Centered`, keep **Target monitor** on `Auto`, and verify the filter is attached to the intended Display Capture source.
-
-### The viewport stops moving near the screen edge
-
-That is expected. ArZoom stops the viewport at the last valid position so it never reveals pixels outside the captured display.
-
-More help is available in the [beginner guide](https://masarray.github.io/arzoom-follow-obs/guide.html) and [troubleshooting page](https://masarray.github.io/arzoom-follow-obs/troubleshooting.html).
-
-## Performance architecture
-
-During each active video tick, ArZoom samples the cursor once, maps it into the captured monitor, calculates the Smart Follow target, clamps the target to valid screen bounds, and updates the animation state. Rendering then applies the calculated zoom and center through one GPU effect pass.
-
-ArZoom does **not** perform frame readback, OCR, image analysis, per-frame file I/O, or per-frame OBS settings writes.
+```powershell
+./scripts/run-phase0-validation.ps1
+```
 
 ## Build from source
 
@@ -156,9 +185,8 @@ Requirements:
 - Windows 10/11 x64
 - Git
 - CMake 3.28+
-- Visual Studio 2022 or 2026
-- **Desktop development with C++**
-- Inno Setup 6 for the optional installer build
+- Visual Studio 2022 or 2026 with Desktop development with C++
+- Inno Setup 6 for EXE installer packaging
 
 Run:
 
@@ -166,25 +194,17 @@ Run:
 build-local-windows.bat
 ```
 
-The first build downloads and prepares the OBS development dependencies. Later builds reuse the `.build/` cache. To package an already successful build without recompiling, run:
+The first build prepares the OBS plugin-template dependencies. Later builds reuse `.build/`. To package an already successful build without recompiling OBS dependencies, run:
 
 ```text
 package-existing-build.bat
 ```
 
-## Validate the motion core
-
-The motion and edge calculations can be tested independently from OBS:
-
-```bash
-g++ -std=c++17 -O2 tests/arzoom-math-test.cpp -o arzoom-math-test
-./arzoom-math-test
-```
-
-The deterministic test checks 200,000 zoom and viewport combinations and verifies that the visible area stays inside valid source coordinates.
-
 ## Project documentation
 
+- [Smart Camera Phase 1 specification](docs/SMART_CAMERA_PHASE1_SPEC.md)
+- [Smart Camera tuning gates](docs/SMART_CAMERA_PHASE1_TUNING.md)
+- [Phase 0 baseline](docs/PHASE0_BASELINE.md)
 - [Getting started](https://masarray.github.io/arzoom-follow-obs/guide.html)
 - [Troubleshooting](https://masarray.github.io/arzoom-follow-obs/troubleshooting.html)
 - [Latest release notes](https://github.com/masarray/arzoom-follow-obs/releases/latest)
@@ -193,9 +213,9 @@ The deterministic test checks 200,000 zoom and viewport combinations and verifie
 - [Security policy](SECURITY.md)
 - [Changelog](CHANGELOG.md)
 
-## Contributing
+## Privacy
 
-Bug reports, hardware compatibility results, documentation fixes, translations, and focused pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a contribution.
+ArZoom does not send analytics, cursor data, captured video, or presentation content anywhere.
 
 ## License
 
