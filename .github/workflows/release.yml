@@ -125,7 +125,7 @@ jobs:
           body: |
             ## ArZoom for OBS v${{ steps.version.outputs.version }}
 
-            Public-trial release of the **Smart Zone Gimbal Camera** for OBS Display Capture.
+            Public-trial release of the **Smart Zone Gimbal Camera + GPU Click Visualization** for OBS Display Capture.
 
             ### Recommended download
 
@@ -139,20 +139,22 @@ jobs:
 
             ### Highlights
 
-            - focus-preserving, straight screen-space zoom-in with soft minimum-jerk easing;
-            - straight, wobble-free zoom-out to exact full-frame lock;
-            - **Smart Zone** behavior that follows presentation-area changes instead of every pointer movement;
-            - **Coast → SmoothIdle** handoff so camera movement fades naturally while the presenter can immediately circle or point in the new area;
-            - local explanation gestures, repeated pointing, and hand jitter remain steady inside the active presentation zone;
-            - soft wake-up when the pointer intentionally leaves the outer Smart Zone;
-            - continuous gimbal retargeting without stop/start/relaunch behavior;
-            - edge-safe framing across supported zoom/follow operation;
+            - **GPU Click Visualization** in the existing presentation pass — no PNG generation, temporary files, particles, or extra OBS source;
+            - left click uses a compact liquid cyan pulse;
+            - right click uses a visually distinct dual violet pulse;
+            - middle click uses a compact gold pulse;
+            - click positions are stored in content coordinates and remain attached while Smart Camera zoom/pan moves;
+            - click events do not wake, retarget, or accelerate Smart Zone camera motion by default;
+            - up to four overlapping click events use a fixed allocation-free CPU state;
+            - focus-preserving straight minimum-jerk zoom-in and wobble-free zoom-out;
+            - **Smart Zone → Follow → Coast → SmoothIdle** presentation-area camera behavior;
+            - local explanation gestures and pointer jitter remain steady;
             - Cinematic, Balanced, and Responsive camera characters;
             - persistent global OBS hotkey;
-            - native GPU video filter with idle pass-through;
+            - fool-proof Standard OBS + OBS Portable/custom installer;
             - Windows 10/11 x64 and OBS Display Capture.
 
-            This is a public trial. Validate it on your own OBS scene before an important production livestream.
+            This is a public trial. Validate the click visuals and camera behavior on your own OBS scene before an important production livestream.
           files: |
             release/ArZoom-OBS-Setup-windows-x64.exe
             release/ArZoom-OBS-Manual-v${{ steps.version.outputs.version }}-windows-x64.zip
