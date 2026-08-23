@@ -69,6 +69,15 @@ The v0.1.4 motion model is intentionally being preserved in Phase 0, so these re
 
 `scripts/run-phase0-validation.ps1` runs `arzoom-motion-benchmark` and writes `phase0-benchmark.txt`. GitHub Actions uploads that file as a build artifact.
 
-The benchmark reports `ns/update` and `updates/s` for jitter, long relocation, edge travel, and zoom-out-near-edge traces. Phase 0 intentionally does not impose a hard absolute timing threshold because hosted-runner hardware varies. Once enough stable CI history exists, Phase 1 can use relative-regression limits against an established runner baseline.
+First Windows reference run: GitHub Actions `windows-2022`, Build Windows run `#8`, commit `a6e002c2391f63a07b60dea99dc7384765ea3583`.
+
+| Trace | Updates | ns/update | Updates/s |
+|---|---:|---:|---:|
+| Jitter | `450,000` | `56.16` | `17,807,607` |
+| Long relocation | `300,000` | `58.71` | `17,033,067` |
+| Edge travel | `450,000` | `57.88` | `17,277,788` |
+| Zoom-out near edge | `450,000` | `61.04` | `16,382,461` |
+
+These numbers are a seed reference for relative regression tracking, not a hard Phase 0 threshold. Hosted-runner hardware varies, so future comparisons should prefer repeated history and relative deltas over a single absolute number.
 
 Absolute benchmark values are engineering diagnostics only and must not be presented as cross-machine performance claims.
