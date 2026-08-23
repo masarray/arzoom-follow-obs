@@ -1,273 +1,247 @@
-# Smart Camera Motion 2.0 — Phase 1 Spec
+# Smart Gimbal Camera Motion 2.0 — Phase 1 Spec
 
-## Problem statement
+## North-star motion principle
 
-ArZoom v0.1.4 is edge-safe and jitter-resistant inside its safe zone, but it is not yet a smart camera. Its current Smart Follow is a dead-zone correction model: the camera target changes only when the cursor crosses a boundary, while camera movement uses position-only exponential smoothing plus a maximum speed clamp.
+ArZoom should feel like a well-operated gimbal: the viewport is extremely steady, moves only when presenter intent is clear, begins movement gently, follows one continuous path, and finishes so softly that the viewer barely notices the camera has moved.
 
-This creates two user-visible problems:
+The camera must optimize **viewer perception**, not simulate physical momentum.
 
-1. **Robotic follow** — there is no persistent camera velocity, acceleration, braking, jerk limiting, intent confidence, hysteresis, or settle state.
-2. **Wrong zoom-in framing near edges** — when activation begins at 1x, the only legal camera center is `(0.5, 0.5)`. Zoom and pan are then advanced independently, so the first visible zoom frames the screen center before pan catches up to a cursor near an edge. The user perceives this as zooming into empty content before finding the intended subject.
+## Explicit non-goals
 
-Phase 1 must fix the model, not just retune constants.
+The default camera path must not use:
 
-## Product contract
+- spring motion;
+- ballistic acceleration/braking;
+- bounce or overshoot;
+- target chasing that restarts when the cursor moves again;
+- predictive look-ahead that creates correction motion;
+- frame-by-frame target collapse as the viewport approaches the mouse.
 
-ArZoom should behave like a skilled camera operator:
-
-- ordinary hand jitter and explanatory pointer movement do not move the camera;
-- an intentional relocation is recognized quickly;
-- zoom-in begins around the intended focus instead of detouring through screen center;
-- long travel accelerates smoothly, catches up decisively, brakes before arrival, and settles completely;
-- cursor approach to an output edge raises urgency before the event is lost;
-- direction reversal does not cause oscillation or robotic snapping;
-- all supported motion remains edge-safe;
-- runtime work remains O(1), allocation-free in the camera hot path, and platform-independent.
+Ballistic motion was tested during the first Phase 1 trial and rejected because it produced visible correction/hunting, especially near the end of zoom-out and during continuous mouse retargeting.
 
 ## Architecture
 
-Separate camera policy from OBS integration:
-
 ```text
-InputSnapshot / PresentationEvent
-        ↓
-IntentEstimator
-        ↓
-CameraPlanner
-        ↓
-BallisticIntegrator
-        ↓
-EdgeConstraint
-        ↓
+InputSnapshot
+      ↓
+Presenter Intent / Comfort Zone
+      ↓
+Stable Desired Focus
+      ↓
+Smoothed Moving Destination
+      ↓
+Cascaded Gimbal Servo
+      ↓
+Edge Constraint
+      ↓
 CameraOutput { zoom, center, state }
 ```
 
-The production filter should call this shared core. The deterministic Phase 0 harness should replay the same core so tests cannot drift from runtime behavior.
-
-## Runtime state machine
+Zoom transitions use a separate coordinated minimum-jerk trajectory:
 
 ```text
-REST → OBSERVE → FOLLOW → CATCH_UP → BRAKE → SETTLE → REST
-  ↘──────── activation / high-confidence event ────────↗
+latched start + latched destination
+              ↓
+     quintic minimum-jerk progress
+              ↓
+     zoom + center as ONE shot
 ```
 
-### REST
-Camera is stationary. Cursor movement inside the comfort region has no effect.
+The production OBS filter and deterministic tests must call the same shared `SmartCamera` core.
 
-### OBSERVE
-A candidate relocation is detected. Accumulate confidence from displacement, velocity, direction persistence, dwell, and future click events. Small circular gestures should normally decay back to REST.
+## Motion states
 
-### FOLLOW
-Intent is confirmed. Camera begins controlled motion with bounded acceleration.
+```text
+REST → OBSERVE → FOLLOW / CATCH_UP → SETTLE → REST
+  ↘ ACTIVATING
+  ↘ RETURNING
+```
 
-### CATCH_UP
-Used for large relocation or edge risk. Max velocity/acceleration may increase with urgency, but jerk and edge constraints remain bounded.
+`CATCH_UP` is not a different physics model. It only means the same gimbal filters are smoothly made more responsive by a filtered urgency signal.
 
-### BRAKE
-Begin deceleration before the desired framing point so the camera does not overshoot or feel like a spring toy.
+## REST
 
-### SETTLE
-When position error and velocity are both small, stop micro-corrections and lock framing. Hysteresis prevents immediate re-entry into FOLLOW.
+- exact zero viewport movement;
+- ordinary pointer jitter and explanation gestures inside the comfort region do nothing;
+- all destination filter stages are locked to the current center so there is no hidden residual motion.
 
-## Focus-preserving zoom activation
+## OBSERVE
 
-Zoom activation is a dedicated transition and must not use the normal follow algorithm unchanged.
+A cursor move outside the comfort region is not automatically a camera command. Accumulate intent from:
+
+- distance outside the comfort region;
+- dwell/persistence;
+- direction persistence;
+- output-edge risk;
+- future semantic emphasis/click event.
+
+No viewport movement occurs until intent is confirmed.
+
+## FOLLOW — gimbal servo
+
+Once intent is confirmed:
+
+1. freeze a `follow_reference_center` for the current continuous shot;
+2. derive a stable destination from cursor position relative to that fixed reference;
+3. pass the destination through two low-pass destination stages;
+4. pass the second destination stage through a slower camera low-pass stage;
+5. clamp only to the legal center envelope.
+
+For a stationary cursor, the destination must remain stationary. It must not collapse toward the current camera center while the camera is moving.
+
+### Continuous retargeting
+
+If the user moves the mouse again before the camera arrives, do **not** restart an animation and do not reset filter state. Change only the desired destination. The cascaded filters bend the existing path continuously toward the new destination.
+
+Expected perception:
+
+```text
+old destination     new destination
+      X ---------------- X
+        \              /
+         \ smooth bend /
+          camera path
+```
+
+There must be no one-frame snap, instant direction reversal, or stop/start cadence.
+
+## CATCH_UP
+
+When cursor edge-risk or travel distance becomes high:
+
+- filter the urgency value itself;
+- shorten the same destination/camera time constants gradually;
+- retain the same monotonic, no-overshoot gimbal character.
+
+There is no switch to ballistic/spring motion.
+
+## Zoom-in activation
+
+Zoom activation is explicit presenter intent.
 
 At activation:
 
-1. sample and latch the current normalized cursor as `activation_focus`;
-2. compute the legal final framing for the configured zoom;
-3. drive zoom with a smooth monotonic activation curve;
-4. derive a legal center trajectory from zoom progress so framing moves toward the focus *as zoom opens the available pan range*;
-5. do not allow ordinary cursor jitter during the activation window to retarget the camera;
-6. allow a high-confidence relocation/click to supersede the latched focus;
-7. hand off to Smart Follow only after activation has reached a stable camera state.
+1. latch current cursor as `activation_focus`;
+2. latch start center and start zoom;
+3. calculate the legal final framing;
+4. use a quintic minimum-jerk progress curve;
+5. coordinate zoom and center with the same progress;
+6. preserve the visual relevance of the latched focus throughout the transition;
+7. ignore normal cursor jitter until activation finishes;
+8. hand off to normal Smart Follow only after the shot is stable.
 
-A simple acceptable formulation is to interpolate from the full-frame center to the final focus center using a smoothstep-like progress curve, then clamp the result to the legal center envelope for the current zoom. The center transition should be tied to zoom progress rather than independently lagging behind it.
-
-Important UX invariant:
-
-> If the cursor is near a source edge when zoom is triggered, the content under/near that cursor should remain visually relevant from the first visible zoom frame. The camera must not visibly zoom into unrelated center content first.
-
-## Intent estimator
-
-Keep the estimator deterministic and cheap. Candidate signals:
-
-- cursor displacement relative to comfort region;
-- cursor speed;
-- direction persistence over a short rolling state;
-- distance from the visible output edge;
-- dwell near a new location;
-- direction reversal;
-- typed click event (future Phase 2 visual event, but already a useful intent signal).
-
-Use a small fixed-size/state representation; no heap allocation, history vectors, AI, CV, or frame analysis.
-
-Suggested concept:
+Minimum-jerk progress:
 
 ```text
-intent_confidence =
-    distance_weight +
-    persistent_velocity_weight +
-    edge_urgency_weight +
-    dwell_weight +
-    click_boost -
-    reversal_penalty -
-    gesture/jitter_decay
+p(t) = 10t^3 - 15t^4 + 6t^5
 ```
 
-Exact constants must be tuned through deterministic traces rather than exposed directly to users.
+It has zero velocity and zero acceleration at both endpoints.
 
-## Ballistic camera integrator
+Critical invariant: an edge/corner cursor must never produce `zoom center → then pan to cursor` behavior.
 
-Replace position-only smoothing with persistent state:
+## Zoom-out / return
 
-```text
-camera_position
-camera_velocity
-camera_acceleration
-```
+Zoom-out must be one coordinated cinematic shot, not a camera follow operation.
 
-Recommended model: critically/near-critically damped target acceleration with explicit velocity, acceleration, and jerk limits.
+At toggle-off:
 
-Conceptually:
+1. latch `return_start_center` and `return_start_zoom`;
+2. destination is exactly `{ center: (0.5, 0.5), zoom: 1.0 }`;
+3. advance one quintic minimum-jerk progress value;
+4. interpolate both center and zoom with that same progress;
+5. keep the legal viewport constraint as a numerical safety guard only;
+6. finish at exact 1x / exact canvas center;
+7. hard-lock all residual filter state to zero.
 
-```text
-position_error = target - position
-raw_accel = kp * position_error - kd * velocity
-accel = jerk_limit(previous_accel, raw_accel, dt)
-velocity += accel * dt
-velocity = clamp_magnitude(velocity, max_speed * urgency_scale)
-position += velocity * dt
-```
+Required visual behavior:
 
-Then apply edge constraints. When an axis hits a legal center boundary, remove velocity/acceleration components that continue pushing outside the valid viewport.
+- center distance to `(0.5,0.5)` is monotonic;
+- zoom magnitude is monotonic;
+- no late sideways correction;
+- no overshoot;
+- no final wobble;
+- no breathing after settle.
 
-Urgency should scale limits smoothly, not switch between abrupt presets.
+## No predictive look-ahead by default
 
-## Look-ahead
+The initial Phase 1 trial showed that prediction can create unnecessary correction when a user changes speed/direction. Stability has higher priority than anticipation.
 
-Use a small, bounded look-ahead based on sustained cursor velocity, not instantaneous mouse delta.
+Future optional look-ahead may be reconsidered only if it can pass perceptual A/B tests without adding visible correction motion.
 
-- decays rapidly when cursor slows;
-- suppresses or reverses safely on direction change;
-- bounded so the pointer never causes excessive framing drift;
-- disabled/near-zero while intent confidence is low.
+## Default tuning
 
-## Comfort zone and hysteresis
+Basic UI remains:
 
-Use separate thresholds for entering movement and returning to rest.
+- `Cinematic`
+- `Balanced` — recommended default
+- `Responsive`
 
-Example concept:
+All three use the same motion model; only time constants and intent delay differ.
 
-- inner comfort region: free explanatory movement;
-- outer intent boundary: candidate movement begins;
-- settle boundary: camera may stop while the cursor is still outside the exact center.
+`Cinematic` prioritizes maximum steadiness.
+`Balanced` should already feel gimbal-like and subtle for normal tutorials.
+`Responsive` catches up sooner but must remain smooth and no-overshoot.
 
-This avoids move/stop/move chatter around one threshold.
+## Deterministic acceptance gates
 
-## Urgency
+### Activation
 
-Urgency increases when:
+- center/edges/corners at 2x/3x/4x;
+- focus remains visible;
+- camera trajectory never detours away from intended focus;
+- zero invalid viewport exposure.
 
-- cursor is close to or beyond the visible output safe boundary;
-- distance to intended target is large;
-- a high-confidence event occurs at a new location.
+### Viewer comfort
 
-Urgency may increase acceleration and max speed, but should not bypass jerk limits or edge safety.
+- normal jitter: zero movement;
+- small explanation circle: zero movement;
+- repeated nearby pointing inside comfort region: effectively zero movement.
 
-## Default product tuning
+### Stationary intentional relocation
 
-Basic UI should remain simple:
+- delayed intent observation before movement;
+- very small first visible speed;
+- monotonic travel toward destination;
+- no overshoot;
+- gradual speed decay;
+- exact steady lock.
 
-- Follow Style: `Cinematic / Balanced / Responsive`
-- Camera Stability
+### Moving destination
 
-Advanced values may expose safe-zone and expert controls later, but the default profile must be excellent without tuning.
+- retargeting produces no one-frame position jump;
+- direction change bends over multiple frames rather than reversing instantly;
+- no stop/start/relaunch behavior;
+- final framing converges and locks.
 
-`Cinematic` should favor viewer comfort and strongest gesture rejection.
-`Balanced` should be the recommended default.
-`Responsive` should prioritize faster catch-up while retaining ballistic motion.
+### Zoom-out
 
-## Phase 1 deterministic acceptance tests
-
-Re-use all Phase 0 traces and add activation-specific traces.
-
-### P1 activation regression
-
-- start at 1x with cursor center, left edge, right edge, top edge, bottom edge, and four corners;
-- trigger zoom to 2x, 3x, and 4x;
-- assert zero invalid viewport exposure;
-- measure screen-space distance between the initial focus and the visible framing during the transition;
-- reject any trajectory that first biases toward unrelated center content before moving toward the latched focus.
-
-### Jitter / explanation gesture
-
-- normal jitter: camera displacement effectively zero;
-- repeated pointing inside one UI region: no visible camera shake;
-- small explanation circle: materially less camera displacement than v0.1.4 baseline.
-
-### Intentional relocation
-
-- nearby deliberate motion does not overreact;
-- long relocation enters FOLLOW/CATCH_UP and arrives without losing the event;
-- velocity grows smoothly rather than hitting max speed instantly;
-- braking begins before arrival;
-- settle leaves velocity at zero without oscillation.
-
-### Reversal
-
-- reversal must not overshoot wildly;
-- look-ahead must collapse/reverse safely;
-- camera must avoid high-frequency left-right oscillation.
-
-### Edge/corner
-
-- zero invalid source exposure;
-- urgency increases before cursor becomes visually lost;
-- velocity components into a clamped boundary are cancelled cleanly.
+- center distance and zoom are monotonic for every frame;
+- no directional reversal or sideways hunting;
+- soft start;
+- exact full-frame finish;
+- at least 120 subsequent frames show zero camera breathing.
 
 ### Frame-rate invariance
 
-Equivalent traces at 30/60/120/144 fps must remain perceptually and numerically close under tolerances defined by the test suite.
+Equivalent traces at 30/60/120/144 fps must converge within defined tolerances.
 
 ## Performance contract
 
-Phase 1 camera update remains O(1) per frame and should preserve the Phase 0 performance class.
+Per-frame camera math remains fixed-state/O(1) with no heap allocation, frame readback, image analysis, per-frame settings writes, or file I/O.
 
-No:
-
-- frame readback;
-- image analysis;
-- per-frame settings access/writes;
-- file I/O;
-- heap allocation in camera update;
-- container growth in hot path.
-
-Benchmark must compare Phase 1 against the recorded Phase 0 Windows baseline. Absolute hosted-runner numbers are diagnostic only; large regressions require investigation.
-
-## Delivery order
-
-1. Extract/share production camera orchestration core with tests.
-2. Add failing activation regression reproducing center-detour bug.
-3. Implement focus-preserving activation trajectory.
-4. Add explicit camera state/velocity/acceleration.
-5. Implement ballistic integrator + edge velocity handling.
-6. Add intent estimator + hysteresis.
-7. Add urgency and restrained look-ahead.
-8. Tune Cinematic/Balanced/Responsive against traces.
-9. Benchmark against Phase 0.
-10. Windows CI + package public trial build.
+Performance is measured, but perceptual steadiness is the primary Phase 1 objective as long as camera math remains negligible relative to an OBS video-frame budget.
 
 ## Exit gate
 
 Phase 1 is complete only when:
 
-- the reported center-detour activation bug is eliminated;
-- ordinary explanatory mouse movement produces essentially stationary framing;
-- intentional relocation is caught quickly enough for presentation use;
-- acceleration/braking are visibly smooth and non-robotic;
-- camera settles fully without micro-movement;
-- edge safety remains zero-violation across deterministic/stress tests;
-- Windows CI and packaging are green;
-- benchmark shows no unacceptable hot-path regression.
+- center-detour zoom-in bug is eliminated;
+- zoom-out has zero visible final wobble;
+- follow feels like one smooth gimbal glide rather than mouse chasing;
+- mid-flight retargeting bends continuously;
+- ordinary presenter gestures remain stationary;
+- settle produces exact zero micro-movement;
+- edge safety remains zero-violation;
+- Windows tests/build/installer packaging are green;
+- human OBS trial confirms the movement is comfortable to watch.
