@@ -125,7 +125,7 @@ jobs:
           body: |
             ## ArZoom for OBS v${{ steps.version.outputs.version }}
 
-            Public-trial release of **Smart Camera Motion 2.0** for OBS Display Capture.
+            Public-trial release of the **Smart Zone Gimbal Camera** for OBS Display Capture.
 
             ### Recommended download
 
@@ -139,10 +139,14 @@ jobs:
 
             ### Highlights
 
-            - focus-preserving zoom activation — no more visible detour through unrelated center content when the pointer is near an edge;
-            - intent-driven Smart Camera that ignores normal hand jitter and explanatory pointer motion;
-            - ballistic acceleration, controlled catch-up, braking, settle lock, and restrained look-ahead;
-            - edge-safe framing and edge-safe return to 1x;
+            - focus-preserving, straight screen-space zoom-in with soft minimum-jerk easing;
+            - straight, wobble-free zoom-out to exact full-frame lock;
+            - **Smart Zone** behavior that follows presentation-area changes instead of every pointer movement;
+            - **Coast → SmoothIdle** handoff so camera movement fades naturally while the presenter can immediately circle or point in the new area;
+            - local explanation gestures, repeated pointing, and hand jitter remain steady inside the active presentation zone;
+            - soft wake-up when the pointer intentionally leaves the outer Smart Zone;
+            - continuous gimbal retargeting without stop/start/relaunch behavior;
+            - edge-safe framing across supported zoom/follow operation;
             - Cinematic, Balanced, and Responsive camera characters;
             - persistent global OBS hotkey;
             - native GPU video filter with idle pass-through;
