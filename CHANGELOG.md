@@ -1,20 +1,25 @@
 # Changelog
 
-## v0.2.0 — Smart Camera Motion 2.0 + portable-aware installer
+## v0.2.0 — Smart Gimbal Camera 2.0 + portable-aware installer
 
 - Replaced the v0.1.x edge-triggered follower runtime with a shared platform-neutral Smart Camera core.
-- Added focus-preserving zoom activation: when zoom starts near an edge/corner, framing moves toward the latched pointer focus as zoom opens the legal pan range instead of zooming into unrelated center content first.
-- Added explicit Observe, Follow, Catch-up, Brake, Settle, and Returning camera states.
-- Added persistent camera velocity and acceleration with bounded jerk, acceleration, and urgency-scaled speed.
-- Added intent delay/hysteresis so ordinary hand jitter and small explanatory cursor gestures do not continuously shake the camera.
-- Added restrained velocity-aware look-ahead and faster catch-up for high-urgency relocation/edge events.
-- Kept zero-invalid-edge constraints and coupled safe zoom-out/return behavior.
-- Added deterministic Phase 1 regressions for edge/corner activation at 2x/3x/4x, activation focus latching, viewer-comfort traces, ballistic launch/settle, frame-rate consistency, and edge-safe return.
-- Renamed motion characters in the UI to Cinematic, Balanced, and Responsive while preserving the old persisted setting values for profile compatibility.
+- Added focus-preserving zoom activation: edge/corner zoom moves toward the latched pointer focus as zoom opens the legal pan range instead of zooming into unrelated center content first.
+- Rejected the first Phase 1 ballistic/spring experiment after visual trial showed follow snapping and zoom-out hunting near the finish.
+- Replaced ballistic camera motion with a super-steady gimbal model built from a stable moving destination plus cascaded monotonic low-pass stages.
+- Added coordinated quintic minimum-jerk zoom-in and zoom-out trajectories with slow start, smooth middle travel, slow finish, and exact final lock.
+- Zoom-out now treats center + magnification as one cinematic shot; no ballistic return, no braking oscillation, and no late center correction.
+- During follow, a fixed reference is held for each continuous shot so a stationary mouse produces a stationary destination instead of a target that collapses while the viewport approaches it.
+- Mid-flight mouse retargeting changes only the desired destination; filter state is retained so the camera bends toward the new point without stop/start/relaunch behavior.
+- Kept intent observation/hysteresis so ordinary hand jitter and explanatory cursor gestures do not shake framing.
+- Kept edge urgency, but it now only shortens the same gimbal time constants through a filtered urgency value; there is no mode switch to different physics.
+- Removed default predictive look-ahead to prioritize stability over anticipation and eliminate unnecessary correction motion.
+- Added exact settle lock so completed zoom/follow shots cannot breathe or micro-correct.
+- Added deterministic perceptual gates for monotonic/no-overshoot follow, soft launch, continuous retargeting, wobble-free minimum-jerk return, post-settle zero movement, edge/corner activation, and 30/60/120/144 fps consistency.
+- Renamed motion characters in the UI to Cinematic, Balanced, and Responsive while preserving old persisted setting values for profile compatibility.
 - Added a fool-proof Windows installer mode selector for Standard OBS Studio or OBS Portable/custom folders.
 - Standard mode auto-detects common OBS install locations; portable/custom mode lets the user browse to a specific OBS root.
 - Installer validates `bin\\64bit\\obs64.exe` before copying plugin files, remembers the last valid custom root, and launches the selected OBS installation after setup.
-- Windows PR CI now installs Inno Setup and compiles the actual EXE installer in addition to the manual ZIP.
+- Windows PR CI installs Inno Setup and compiles the actual EXE installer in addition to the manual ZIP.
 
 ## Unreleased — Public repository and website
 
