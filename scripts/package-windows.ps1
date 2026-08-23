@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $StageRoot,
 
-    [string] $Version = '0.3.0',
+    [string] $Version = '0.3.1',
     [string] $Configuration = 'RelWithDebInfo'
 )
 
@@ -113,6 +113,8 @@ Manual ZIP installation:
 5. Add "ArZoom - Smart Camera Zoom & Follow" to a Display Capture source.
 6. Set "ArZoom - Toggle Smart Camera Zoom" in OBS Settings > Hotkeys.
 7. Leave "Show click visualization" enabled to display GPU-rendered left/right/middle click feedback.
+
+v0.3.1 improves liquid surface-tension deformation and keeps click colors visible on both dark and bright/white applications by using contrast-aware compositing instead of additive white clipping.
 
 Click visualization does not retarget the Smart Zone camera. It is rendered procedurally in the same presentation pass and stays anchored to clicked content while zoom/pan moves.
 
