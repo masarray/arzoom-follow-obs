@@ -59,7 +59,7 @@ jobs:
           }
           exit 0
 
-      - name: Phase 0 deterministic motion validation
+      - name: Deterministic motion validation
         if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         run: ./scripts/run-phase0-validation.ps1
@@ -125,24 +125,30 @@ jobs:
           body: |
             ## ArZoom for OBS v${{ steps.version.outputs.version }}
 
-            Windows preview release of the native OBS Display Capture zoom filter.
+            Public-trial release of **Smart Camera Motion 2.0** for OBS Display Capture.
 
             ### Recommended download
 
-            Download **`ArZoom-OBS-Setup-windows-x64.exe`**. Close OBS completely, run the installer, then start OBS again.
+            Download **`ArZoom-OBS-Setup-windows-x64.exe`**. Close OBS completely and run the installer.
 
-            The manual ZIP is intended only for portable or custom OBS installations.
+            The same installer supports:
+            - **Standard OBS Studio** — auto-detected when possible.
+            - **OBS Portable / custom OBS folder** — browse to the OBS root that contains `bin\\64bit\\obs64.exe`.
+
+            A manual ZIP remains available for users who prefer direct extraction.
 
             ### Highlights
 
-            - one hotkey toggles smooth zoom-in and zoom-out;
-            - Smart Mouse Follow keeps motion comfortable for viewers;
-            - edge-safe framing prevents black borders near screen edges;
+            - focus-preserving zoom activation — no more visible detour through unrelated center content when the pointer is near an edge;
+            - intent-driven Smart Camera that ignores normal hand jitter and explanatory pointer motion;
+            - ballistic acceleration, controlled catch-up, braking, settle lock, and restrained look-ahead;
+            - edge-safe framing and edge-safe return to 1x;
+            - Cinematic, Balanced, and Responsive camera characters;
             - persistent global OBS hotkey;
             - native GPU video filter with idle pass-through;
             - Windows 10/11 x64 and OBS Display Capture.
 
-            This is a public preview. Test it before an important production livestream.
+            This is a public trial. Validate it on your own OBS scene before an important production livestream.
           files: |
             release/ArZoom-OBS-Setup-windows-x64.exe
             release/ArZoom-OBS-Manual-v${{ steps.version.outputs.version }}-windows-x64.zip
