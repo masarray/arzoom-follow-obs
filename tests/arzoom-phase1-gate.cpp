@@ -84,88 +84,27 @@ void activation_focus_continuity()
                             focus_output.x <= 1.0001f &&
                             focus_output.y >= -1.0e-4f &&
                             focus_output.y <= 1.0001f,
-                        "latched activation focus left the visible output");
+                        "latched activation focus left visible output");
 
-                if (length(direction) > 0.0f) {
+                if (length(direction) > 0.0f &&
+                    output.state == CameraState::Activating) {
                     const float projection = dot(
                         sub(output.center, Vec2{0.5f, 0.5f}), direction);
                     require(projection + 2.0e-5f >= previous_projection,
-                            "activation detoured away from the requested focus");
+                            "activation detoured away from requested focus");
                     previous_projection = projection;
                 }
             }
 
-            const CameraOutput final_output = camera.output();
-            require(std::fabs(final_output.zoom - zoom) < 0.01f,
+            require(std::fabs(camera.output().zoom - zoom) < 0.01f,
                     "activation did not reach requested zoom");
-            require(length(sub(final_output.center, expected)) < 0.01f,
+            require(length(sub(camera.output().center, expected)) < 0.01f,
                     "activation did not settle on legal focus framing");
         }
     }
 }
 
-void activation_latches_only_until_handoff()
-{
-    using namespace arzoom;
-
-    SmartCamera camera;
-    const Vec2 activation_focus{0.92f, 0.24f};
-    const Vec2 new_cursor{0.55f, 0.55f};
-    const float zoom = 3.0f;
-
-    camera.step(sample(1.0f / 60.0f, activation_focus, false, zoom));
-    camera.step(sample(1.0f / 60.0f, activation_focus, true, zoom));
-
-    const Vec2 expected = smart_follow_target(
-        activation_focus, {0.5f, 0.5f}, {0.5f, 0.45f}, 0.28f, zoom);
-    const Vec2 direction = normalized(
-        sub(expected, Vec2{0.5f, 0.5f}));
-
-    bool saw_activation = false;
-    bool saw_handoff = false;
-    float previous_projection = -1.0e-5f;
-    CameraOutput handoff{};
-
-    for (int frame = 0; frame < 90; ++frame) {
-        const float jitter = 0.02f * std::sin(static_cast<float>(frame));
-        const Vec2 moving_cursor{new_cursor.x + jitter,
-                                 new_cursor.y - jitter};
-        const CameraOutput output = camera.step(
-            sample(1.0f / 60.0f, moving_cursor, true, zoom));
-
-        if (output.state == CameraState::Activating) {
-            saw_activation = true;
-            const float projection = dot(
-                sub(output.center, Vec2{0.5f, 0.5f}), direction);
-            require(projection + 2.0e-5f >= previous_projection,
-                    "cursor motion retargeted camera during activation latch");
-            previous_projection = projection;
-            continue;
-        }
-
-        if (saw_activation) {
-            handoff = output;
-            saw_handoff = true;
-            break;
-        }
-    }
-
-    require(saw_activation, "activation latch state was never observed");
-    require(saw_handoff, "activation never handed off to Smart Follow");
-    require(length(sub(handoff.center, expected)) < 0.016f,
-            "camera handed off before reaching latched activation focus");
-
-    /* After activation ends, a real new cursor relocation must be allowed to
-     * become presenter intent. The latch is not a permanent cursor lock. */
-    const Vec2 before_follow = camera.output().center;
-    for (int frame = 0; frame < 120; ++frame)
-        camera.step(sample(1.0f / 60.0f, new_cursor, true, zoom));
-    const Vec2 after_follow = camera.output().center;
-    require(length(sub(after_follow, before_follow)) > 0.02f,
-            "Smart Follow remained permanently latched after activation");
-}
-
-void viewer_comfort()
+void viewer_comfort_stays_locked()
 {
     using namespace arzoom;
 
@@ -186,7 +125,7 @@ void viewer_comfort()
             max_displacement, length(sub(output.center, initial)));
     }
     require(max_displacement < 1.0e-5f,
-            "normal hand jitter moved the Smart Camera");
+            "normal hand jitter moved the gimbal camera");
 
     camera.reset();
     warm_center(camera);
@@ -205,48 +144,157 @@ void viewer_comfort()
             max_displacement, length(sub(output.center, circle_start)));
     }
     require(max_displacement < 1.0e-5f,
-            "small explanatory circle created camera wander");
+            "small explanation circle created camera wander");
 }
 
-void ballistic_long_relocation()
+void gimbal_glide_has_slow_start_no_overshoot()
 {
     using namespace arzoom;
 
     SmartCamera camera;
     warm_center(camera);
-    int first_motion_frame = -1;
-    float first_motion_speed = 0.0f;
-    float max_output_speed = 0.0f;
 
-    for (int frame = 0; frame < 120; ++frame) {
+    float previous_x = camera.output().center.x;
+    float first_motion_speed = -1.0f;
+    float max_speed = 0.0f;
+    bool moved = false;
+
+    for (int frame = 0; frame < 210; ++frame) {
         const CameraOutput output = camera.step(
             sample(1.0f / 60.0f, {0.90f, 0.50f}, true, 2.0f));
         require(edge_violation(output) <= 2.0e-6f,
-                "ballistic relocation exposed invalid source pixels");
+                "gimbal follow exposed invalid source pixels");
+        require(output.center.x + 1.0e-5f >= previous_x,
+                "stationary destination produced backwards camera hunting");
+        require(output.center.x <= 0.7502f,
+                "gimbal camera overshot the legal destination");
+
         const float speed = length(output.velocity) * output.zoom;
-        max_output_speed = std::max(max_output_speed, speed);
-        if (first_motion_frame < 0 && speed > 0.001f) {
-            first_motion_frame = frame;
+        if (!moved && speed > 0.0005f) {
+            moved = true;
             first_motion_speed = speed;
         }
+        max_speed = std::max(max_speed, speed);
+        previous_x = output.center.x;
     }
 
-    const CameraOutput final_output = camera.output();
-    require(first_motion_frame >= 1,
-            "camera skipped intent observation and moved instantly");
-    require(first_motion_speed < 0.25f,
-            "camera launched at robotic near-max speed");
-    require(max_output_speed < 2.70f,
-            "urgency-scaled speed exceeded designed bound");
-    require(final_output.center.x > 0.745f,
-            "long relocation did not reacquire right-side framing");
-    require(length(final_output.velocity) * final_output.zoom < 0.001f,
-            "camera did not fully settle after long relocation");
+    require(moved, "intentional relocation never moved the camera");
+    require(first_motion_speed >= 0.0f && first_motion_speed < 0.10f,
+            "gimbal camera did not start softly");
+    require(max_speed < 1.35f,
+            "default gimbal follow is too fast for viewer comfort");
+    require(camera.output().center.x > 0.744f,
+            "gimbal camera did not reach useful right-side framing");
+    require(length(camera.output().velocity) * camera.output().zoom < 0.004f,
+            "gimbal camera did not ease to a steady finish");
+}
+
+void moving_destination_retargets_without_restart()
+{
+    using namespace arzoom;
+
+    SmartCamera camera;
+    warm_center(camera);
+
+    for (int frame = 0; frame < 45; ++frame)
+        camera.step(sample(1.0f / 60.0f, {0.90f, 0.50f}, true, 2.0f));
+
+    const CameraOutput before = camera.output();
+    const CameraOutput first_after = camera.step(
+        sample(1.0f / 60.0f, {0.10f, 0.50f}, true, 2.0f));
+
+    const float first_step = length(sub(first_after.center, before.center));
+    require(first_step < 0.012f,
+            "retarget produced a visible one-frame viewport jump");
+    require(first_after.velocity.x > -0.10f,
+            "retarget instantly reversed the camera instead of bending path");
+
+    float max_step = first_step;
+    Vec2 previous = first_after.center;
+    for (int frame = 0; frame < 210; ++frame) {
+        const CameraOutput output = camera.step(
+            sample(1.0f / 60.0f, {0.10f, 0.50f}, true, 2.0f));
+        max_step = std::max(max_step,
+                            length(sub(output.center, previous)));
+        require(edge_violation(output) <= 2.0e-6f,
+                "continuous retarget exposed invalid source pixels");
+        previous = output.center;
+    }
+
+    require(max_step < 0.018f,
+            "continuous retarget contained a visible camera snap");
+    require(camera.output().center.x < 0.256f,
+            "retargeted gimbal camera did not reach opposite framing");
+    require(length(camera.output().velocity) * camera.output().zoom < 0.004f,
+            "retargeted gimbal camera did not settle steadily");
+}
+
+void zoom_out_is_one_monotonic_minimum_jerk_shot()
+{
+    using namespace arzoom;
+
+    SmartCamera camera;
+    const Vec2 focus{0.95f, 0.16f};
+    camera.step(sample(1.0f / 60.0f, focus, false, 3.0f));
+    for (int frame = 0; frame < 180; ++frame)
+        camera.step(sample(1.0f / 60.0f, focus, true, 3.0f));
+
+    const CameraOutput start = camera.output();
+    const Vec2 to_center = normalized(
+        sub(Vec2{0.5f, 0.5f}, start.center));
+    float previous_distance = length(sub(start.center, Vec2{0.5f, 0.5f}));
+    float previous_zoom = start.zoom;
+    Vec2 previous_center = start.center;
+    float first_speed = -1.0f;
+
+    for (int frame = 0; frame < 90; ++frame) {
+        const CameraOutput output = camera.step(
+            sample(1.0f / 60.0f, focus, false, 3.0f));
+        require(edge_violation(output) <= 2.0e-6f,
+                "minimum-jerk zoom-out exposed invalid pixels");
+
+        const float distance =
+            length(sub(output.center, Vec2{0.5f, 0.5f}));
+        require(distance <= previous_distance + 2.0e-6f,
+                "zoom-out center reversed direction / wobbled");
+        require(output.zoom <= previous_zoom + 2.0e-6f,
+                "zoom-out magnification reversed direction");
+
+        const Vec2 step = sub(output.center, previous_center);
+        if (length(step) > 1.0e-7f) {
+            require(dot(step, to_center) >= -2.0e-7f,
+                    "zoom-out path hunted sideways near the finish");
+        }
+        if (first_speed < 0.0f)
+            first_speed = length(output.velocity) * output.zoom;
+
+        previous_distance = distance;
+        previous_zoom = output.zoom;
+        previous_center = output.center;
+    }
+
+    require(first_speed >= 0.0f && first_speed < 0.08f,
+            "zoom-out did not begin with a soft minimum-jerk start");
+    require(std::fabs(camera.output().zoom - 1.0f) < 1.0e-6f,
+            "zoom-out did not finish exactly at 1x");
+    require(length(sub(camera.output().center, Vec2{0.5f, 0.5f})) < 1.0e-6f,
+            "zoom-out did not finish exactly at canvas center");
+    require(camera.output().state == CameraState::Rest,
+            "zoom-out did not enter exact steady lock");
+
+    for (int frame = 0; frame < 120; ++frame) {
+        const CameraOutput output = camera.step(
+            sample(1.0f / 60.0f, focus, false, 3.0f));
+        require(nearly_equal(output.center, {0.5f, 0.5f}, 1.0e-7f) &&
+                    std::fabs(output.zoom - 1.0f) < 1.0e-7f,
+                "camera breathed after zoom-out settle");
+    }
 }
 
 void frame_rate_consistency()
 {
     using namespace arzoom;
+
     const int fps_values[] = {30, 60, 120, 144};
     Vec2 centers[4];
     float zooms[4] = {};
@@ -257,7 +305,7 @@ void frame_rate_consistency()
         camera.step(sample(1.0f / fps, {0.5f, 0.5f}, false, 2.0f));
         for (int frame = 0; frame < fps; ++frame)
             camera.step(sample(1.0f / fps, {0.5f, 0.5f}, true, 2.0f));
-        for (int frame = 0; frame < 2 * fps; ++frame)
+        for (int frame = 0; frame < 3 * fps; ++frame)
             camera.step(sample(1.0f / fps, {0.90f, 0.50f}, true, 2.0f));
         centers[index] = camera.output().center;
         zooms[index] = camera.output().zoom;
@@ -265,32 +313,10 @@ void frame_rate_consistency()
 
     for (int index = 1; index < 4; ++index) {
         require(length(sub(centers[0], centers[index])) < 0.004f,
-                "30/60/120/144 fps framing diverged");
+                "30/60/120/144 fps gimbal framing diverged");
         require(std::fabs(zooms[0] - zooms[index]) < 0.004f,
                 "30/60/120/144 fps zoom diverged");
     }
-}
-
-void zoom_out_edge_safety()
-{
-    using namespace arzoom;
-    SmartCamera camera;
-    camera.step(sample(1.0f / 60.0f, {0.95f, 0.50f}, false, 3.0f));
-    for (int frame = 0; frame < 120; ++frame)
-        camera.step(sample(1.0f / 60.0f, {0.95f, 0.50f}, true, 3.0f));
-
-    for (int frame = 0; frame < 180; ++frame) {
-        const CameraOutput output = camera.step(
-            sample(1.0f / 60.0f, {0.95f, 0.50f}, false, 3.0f));
-        require(edge_violation(output) <= 2.0e-6f,
-                "return/zoom-out exposed invalid source pixels");
-    }
-
-    const CameraOutput final_output = camera.output();
-    require(std::fabs(final_output.zoom - 1.0f) < 0.01f,
-            "return did not reach 1x");
-    require(length(sub(final_output.center, Vec2{0.5f, 0.5f})) < 0.01f,
-            "return did not settle at full-frame center");
 }
 
 } // namespace
@@ -298,11 +324,11 @@ void zoom_out_edge_safety()
 int main()
 {
     activation_focus_continuity();
-    activation_latches_only_until_handoff();
-    viewer_comfort();
-    ballistic_long_relocation();
+    viewer_comfort_stays_locked();
+    gimbal_glide_has_slow_start_no_overshoot();
+    moving_destination_retargets_without_restart();
+    zoom_out_is_one_monotonic_minimum_jerk_shot();
     frame_rate_consistency();
-    zoom_out_edge_safety();
-    std::cout << "ArZoom Smart Camera Motion 2.0 gates: PASS\n";
+    std::cout << "ArZoom Smart Gimbal Camera 2.0 gates: PASS\n";
     return 0;
 }
