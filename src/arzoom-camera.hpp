@@ -1,3 +1,3 @@
 #pragma once
 
-#include "arzoom-gimbal-camera.hpp"
+#include "arzoom-smart-zone-camera.hpp"
