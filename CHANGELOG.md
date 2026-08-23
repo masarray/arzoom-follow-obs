@@ -1,13 +1,16 @@
 # Changelog
 
-## v0.3.1 — Liquid contrast click fix candidate
+## v0.3.1 — Water-dimple click candidate
 
-- Reworked the left-click ring from a near-perfect neon circle into a visibly deforming surface-tension pulse using deterministic low-frequency GPU lobes and variable ring thickness.
-- Replaced the old additive-only click compositing that necessarily clipped to white on Explorer and other bright applications.
-- Added luminance-aware contrast compositing: saturated click color remains visible on dark content, while bright/white content receives a darker chromatic support edge and darker accent body instead of white clipping.
-- Kept glow additive only where the underlying content has luminance headroom; white surfaces use the contrast/body blend as the authoritative visual.
-- Preserved the existing one-pass GPU architecture, fixed four-slot CPU click state, content-space anchoring, and frozen Smart Zone camera contract.
-- No global mouse hook was added in this patch. The Explorer report is first isolated against the confirmed white-compositing bug; input capture will only be replaced if clicks still disappear after contrast is fixed.
+- Replaced the noisy/deformed-ring concept with a physically suggestive **press → dimple → rebound ripple → settle** interaction.
+- Click feedback now distorts the captured pixels themselves through a small radial GPU displacement field before texture sampling, so the screen appears to flex/refract instead of merely drawing a ring on top.
+- Added a short contact depression with directional highlight/shadow to create visible depth at the click point.
+- Added a clean signed refractive rebound wave; left click uses one primary water ripple, right click adds a restrained secondary echo, and middle click stays compact.
+- Removed random-looking angular wobble and thick neon-ring emphasis. Color is now only a subtle visibility cue while refraction/depth is the primary effect.
+- Preserved luminance-aware contrast so the effect remains readable on Explorer and other bright/white applications without clipping to white.
+- Retuned fixed click lifetimes to 0.46 s left / 0.54 s right / 0.38 s middle so the contact and rebound read as one satisfying gesture without lingering.
+- Preserved the one-pass GPU architecture, one source texture sample, fixed four-slot CPU click state, content-space anchoring, and frozen Smart Zone camera contract.
+- No global mouse hook is added in this patch. Explorer input capture remains isolated from the confirmed visual/compositing issue; the input layer will only be replaced if real missed click events remain after visual visibility is fixed.
 
 ## v0.3.0 — GPU Click Visualization public trial
 
@@ -97,7 +100,7 @@
 - Fixed Windows packaging for the official OBS template install layout (`arzoom/bin/64bit` and `arzoom/data`).
 - Added `package-existing-build.bat` so a successful compile can be packaged without rebuilding OBS.
 - Added cached fast-build behavior; existing template dependencies and CMake configuration are reused by default.
-- Added explicit `-PackageOnly`, `-RefreshTemplate`, and `-Reconfigure` build options.
+- Added explicit `-PackageOnly`, `-RefreshTemplate`, and `-Reconfigure` options.
 - Added ZIP payload verification before reporting packaging success.
 
 ## v0.1.0
