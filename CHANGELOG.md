@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.2.0 — Smart Camera Motion 2.0 + portable-aware installer
+
+- Replaced the v0.1.x edge-triggered follower runtime with a shared platform-neutral Smart Camera core.
+- Added focus-preserving zoom activation: when zoom starts near an edge/corner, framing moves toward the latched pointer focus as zoom opens the legal pan range instead of zooming into unrelated center content first.
+- Added explicit Observe, Follow, Catch-up, Brake, Settle, and Returning camera states.
+- Added persistent camera velocity and acceleration with bounded jerk, acceleration, and urgency-scaled speed.
+- Added intent delay/hysteresis so ordinary hand jitter and small explanatory cursor gestures do not continuously shake the camera.
+- Added restrained velocity-aware look-ahead and faster catch-up for high-urgency relocation/edge events.
+- Kept zero-invalid-edge constraints and coupled safe zoom-out/return behavior.
+- Added deterministic Phase 1 regressions for edge/corner activation at 2x/3x/4x, activation focus latching, viewer-comfort traces, ballistic launch/settle, frame-rate consistency, and edge-safe return.
+- Renamed motion characters in the UI to Cinematic, Balanced, and Responsive while preserving the old persisted setting values for profile compatibility.
+- Added a fool-proof Windows installer mode selector for Standard OBS Studio or OBS Portable/custom folders.
+- Standard mode auto-detects common OBS install locations; portable/custom mode lets the user browse to a specific OBS root.
+- Installer validates `bin\\64bit\\obs64.exe` before copying plugin files, remembers the last valid custom root, and launches the selected OBS installation after setup.
+- Windows PR CI now installs Inno Setup and compiles the actual EXE installer in addition to the manual ZIP.
+
 ## Unreleased — Public repository and website
 
 - Rebuilt the public README around the user problem, download flow, five-minute setup, recommended defaults, compatibility, privacy, troubleshooting, and honest preview status.
