@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.20)
+project(arzoom_phase0_tests LANGUAGES CXX)
+
+enable_testing()
+
+function(arzoom_configure_test_target target)
+  target_compile_features(${target} PRIVATE cxx_std_17)
+  target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /permissive- /EHsc /UNDEBUG)
+  else()
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -UNDEBUG)
+  endif()
+endfunction()
+
+add_executable(arzoom-math-test arzoom-math-test.cpp)
+arzoom_configure_test_target(arzoom-math-test)
+add_test(NAME arzoom-math-invariants COMMAND arzoom-math-test)
+
+add_executable(arzoom-phase0-test arzoom-phase0-test.cpp)
+arzoom_configure_test_target(arzoom-phase0-test)
+add_test(NAME arzoom-phase0-traces COMMAND arzoom-phase0-test)
+
+add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
+arzoom_configure_test_target(arzoom-motion-benchmark)

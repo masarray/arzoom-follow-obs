@@ -12,6 +12,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Phase 0 deterministic motion validation
+        shell: pwsh
+        run: |
+          ./scripts/run-phase0-validation.ps1
+
+      - name: Upload Phase 0 benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: arzoom-phase0-motion-benchmark-windows-x64
+          path: phase0-benchmark.txt
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Build
         shell: pwsh
         run: |
