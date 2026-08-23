@@ -13,7 +13,6 @@ enum class CameraState {
     Observe,
     Follow,
     CatchUp,
-    Brake,
     Settle,
     Returning,
 };
@@ -30,17 +29,21 @@ enum class CameraMotionStyle {
     Responsive,
 };
 
+/*
+ * ArZoom's camera is intentionally gimbal-like, not spring/ballistic.
+ *
+ * Zoom transitions use a single minimum-jerk trajectory. Mouse follow uses a
+ * cascaded low-pass destination servo. Both are monotonic for a stationary
+ * target and can be re-targeted without restarting the camera motion.
+ */
 struct CameraProfile {
     float zoom_in_seconds;
     float zoom_out_seconds;
     float observe_seconds;
-    float natural_frequency;
-    float max_output_speed;
-    float max_output_acceleration;
-    float max_output_jerk;
-    float catchup_scale;
-    float lookahead_seconds;
-    float max_lookahead_output;
+    float destination_filter_seconds;
+    float camera_filter_seconds;
+    float urgency_filter_seconds;
+    float urgency_response_gain;
     float cursor_velocity_filter_seconds;
     float settle_position_output;
     float settle_velocity_output;
@@ -50,15 +53,15 @@ inline CameraProfile camera_profile(CameraMotionStyle style)
 {
     switch (style) {
     case CameraMotionStyle::Responsive:
-        return {0.20f, 0.20f, 0.060f, 12.5f, 2.20f, 8.50f, 62.0f,
-                1.55f, 0.090f, 0.065f, 0.065f, 0.007f, 0.030f};
-    case CameraMotionStyle::Balanced:
-        return {0.27f, 0.25f, 0.095f, 10.5f, 1.65f, 6.25f, 46.0f,
-                1.60f, 0.075f, 0.055f, 0.080f, 0.007f, 0.026f};
+        return {0.34f, 0.42f, 0.060f, 0.125f, 0.205f, 0.095f,
+                0.85f, 0.085f, 0.0055f, 0.018f};
     case CameraMotionStyle::Cinematic:
+        return {0.52f, 0.64f, 0.145f, 0.235f, 0.360f, 0.150f,
+                0.55f, 0.130f, 0.0070f, 0.012f};
+    case CameraMotionStyle::Balanced:
     default:
-        return {0.34f, 0.30f, 0.135f, 8.5f, 1.25f, 4.60f, 32.0f,
-                1.65f, 0.060f, 0.045f, 0.100f, 0.008f, 0.022f};
+        return {0.44f, 0.56f, 0.105f, 0.195f, 0.315f, 0.125f,
+                0.68f, 0.105f, 0.0060f, 0.015f};
     }
 }
 
@@ -102,18 +105,33 @@ inline Vec2 normalized(Vec2 value)
                           : Vec2{0.0f, 0.0f};
 }
 
-inline Vec2 clamp_magnitude(Vec2 value, float maximum)
+inline float gimbal_alpha(float dt, float time_constant)
 {
-    const float len = length(value);
-    if (len <= std::max(maximum, 0.0f) || len <= 1.0e-8f)
-        return value;
-    return mul(value, maximum / len);
+    const float safe_dt = std::clamp(dt, 0.0f, 0.10f);
+    const float tau = std::max(time_constant, 0.001f);
+    return 1.0f - std::exp(-safe_dt / tau);
 }
 
-inline float smoothstep01(float t)
+inline Vec2 gimbal_lowpass(Vec2 current, Vec2 target, float dt,
+                           float time_constant)
+{
+    return lerp(current, target, gimbal_alpha(dt, time_constant));
+}
+
+inline float gimbal_lowpass(float current, float target, float dt,
+                            float time_constant)
+{
+    return current + (target - current) *
+                         gimbal_alpha(dt, time_constant);
+}
+
+/* Quintic minimum-jerk curve: zero velocity and acceleration at both ends. */
+inline float minimum_jerk01(float t)
 {
     t = std::clamp(t, 0.0f, 1.0f);
-    return t * t * (3.0f - 2.0f * t);
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+    return t3 * (10.0f + t * (-15.0f + 6.0f * t));
 }
 
 class SmartCamera {
@@ -127,20 +145,29 @@ public:
     void reset()
     {
         center_ = {0.5f, 0.5f};
+        zoom_ = 1.0f;
         velocity_ = {0.0f, 0.0f};
         acceleration_ = {0.0f, 0.0f};
-        target_center_ = center_;
-        zoom_ = 1.0f;
         previous_zoom_requested_ = false;
         state_ = CameraState::Rest;
+
         observe_seconds_ = 0.0f;
         intent_confidence_ = 0.0f;
         urgency_ = 0.0f;
+        follow_active_ = false;
+        follow_reference_center_ = center_;
+        desired_destination_ = center_;
+        destination_stage1_ = center_;
+        destination_stage2_ = center_;
+
         have_cursor_ = false;
         previous_cursor_ = {0.5f, 0.5f};
         filtered_cursor_velocity_ = {0.0f, 0.0f};
         previous_cursor_direction_ = {0.0f, 0.0f};
         direction_persistence_ = 0.0f;
+
+        activation_elapsed_ = 0.0f;
+        return_elapsed_ = 0.0f;
     }
 
     CameraOutput step(const CameraInput &input)
@@ -152,68 +179,63 @@ public:
             std::clamp(input.safe_zone, 0.10f, 0.60f);
         const CameraProfile profile = camera_profile(input.motion_style);
 
+        const Vec2 previous_center = center_;
+        const Vec2 previous_velocity = velocity_;
+
         update_cursor_model(input.cursor, input.cursor_valid, dt, profile);
 
         const bool rising =
             input.zoom_requested && !previous_zoom_requested_;
+        const bool falling =
+            !input.zoom_requested && previous_zoom_requested_;
         previous_zoom_requested_ = input.zoom_requested;
 
         if (rising)
-            begin_activation(input, configured_zoom);
+            begin_activation(input, configured_zoom, profile);
+        else if (falling)
+            begin_return(profile);
 
-        if (!input.zoom_requested)
-            return step_return(dt, profile);
-
-        if (state_ == CameraState::Activating) {
-            return step_activation(input, configured_zoom, safe_zone,
-                                   dt, profile);
+        if (!input.zoom_requested) {
+            if (state_ == CameraState::Returning)
+                step_return(dt, profile);
+            else
+                lock_full_frame();
+        } else if (state_ == CameraState::Activating) {
+            step_activation(input, configured_zoom, safe_zone, dt, profile);
+        } else {
+            update_active_zoom(configured_zoom, dt, profile);
+            step_active_follow(input, safe_zone, dt, profile);
         }
 
-        update_active_zoom(configured_zoom, dt, profile);
-
-        if (input.follow_policy == CameraFollowPolicy::Fixed) {
-            intent_confidence_ = 0.0f;
-            urgency_ = 0.0f;
-            target_center_ = clamp_center({0.5f, 0.5f}, zoom_);
-            return step_confirmed_motion(target_center_, dt, profile, 0.0f);
-        }
-
-        if (!input.cursor_valid) {
-            intent_confidence_ = 0.0f;
-            urgency_ = 0.0f;
-            if (length(velocity_) * zoom_ > profile.settle_velocity_output) {
-                state_ = CameraState::Brake;
-                integrate_ballistic(center_, dt, profile, 0.0f);
-            } else {
-                velocity_ = {0.0f, 0.0f};
-                acceleration_ = {0.0f, 0.0f};
-                state_ = CameraState::Rest;
-            }
-            return output();
-        }
-
-        if (input.follow_policy == CameraFollowPolicy::Centered) {
-            target_center_ = centered_target(input.cursor, input.anchor, zoom_);
-            const float distance_output =
-                length(sub(target_center_, center_)) * zoom_;
-            urgency_ = std::clamp(distance_output / 0.25f, 0.0f, 1.0f);
-            intent_confidence_ = 1.0f;
-            state_ = urgency_ > 0.55f ? CameraState::CatchUp
-                                      : CameraState::Follow;
-            return step_confirmed_motion(target_center_, dt, profile,
-                                         urgency_);
-        }
-
-        return step_smart_follow(input, safe_zone, dt, profile);
+        update_motion_diagnostics(previous_center, previous_velocity, dt);
+        return output();
     }
 
 private:
+    void update_motion_diagnostics(Vec2 previous_center,
+                                   Vec2 previous_velocity, float dt)
+    {
+        if (dt <= 1.0e-6f || state_ == CameraState::Rest) {
+            velocity_ = {0.0f, 0.0f};
+            acceleration_ = {0.0f, 0.0f};
+            return;
+        }
+
+        const Vec2 measured_velocity =
+            mul(sub(center_, previous_center), 1.0f / dt);
+        const Vec2 measured_acceleration =
+            mul(sub(measured_velocity, previous_velocity), 1.0f / dt);
+        velocity_ = measured_velocity;
+        acceleration_ = measured_acceleration;
+    }
+
     void update_cursor_model(Vec2 cursor, bool valid, float dt,
                              const CameraProfile &profile)
     {
         if (!valid) {
-            filtered_cursor_velocity_ =
-                mul(filtered_cursor_velocity_, std::exp(-12.0f * dt));
+            filtered_cursor_velocity_ = gimbal_lowpass(
+                filtered_cursor_velocity_, {0.0f, 0.0f}, dt,
+                profile.cursor_velocity_filter_seconds);
             direction_persistence_ =
                 std::max(0.0f, direction_persistence_ - 3.0f * dt);
             return;
@@ -221,70 +243,84 @@ private:
 
         if (!have_cursor_ || dt <= 1.0e-6f) {
             previous_cursor_ = cursor;
-            have_cursor_ = true;
             filtered_cursor_velocity_ = {0.0f, 0.0f};
             previous_cursor_direction_ = {0.0f, 0.0f};
             direction_persistence_ = 0.0f;
+            have_cursor_ = true;
             return;
         }
 
         const Vec2 raw_velocity =
             mul(sub(cursor, previous_cursor_), 1.0f / dt);
-        const float alpha =
-            exponential_alpha(dt, profile.cursor_velocity_filter_seconds);
-        filtered_cursor_velocity_ =
-            add(filtered_cursor_velocity_,
-                mul(sub(raw_velocity, filtered_cursor_velocity_), alpha));
+        filtered_cursor_velocity_ = gimbal_lowpass(
+            filtered_cursor_velocity_, raw_velocity, dt,
+            profile.cursor_velocity_filter_seconds);
 
         const Vec2 direction = normalized(raw_velocity);
         if (length(direction) > 0.0f) {
             if (length(previous_cursor_direction_) > 0.0f) {
                 const float alignment =
                     dot(direction, previous_cursor_direction_);
-                const float delta = alignment > 0.70f
-                                        ? 3.5f * dt
-                                        : -7.0f * dt;
                 direction_persistence_ = std::clamp(
-                    direction_persistence_ + delta, 0.0f, 1.0f);
+                    direction_persistence_ +
+                        (alignment > 0.72f ? 2.8f : -6.5f) * dt,
+                    0.0f, 1.0f);
             } else {
-                direction_persistence_ = std::min(
-                    1.0f, direction_persistence_ + 2.0f * dt);
+                direction_persistence_ =
+                    std::min(1.0f, direction_persistence_ + 1.8f * dt);
             }
             previous_cursor_direction_ = normalized(
-                lerp(previous_cursor_direction_, direction, 0.35f));
+                lerp(previous_cursor_direction_, direction, 0.25f));
         } else {
             direction_persistence_ =
-                std::max(0.0f, direction_persistence_ - 2.0f * dt);
+                std::max(0.0f, direction_persistence_ - 2.5f * dt);
         }
 
         previous_cursor_ = cursor;
     }
 
-    void begin_activation(const CameraInput &input,
-                          float configured_zoom)
+    void reset_gimbal_filters(Vec2 center)
     {
+        desired_destination_ = center;
+        destination_stage1_ = center;
+        destination_stage2_ = center;
+        follow_reference_center_ = center;
+        follow_active_ = false;
+    }
+
+    void begin_activation(const CameraInput &input,
+                          float configured_zoom,
+                          const CameraProfile &profile)
+    {
+        (void)profile;
         state_ = CameraState::Activating;
         observe_seconds_ = 0.0f;
         intent_confidence_ = 1.0f;
         urgency_ = 0.0f;
-        velocity_ = {0.0f, 0.0f};
-        acceleration_ = {0.0f, 0.0f};
+        activation_elapsed_ = 0.0f;
         activation_start_center_ = center_;
         activation_start_zoom_ = zoom_;
+        activation_target_zoom_ = configured_zoom;
         activation_focus_ = input.cursor_valid ? input.cursor : center_;
         activation_initial_output_ = cursor_output_position(
             activation_focus_, center_, std::max(zoom_, 1.0f));
-        activation_target_zoom_ = configured_zoom;
+        reset_gimbal_filters(center_);
     }
 
-    CameraOutput step_activation(const CameraInput &input,
-                                 float configured_zoom,
-                                 float safe_zone, float dt,
-                                 const CameraProfile &profile)
+    void step_activation(const CameraInput &input,
+                         float configured_zoom,
+                         float safe_zone, float dt,
+                         const CameraProfile &profile)
     {
         activation_target_zoom_ = configured_zoom;
-        zoom_ = smooth_scalar(zoom_, activation_target_zoom_, dt,
-                              profile.zoom_in_seconds);
+        activation_elapsed_ += dt;
+        const float duration = std::max(profile.zoom_in_seconds, 0.05f);
+        const float normalized_time =
+            std::clamp(activation_elapsed_ / duration, 0.0f, 1.0f);
+        const float progress = minimum_jerk01(normalized_time);
+
+        zoom_ = activation_start_zoom_ +
+                (activation_target_zoom_ - activation_start_zoom_) * progress;
 
         Vec2 final_center{0.5f, 0.5f};
         if (input.follow_policy == CameraFollowPolicy::Centered) {
@@ -295,11 +331,6 @@ private:
                 activation_focus_, activation_start_center_, input.anchor,
                 safe_zone, activation_target_zoom_);
         }
-
-        const float span = std::max(
-            activation_target_zoom_ - activation_start_zoom_, 1.0e-6f);
-        const float progress = std::clamp(
-            (zoom_ - activation_start_zoom_) / span, 0.0f, 1.0f);
 
         Vec2 focus_preserving_center = activation_start_center_;
         if (input.follow_policy != CameraFollowPolicy::Fixed) {
@@ -313,303 +344,290 @@ private:
         }
 
         center_ = clamp_center(
-            lerp(focus_preserving_center, final_center,
-                 smoothstep01(progress)),
-            zoom_);
-        target_center_ = final_center;
-        velocity_ = {0.0f, 0.0f};
-        acceleration_ = {0.0f, 0.0f};
+            lerp(focus_preserving_center, final_center, progress), zoom_);
 
-        if (std::fabs(zoom_ - activation_target_zoom_) <= 0.0045f ||
-            progress >= 0.998f) {
+        if (normalized_time >= 1.0f) {
             zoom_ = activation_target_zoom_;
             center_ = clamp_center(final_center, zoom_);
-            target_center_ = center_;
             state_ = CameraState::Settle;
             observe_seconds_ = 0.0f;
-            filtered_cursor_velocity_ = {0.0f, 0.0f};
-            direction_persistence_ = 0.0f;
+            intent_confidence_ = 0.0f;
+            urgency_ = 0.0f;
+            reset_gimbal_filters(center_);
             if (input.cursor_valid) {
                 previous_cursor_ = input.cursor;
+                filtered_cursor_velocity_ = {0.0f, 0.0f};
+                previous_cursor_direction_ = {0.0f, 0.0f};
+                direction_persistence_ = 0.0f;
                 have_cursor_ = true;
             }
         }
+    }
 
-        return output();
+    void begin_return(const CameraProfile &profile)
+    {
+        (void)profile;
+        state_ = CameraState::Returning;
+        return_elapsed_ = 0.0f;
+        return_start_center_ = center_;
+        return_start_zoom_ = zoom_;
+        observe_seconds_ = 0.0f;
+        intent_confidence_ = 0.0f;
+        urgency_ = 0.0f;
+        reset_gimbal_filters(center_);
+    }
+
+    void step_return(float dt, const CameraProfile &profile)
+    {
+        state_ = CameraState::Returning;
+        return_elapsed_ += dt;
+        const float duration = std::max(profile.zoom_out_seconds, 0.05f);
+        const float normalized_time =
+            std::clamp(return_elapsed_ / duration, 0.0f, 1.0f);
+        const float progress = minimum_jerk01(normalized_time);
+
+        zoom_ = return_start_zoom_ + (1.0f - return_start_zoom_) * progress;
+        center_ = clamp_center(
+            lerp(return_start_center_, Vec2{0.5f, 0.5f}, progress),
+            std::max(zoom_, 1.0f));
+
+        if (normalized_time >= 1.0f)
+            lock_full_frame();
+    }
+
+    void lock_full_frame()
+    {
+        center_ = {0.5f, 0.5f};
+        zoom_ = 1.0f;
+        velocity_ = {0.0f, 0.0f};
+        acceleration_ = {0.0f, 0.0f};
+        state_ = CameraState::Rest;
+        observe_seconds_ = 0.0f;
+        intent_confidence_ = 0.0f;
+        urgency_ = 0.0f;
+        reset_gimbal_filters(center_);
     }
 
     void update_active_zoom(float configured_zoom, float dt,
                             const CameraProfile &profile)
     {
-        if (configured_zoom >= zoom_) {
-            zoom_ = smooth_scalar(zoom_, configured_zoom, dt,
-                                  profile.zoom_in_seconds);
-        } else {
-            const float next_zoom = smooth_scalar(
-                zoom_, configured_zoom, dt, profile.zoom_out_seconds);
-            zoom_ = std::max(next_zoom, minimum_zoom_for_center(center_));
-        }
+        if (std::fabs(configured_zoom - zoom_) < 0.0001f)
+            return;
+
+        const float tau = configured_zoom > zoom_
+                              ? profile.zoom_in_seconds * 0.45f
+                              : profile.zoom_out_seconds * 0.45f;
+        float next_zoom = gimbal_lowpass(zoom_, configured_zoom, dt, tau);
+        if (next_zoom < zoom_)
+            next_zoom = std::max(next_zoom,
+                                 minimum_zoom_for_center(center_));
+        zoom_ = std::clamp(next_zoom, 1.0f, 4.0f);
         center_ = clamp_center(center_, zoom_);
+        destination_stage1_ = clamp_center(destination_stage1_, zoom_);
+        destination_stage2_ = clamp_center(destination_stage2_, zoom_);
+        desired_destination_ = clamp_center(desired_destination_, zoom_);
+        follow_reference_center_ = clamp_center(
+            follow_reference_center_, zoom_);
     }
 
-    CameraOutput step_return(float dt,
-                             const CameraProfile &profile)
+    void step_active_follow(const CameraInput &input,
+                            float safe_zone, float dt,
+                            const CameraProfile &profile)
     {
-        intent_confidence_ = 0.0f;
-        urgency_ = 0.0f;
-        observe_seconds_ = 0.0f;
-        state_ = CameraState::Returning;
-        target_center_ = {0.5f, 0.5f};
+        if (input.follow_policy == CameraFollowPolicy::Fixed) {
+            intent_confidence_ = 0.0f;
+            urgency_ = gimbal_lowpass(
+                urgency_, 0.0f, dt, profile.urgency_filter_seconds);
+            step_gimbal_to(clamp_center({0.5f, 0.5f}, zoom_),
+                           dt, profile, urgency_);
+            return;
+        }
 
-        integrate_ballistic(target_center_, dt, profile, 0.0f);
-        const float next_zoom =
-            smooth_scalar(zoom_, 1.0f, dt, profile.zoom_out_seconds);
-        zoom_ = std::max(next_zoom, minimum_zoom_for_center(center_));
-        center_ = clamp_center(center_, zoom_);
-
-        const float position_error =
-            length(sub(center_, Vec2{0.5f, 0.5f}));
-        const float output_speed =
-            length(velocity_) * std::max(zoom_, 1.0f);
-        if (std::fabs(zoom_ - 1.0f) < 0.001f &&
-            position_error < 0.0015f &&
-            output_speed < profile.settle_velocity_output) {
-            center_ = {0.5f, 0.5f};
-            target_center_ = center_;
-            zoom_ = 1.0f;
-            velocity_ = {0.0f, 0.0f};
-            acceleration_ = {0.0f, 0.0f};
+        if (!input.cursor_valid) {
+            observe_seconds_ = 0.0f;
+            intent_confidence_ = 0.0f;
+            urgency_ = gimbal_lowpass(
+                urgency_, 0.0f, dt, profile.urgency_filter_seconds);
+            reset_gimbal_filters(center_);
             state_ = CameraState::Rest;
+            return;
         }
-        return output();
+
+        if (input.follow_policy == CameraFollowPolicy::Centered) {
+            follow_active_ = true;
+            follow_reference_center_ = center_;
+            const Vec2 target = centered_target(
+                input.cursor, input.anchor, zoom_);
+            const float distance_output =
+                length(sub(target, center_)) * zoom_;
+            const float raw_urgency = std::clamp(
+                distance_output / 0.32f, 0.0f, 1.0f);
+            urgency_ = gimbal_lowpass(
+                urgency_, raw_urgency, dt,
+                profile.urgency_filter_seconds);
+            intent_confidence_ = 1.0f;
+            step_gimbal_to(target, dt, profile, urgency_);
+            return;
+        }
+
+        step_smart_follow(input, safe_zone, dt, profile);
     }
 
-    CameraOutput step_smart_follow(const CameraInput &input,
-                                   float safe_zone, float dt,
-                                   const CameraProfile &profile)
+    void step_smart_follow(const CameraInput &input,
+                           float safe_zone, float dt,
+                           const CameraProfile &profile)
     {
-        const Vec2 outer_target = smart_follow_target(
+        const Vec2 detection_target = smart_follow_target(
             input.cursor, center_, input.anchor, safe_zone, zoom_);
         const float candidate_distance_output =
-            length(sub(outer_target, center_)) * zoom_;
+            length(sub(detection_target, center_)) * zoom_;
         const Vec2 cursor_output =
             cursor_output_position(input.cursor, center_, zoom_);
         const float edge_distance = std::max(
             std::fabs(cursor_output.x - 0.5f),
             std::fabs(cursor_output.y - 0.5f));
         const float edge_risk = std::clamp(
-            (edge_distance - 0.38f) / 0.20f, 0.0f, 1.0f);
+            (edge_distance - 0.39f) / 0.16f, 0.0f, 1.0f);
         const float distance_urgency = std::clamp(
-            candidate_distance_output / 0.24f, 0.0f, 1.0f);
-        urgency_ = std::max(edge_risk, distance_urgency);
+            candidate_distance_output / 0.30f, 0.0f, 1.0f);
+        const float raw_urgency = std::max(edge_risk, distance_urgency);
+        urgency_ = gimbal_lowpass(
+            urgency_, raw_urgency, dt, profile.urgency_filter_seconds);
 
-        if (candidate_distance_output <= 0.0020f) {
-            observe_seconds_ =
-                std::max(0.0f, observe_seconds_ - dt * 3.0f);
-            intent_confidence_ =
-                std::max(0.0f, intent_confidence_ - dt * 5.0f);
-
-            if (state_ == CameraState::Follow ||
-                state_ == CameraState::CatchUp ||
-                state_ == CameraState::Brake) {
-                state_ = CameraState::Brake;
-                target_center_ = center_;
-                integrate_ballistic(target_center_, dt, profile, 0.0f);
-                if (length(velocity_) * zoom_ <
-                    profile.settle_velocity_output) {
-                    velocity_ = {0.0f, 0.0f};
-                    acceleration_ = {0.0f, 0.0f};
-                    state_ = CameraState::Settle;
-                }
-            } else {
-                velocity_ = {0.0f, 0.0f};
-                acceleration_ = {0.0f, 0.0f};
+        if (!follow_active_) {
+            if (candidate_distance_output <= 0.0020f) {
+                observe_seconds_ = 0.0f;
+                intent_confidence_ = 0.0f;
                 state_ = CameraState::Rest;
+                urgency_ = gimbal_lowpass(
+                    urgency_, 0.0f, dt,
+                    profile.urgency_filter_seconds);
+                reset_gimbal_filters(center_);
+                return;
             }
-            return output();
-        }
 
-        observe_seconds_ +=
-            dt * (0.55f + 0.45f * direction_persistence_);
-        const float output_cursor_speed =
-            length(filtered_cursor_velocity_) * zoom_;
-        const float distance_signal = std::clamp(
-            candidate_distance_output / 0.16f, 0.0f, 1.0f);
-        const float velocity_signal = std::clamp(
-            output_cursor_speed / 1.50f, 0.0f, 1.0f) *
-            direction_persistence_;
-        const float dwell_signal = std::clamp(
-            observe_seconds_ / std::max(profile.observe_seconds, 0.01f),
-            0.0f, 1.0f);
-        intent_confidence_ = std::clamp(
-            0.40f * distance_signal + 0.18f * velocity_signal +
-                0.24f * dwell_signal + 0.32f * urgency_ +
-                (input.emphasis_event ? 0.70f : 0.0f),
-            0.0f, 1.0f);
-
-        if (state_ == CameraState::Rest ||
-            state_ == CameraState::Settle) {
             state_ = CameraState::Observe;
+            observe_seconds_ += dt *
+                (0.72f + 0.28f * direction_persistence_);
+
+            const float distance_signal = std::clamp(
+                candidate_distance_output / 0.18f, 0.0f, 1.0f);
+            const float dwell_signal = std::clamp(
+                observe_seconds_ /
+                    std::max(profile.observe_seconds, 0.01f),
+                0.0f, 1.0f);
+            const float persistence_signal = direction_persistence_;
+            intent_confidence_ = std::clamp(
+                0.46f * distance_signal +
+                    0.30f * dwell_signal +
+                    0.12f * persistence_signal +
+                    0.26f * urgency_ +
+                    (input.emphasis_event ? 0.70f : 0.0f),
+                0.0f, 1.0f);
+
+            const float observe_threshold = std::max(
+                0.030f,
+                profile.observe_seconds *
+                    (1.0f - 0.58f * urgency_));
+            const bool confirmed = input.emphasis_event ||
+                (observe_seconds_ >= observe_threshold &&
+                 intent_confidence_ >= 0.50f);
+            if (!confirmed)
+                return;
+
+            follow_active_ = true;
+            follow_reference_center_ = center_;
+            desired_destination_ = center_;
+            destination_stage1_ = center_;
+            destination_stage2_ = center_;
         }
 
-        const float observe_threshold = std::max(
-            0.025f,
-            profile.observe_seconds * (1.0f - 0.72f * urgency_));
-        const bool intent_confirmed = input.emphasis_event ||
-            (observe_seconds_ >= observe_threshold &&
-             intent_confidence_ >= 0.50f);
-
-        if (state_ == CameraState::Observe && !intent_confirmed) {
-            velocity_ = {0.0f, 0.0f};
-            acceleration_ = {0.0f, 0.0f};
-            return output();
-        }
-
-        if (intent_confirmed && state_ == CameraState::Observe) {
-            state_ = urgency_ > 0.55f ? CameraState::CatchUp
-                                      : CameraState::Follow;
-        }
-
-        Vec2 lookahead = mul(
-            filtered_cursor_velocity_,
-            profile.lookahead_seconds * direction_persistence_);
-        lookahead = clamp_magnitude(
-            lookahead,
-            profile.max_lookahead_output / std::max(zoom_, 1.0f));
-        const Vec2 predicted_cursor{
-            std::clamp(input.cursor.x + lookahead.x, 0.0f, 1.0f),
-            std::clamp(input.cursor.y + lookahead.y, 0.0f, 1.0f),
-        };
-
+        /*
+         * During one continuous follow shot the reference center stays fixed.
+         * This is critical: a stationary mouse therefore produces a stationary
+         * destination instead of a target that collapses as the camera moves.
+         * If the user moves again mid-shot, only the destination changes; the
+         * camera filters keep their state and bend the path smoothly.
+         */
         const float settle_zone =
-            std::clamp(safe_zone * 0.70f, 0.08f, safe_zone);
-        target_center_ = smart_follow_target(
-            predicted_cursor, center_, input.anchor,
+            std::clamp(safe_zone * 0.58f, 0.08f, safe_zone);
+        const Vec2 target = smart_follow_target(
+            input.cursor, follow_reference_center_, input.anchor,
             settle_zone, zoom_);
-        return step_confirmed_motion(target_center_, dt, profile,
-                                     urgency_);
-    }
 
-    CameraOutput step_confirmed_motion(Vec2 target, float dt,
-                                       const CameraProfile &profile,
-                                       float urgency)
-    {
-        const float distance_output =
+        state_ = urgency_ > 0.72f
+                     ? CameraState::CatchUp
+                     : CameraState::Follow;
+        step_gimbal_to(target, dt, profile, urgency_);
+
+        const float target_error_output =
             length(sub(target, center_)) * zoom_;
+        const float stage1_error_output =
+            length(sub(target, destination_stage1_)) * zoom_;
+        const float stage2_error_output =
+            length(sub(destination_stage1_, destination_stage2_)) * zoom_;
         const float speed_output = length(velocity_) * zoom_;
-        const float available_acceleration =
-            std::max(profile.max_output_acceleration, 0.1f);
-        const float stopping_distance =
-            speed_output * speed_output /
-            (2.0f * available_acceleration);
+        const float cursor_speed_output =
+            length(filtered_cursor_velocity_) * zoom_;
 
-        if (distance_output <
-                std::max(0.018f, stopping_distance * 1.25f) &&
-            speed_output > 0.03f) {
-            state_ = CameraState::Brake;
-        } else if (urgency > 0.55f) {
-            state_ = CameraState::CatchUp;
-        } else if (state_ != CameraState::Returning) {
-            state_ = CameraState::Follow;
-        }
-
-        integrate_ballistic(target, dt, profile, urgency);
-
-        const float remaining_output =
-            length(sub(target, center_)) * zoom_;
-        const float remaining_speed = length(velocity_) * zoom_;
-        if (remaining_output < profile.settle_position_output &&
-            remaining_speed < profile.settle_velocity_output) {
+        if (target_error_output < profile.settle_position_output &&
+            stage1_error_output < profile.settle_position_output &&
+            stage2_error_output < profile.settle_position_output &&
+            speed_output < profile.settle_velocity_output &&
+            cursor_speed_output < 0.035f) {
             center_ = clamp_center(target, zoom_);
-            velocity_ = {0.0f, 0.0f};
-            acceleration_ = {0.0f, 0.0f};
-            state_ = CameraState::Settle;
+            reset_gimbal_filters(center_);
             observe_seconds_ = 0.0f;
-        }
-        return output();
-    }
-
-    void integrate_ballistic(Vec2 target, float dt,
-                             const CameraProfile &profile,
-                             float urgency)
-    {
-        constexpr float max_substep = 1.0f / 120.0f;
-        float remaining = std::clamp(dt, 0.0f, 0.10f);
-        int guard = 0;
-        while (remaining > 1.0e-7f && guard++ < 16) {
-            const float h = std::min(remaining, max_substep);
-            integrate_ballistic_substep(target, h, profile, urgency);
-            remaining -= h;
+            intent_confidence_ = 0.0f;
+            urgency_ = 0.0f;
+            state_ = CameraState::Rest;
         }
     }
 
-    void integrate_ballistic_substep(Vec2 target, float dt,
-                                     const CameraProfile &profile,
-                                     float urgency)
+    void step_gimbal_to(Vec2 target, float dt,
+                        const CameraProfile &profile,
+                        float urgency)
     {
-        const float safe_zoom = std::max(zoom_, 1.0f);
-        const float urgency_scale = 1.0f +
-            (profile.catchup_scale - 1.0f) *
-                std::clamp(urgency, 0.0f, 1.0f);
-        const float omega = profile.natural_frequency *
-                            (1.0f + 0.18f * urgency);
+        desired_destination_ = clamp_center(target, zoom_);
 
-        const Vec2 error = sub(target, center_);
-        Vec2 desired_acceleration = sub(
-            mul(error, omega * omega),
-            mul(velocity_, 2.0f * omega));
-        desired_acceleration = clamp_magnitude(
-            desired_acceleration,
-            profile.max_output_acceleration * urgency_scale /
-                safe_zoom);
+        const float smooth_urgency = std::clamp(urgency, 0.0f, 1.0f);
+        const float response_scale =
+            1.0f + profile.urgency_response_gain * smooth_urgency;
+        const float destination_tau =
+            profile.destination_filter_seconds / response_scale;
+        const float camera_tau =
+            profile.camera_filter_seconds /
+            (1.0f + 0.60f * profile.urgency_response_gain *
+                         smooth_urgency);
 
-        Vec2 acceleration_delta =
-            sub(desired_acceleration, acceleration_);
-        acceleration_delta = clamp_magnitude(
-            acceleration_delta,
-            profile.max_output_jerk * urgency_scale * dt /
-                safe_zoom);
-        acceleration_ = add(acceleration_, acceleration_delta);
-
-        velocity_ = add(velocity_, mul(acceleration_, dt));
-        velocity_ = clamp_magnitude(
-            velocity_,
-            profile.max_output_speed * urgency_scale / safe_zoom);
-
-        const Vec2 proposed = add(center_, mul(velocity_, dt));
-        const Vec2 clamped = clamp_center(proposed, safe_zoom);
-
-        if (std::fabs(clamped.x - proposed.x) > 1.0e-7f) {
-            const bool pushes_out =
-                (proposed.x < clamped.x && velocity_.x < 0.0f) ||
-                (proposed.x > clamped.x && velocity_.x > 0.0f);
-            if (pushes_out) {
-                velocity_.x = 0.0f;
-                acceleration_.x = 0.0f;
-            }
-        }
-        if (std::fabs(clamped.y - proposed.y) > 1.0e-7f) {
-            const bool pushes_out =
-                (proposed.y < clamped.y && velocity_.y < 0.0f) ||
-                (proposed.y > clamped.y && velocity_.y > 0.0f);
-            if (pushes_out) {
-                velocity_.y = 0.0f;
-                acceleration_.y = 0.0f;
-            }
-        }
-        center_ = clamped;
+        destination_stage1_ = gimbal_lowpass(
+            destination_stage1_, desired_destination_, dt,
+            destination_tau);
+        destination_stage2_ = gimbal_lowpass(
+            destination_stage2_, destination_stage1_, dt,
+            destination_tau * 0.72f);
+        center_ = clamp_center(
+            gimbal_lowpass(center_, destination_stage2_, dt,
+                           camera_tau),
+            zoom_);
     }
 
     Vec2 center_{0.5f, 0.5f};
+    float zoom_ = 1.0f;
     Vec2 velocity_{0.0f, 0.0f};
     Vec2 acceleration_{0.0f, 0.0f};
-    Vec2 target_center_{0.5f, 0.5f};
-    float zoom_ = 1.0f;
     bool previous_zoom_requested_ = false;
     CameraState state_ = CameraState::Rest;
+
     float observe_seconds_ = 0.0f;
     float intent_confidence_ = 0.0f;
     float urgency_ = 0.0f;
+
+    bool follow_active_ = false;
+    Vec2 follow_reference_center_{0.5f, 0.5f};
+    Vec2 desired_destination_{0.5f, 0.5f};
+    Vec2 destination_stage1_{0.5f, 0.5f};
+    Vec2 destination_stage2_{0.5f, 0.5f};
 
     bool have_cursor_ = false;
     Vec2 previous_cursor_{0.5f, 0.5f};
@@ -622,6 +640,11 @@ private:
     Vec2 activation_initial_output_{0.5f, 0.5f};
     float activation_start_zoom_ = 1.0f;
     float activation_target_zoom_ = 2.0f;
+    float activation_elapsed_ = 0.0f;
+
+    Vec2 return_start_center_{0.5f, 0.5f};
+    float return_start_zoom_ = 1.0f;
+    float return_elapsed_ = 0.0f;
 };
 
 } // namespace arzoom
