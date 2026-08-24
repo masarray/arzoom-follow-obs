@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.3.1 — Premium dual-vector click candidate
+
+- Replaced the rejected water-dimple/blob experiment with a clean **dual analytic vector-ring** interaction designed for professional screen recording and teaching.
+- Left click now uses two thin staggered circles in a modern Azure + Aqua palette; right click uses the same visual language in Violet + Orchid so intent is distinguishable without labels or symbols.
+- Both rings expand with quintic minimum-jerk timing, giving soft launch and soft finish instead of linear pop/stop motion.
+- The second ring starts roughly 45–60 ms after the first, creating a deliberate premium cadence rather than a noisy particle burst.
+- Removed all click-time texture distortion, refraction, angular wobble, blobs, liquid noise, and thick neon-ring emphasis. The captured frame stays optically clean.
+- Rings are generated analytically in the GPU shader from distance fields, so they remain perfectly circular, symmetric, sharp, resolution-independent, and require no PNG/vector asset files.
+- Added luminance-aware compositing with a subtle chromatic under-stroke on bright/white surfaces, keeping clicks visible in Explorer and document UIs without clipping cyan/violet to white.
+- Glow is intentionally restrained and primarily visible on dark content; the exact vector line remains the visual hero.
+- Retuned fixed click lifetimes to 0.44 s left / 0.50 s right / 0.32 s middle so the effect is noticeable but disappears quickly during rapid tutorials.
+- Preserved the one-pass GPU architecture, fixed four-slot allocation-free CPU state, content-space anchoring, and frozen Smart Zone camera contract.
+- No global mouse hook is added in this patch. Explorer input capture remains isolated from the visual/compositing issue; the input layer will only be replaced if real missed click events remain after visibility is confirmed.
+
 ## v0.3.0 — GPU Click Visualization public trial
 
 - Added procedural GPU click feedback to the existing ArZoom presentation pass; no PNG generation, temporary files, particle system, extra OBS image source, frame readback, or separate bloom pass.
@@ -88,7 +102,7 @@
 - Fixed Windows packaging for the official OBS template install layout (`arzoom/bin/64bit` and `arzoom/data`).
 - Added `package-existing-build.bat` so a successful compile can be packaged without rebuilding OBS.
 - Added cached fast-build behavior; existing template dependencies and CMake configuration are reused by default.
-- Added explicit `-PackageOnly`, `-RefreshTemplate`, and `-Reconfigure` build options.
+- Added explicit `-PackageOnly`, `-RefreshTemplate`, and `-Reconfigure` options.
 - Added ZIP payload verification before reporting packaging success.
 
 ## v0.1.0
