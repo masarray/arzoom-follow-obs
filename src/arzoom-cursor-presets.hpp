@@ -13,6 +13,9 @@ enum class BuiltinCursorVisual {
     Outline,
     Azure,
     Orchid,
+    Parakeet,
+    ClassicHand,
+    StickerHand,
 };
 
 struct CursorPreset {
@@ -35,10 +38,12 @@ inline constexpr const char *kCursorStyleCustom = "custom";
  *
  *   immediate press -> elastic release -> tiny rebound -> settle
  *
- * Outline is the snappiest professional preset; Prism/Orchid keep a few extra
- * milliseconds for their richer fills while staying comfortably below 300ms.
+ * The first four presets are the original ArZoom palette. Parakeet, Classic
+ * Hand and Sticker Hand are original ArZoom geometry inspired only by broad
+ * cursor categories supplied during visual research; no third-party SVG data
+ * is embedded or redistributed.
  */
-inline constexpr std::array<CursorPreset, 4> kCursorPresets{{
+inline constexpr std::array<CursorPreset, 7> kCursorPresets{{
     {"prism", "ArZoom.PresentationCursor.Preset.Prism",
      BuiltinCursorVisual::Prism, 28, 0.280f, 0.19375f, 0.10625f, 52.0f},
     {"outline", "ArZoom.PresentationCursor.Preset.Outline",
@@ -47,6 +52,12 @@ inline constexpr std::array<CursorPreset, 4> kCursorPresets{{
      BuiltinCursorVisual::Azure, 28, 0.240f, 0.19375f, 0.10625f, 52.0f},
     {"orchid", "ArZoom.PresentationCursor.Preset.Orchid",
      BuiltinCursorVisual::Orchid, 28, 0.270f, 0.19375f, 0.10625f, 52.0f},
+    {"parakeet", "ArZoom.PresentationCursor.Preset.Parakeet",
+     BuiltinCursorVisual::Parakeet, 28, 0.245f, 0.19375f, 0.10625f, 54.0f},
+    {"classic_hand", "ArZoom.PresentationCursor.Preset.ClassicHand",
+     BuiltinCursorVisual::ClassicHand, 28, 0.230f, 0.41875f, 0.05625f, 58.0f},
+    {"sticker_hand", "ArZoom.PresentationCursor.Preset.StickerHand",
+     BuiltinCursorVisual::StickerHand, 28, 0.260f, 0.41875f, 0.05625f, 60.0f},
 }};
 
 inline float cursor_tactile_smoothstep(float x)
