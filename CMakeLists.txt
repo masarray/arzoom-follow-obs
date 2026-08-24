@@ -34,11 +34,12 @@ target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
     src/plugin-main.cpp
-    src/arzoom-filter-v7.cpp
+    src/arzoom-filter-v8.cpp
     src/arzoom-camera.hpp
     src/arzoom-click-visual.hpp
     src/arzoom-presenter-controls.hpp
     src/arzoom-presentation-cursor.hpp
+    src/arzoom-cursor-presets.hpp
     src/arzoom-math.hpp
 )
 
