@@ -34,7 +34,7 @@ target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
     src/plugin-main.cpp
-    src/arzoom-filter-v5.cpp
+    src/arzoom-filter-v6.cpp
     src/arzoom-camera.hpp
     src/arzoom-click-visual.hpp
     src/arzoom-presenter-controls.hpp
