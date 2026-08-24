@@ -1,4 +1,5 @@
 #include "../src/arzoom-scene-camera-core.hpp"
+#include "../src/arzoom-render-safety.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -80,6 +81,30 @@ void fullscreen_mapping_contract_rejects_guesses()
             "zero scene height was accepted");
 }
 
+void first_click_cursor_sampler_is_always_safe()
+{
+    /* Fresh install / untouched cursor selector: no atlas exists yet.  The
+     * first click still activates the shared one-pass effect, so this state
+     * must bind the transparent fallback instead of leaving cursor_atlas null. */
+    require(arzoom::cursor_requires_transparent_fallback(
+                false, false, true, false),
+            "fresh-install cursor state did not require fallback texture");
+
+    require(arzoom::cursor_requires_transparent_fallback(
+                true, false, true, true),
+            "cursor without a valid screen position did not require fallback");
+    require(arzoom::cursor_requires_transparent_fallback(
+                true, true, false, true),
+            "cursor with unavailable shader ABI did not require fallback");
+    require(arzoom::cursor_requires_transparent_fallback(
+                true, true, true, false),
+            "cursor with missing atlas did not require fallback");
+
+    require(!arzoom::cursor_requires_transparent_fallback(
+                true, true, true, true),
+            "fully ready cursor incorrectly selected fallback texture");
+}
+
 } // namespace
 
 int main()
@@ -87,6 +112,7 @@ int main()
     managed_filter_identity_is_exact_and_rename_safe();
     toggle_policy_is_deterministic();
     fullscreen_mapping_contract_rejects_guesses();
+    first_click_cursor_sampler_is_always_safe();
     std::cout << "ArZoom Phase 4 native Scene Camera gates: PASS\n";
     return 0;
 }

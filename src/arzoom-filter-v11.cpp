@@ -1,4 +1,5 @@
 #include "arzoom-filter-v10.cpp"
+#include "arzoom-render-safety.hpp"
 #include "arzoom-scene-camera-core.hpp"
 
 #include <graphics/matrix4.h>
@@ -6,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 
 /*
@@ -30,6 +32,12 @@ struct Phase4SceneFilter {
     bool mapping_valid = false;
     bool mapping_warning_logged = false;
     bool nested_cursor_warning_logged = false;
+
+    /* The cursor sampler shares the same one-pass effect as click feedback.
+     * Keep a permanent transparent texture available so a fresh-install click
+     * never enters the effect with cursor_atlas unbound. */
+    gs_texture_t *cursor_fallback_texture = nullptr;
+    bool cursor_fallback_bound = false;
 };
 
 Phase352Filter *phase352_from_phase4(Phase4SceneFilter *filter)
@@ -39,10 +47,86 @@ Phase352Filter *phase352_from_phase4(Phase4SceneFilter *filter)
                : nullptr;
 }
 
+Phase35Filter *phase35_from_phase4(Phase4SceneFilter *filter)
+{
+    Phase352Filter *phase352 = phase352_from_phase4(filter);
+    return phase352 && phase352->phase351
+               ? phase352->phase351->phase35
+               : nullptr;
+}
+
 ArZoomFilter *phase1_from_phase4(Phase4SceneFilter *filter)
 {
     Phase352Filter *phase352 = phase352_from_phase4(filter);
     return phase352 ? phase1_from_352(phase352) : nullptr;
+}
+
+gs_texture_t *create_transparent_cursor_fallback()
+{
+    const uint8_t transparent_pixel[4] = {0, 0, 0, 0};
+    const uint8_t *texture_data[1] = {transparent_pixel};
+
+    obs_enter_graphics();
+    gs_texture_t *texture =
+        gs_texture_create(1, 1, GS_RGBA, 1, texture_data, 0);
+    obs_leave_graphics();
+    return texture;
+}
+
+void prime_cursor_sampler_safety(Phase4SceneFilter *filter)
+{
+    Phase35Filter *cursor = phase35_from_phase4(filter);
+    if (!cursor || !cursor->cursor_shader_ready ||
+        !filter->cursor_fallback_texture) {
+        return;
+    }
+
+    bool atlas_ready = false;
+    {
+        std::lock_guard<std::mutex> lock(cursor->asset_mutex);
+        atlas_ready = cursor->atlas_texture != nullptr &&
+                      cursor->frame_width > 0 && cursor->frame_height > 0 &&
+                      cursor->frame_count > 0;
+    }
+
+    const bool cursor_enabled =
+        cursor->cursor_enabled.load(std::memory_order_acquire);
+    const bool fallback_required =
+        arzoom::cursor_requires_transparent_fallback(
+            cursor_enabled,
+            cursor->cursor_position_valid,
+            cursor->cursor_shader_ready,
+            atlas_ready);
+
+    if (!fallback_required) {
+        /* phase35_render() will bind the real atlas in this frame.  Clear the
+         * latch so the next inactive/not-ready transition rebinds fallback. */
+        filter->cursor_fallback_bound = false;
+        return;
+    }
+
+    if (!filter->cursor_fallback_bound) {
+        vec2 center;
+        vec2 one;
+        vec2 zero;
+        vec2_set(&center, 0.5f, 0.5f);
+        vec2_set(&one, 1.0f, 1.0f);
+        vec2_set(&zero, 0.0f, 0.0f);
+
+        gs_effect_set_texture(cursor->cursor_atlas_param,
+                              filter->cursor_fallback_texture);
+        gs_effect_set_vec2(cursor->cursor_content_param, &center);
+        gs_effect_set_vec2(cursor->cursor_asset_size_param, &one);
+        gs_effect_set_vec2(cursor->cursor_hotspot_param, &zero);
+        gs_effect_set_vec2(cursor->cursor_atlas_grid_param, &one);
+        gs_effect_set_float(cursor->cursor_frame_param, 0.0f);
+        gs_effect_set_float(cursor->cursor_size_param, 8.0f);
+        filter->cursor_fallback_bound = true;
+    }
+
+    /* Always force hidden while fallback is selected.  This also neutralizes
+     * stale cursor_visible state when a real atlas was used in a prior frame. */
+    gs_effect_set_float(cursor->cursor_visible_param, 0.0f);
 }
 
 bool is_managed_scene_camera(ArZoomFilter *phase1, obs_source_t **scene_target)
@@ -316,8 +400,15 @@ obs_properties_t *phase4_properties(void *data)
 void phase4_render(void *data, gs_effect_t *effect)
 {
     auto *filter = static_cast<Phase4SceneFilter *>(data);
-    if (filter && filter->phase354)
-        phase354_render(filter->phase354, effect);
+    if (!filter || !filter->phase354)
+        return;
+
+    /* Do this before the inherited P2/P3.5 renderer can activate the shared
+     * effect for the first click.  The fallback is fully transparent, so there
+     * is no visual or sampling cost beyond a single 1x1 texture binding when
+     * the cursor state transitions to not-ready/inactive. */
+    prime_cursor_sampler_safety(filter);
+    phase354_render(filter->phase354, effect);
 }
 
 void phase4_deactivate(void *data)
@@ -332,7 +423,11 @@ void phase4_destroy(void *data)
     auto *filter = static_cast<Phase4SceneFilter *>(data);
     if (!filter)
         return;
+
+    gs_texture_t *fallback = filter->cursor_fallback_texture;
+    filter->cursor_fallback_texture = nullptr;
     phase354_destroy(filter->phase354);
+    destroy_cursor_texture(fallback);
     delete filter;
 }
 
@@ -349,6 +444,12 @@ void *phase4_create(obs_data_t *settings, obs_source_t *context)
         return nullptr;
     }
     filter->phase354 = phase354;
+    filter->cursor_fallback_texture = create_transparent_cursor_fallback();
+    if (!filter->cursor_fallback_texture) {
+        blog(LOG_WARNING,
+             "[ArZoom] Could not allocate transparent cursor safety texture; "
+             "first-pass sampler protection is unavailable.");
+    }
 
     ArZoomFilter *phase1 = phase1_from_phase4(filter);
     obs_source_t *scene_source = nullptr;
