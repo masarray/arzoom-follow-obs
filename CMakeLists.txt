@@ -35,7 +35,10 @@ target_sources(
   PRIVATE
     src/plugin-main.cpp
     src/arzoom-filter-v10.cpp
-    src/arzoom-camera-source.cpp
+    # Phase 4 camera implementation is included by plugin-main.cpp so source
+    # definition initialization and obs_module_load registration are guaranteed
+    # to live in one translation unit. Keep the file listed as HEADER_FILE_ONLY
+    # below for IDE/source-package visibility without compiling it twice.
     src/arzoom-camera-source-core.hpp
     src/arzoom-camera.hpp
     src/arzoom-click-visual.hpp
@@ -44,6 +47,9 @@ target_sources(
     src/arzoom-cursor-presets.hpp
     src/arzoom-math.hpp
 )
+
+set_source_files_properties(src/arzoom-camera-source.cpp PROPERTIES HEADER_FILE_ONLY TRUE)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/arzoom-camera-source.cpp)
 
 target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17)
 
