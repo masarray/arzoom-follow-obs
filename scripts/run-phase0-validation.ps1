@@ -54,7 +54,8 @@ try {
         $benchmarks = @(
             @{ Name = 'arzoom-motion-benchmark'; Heading = '=== Phase 0 v0.1.4 baseline camera ===' },
             @{ Name = 'arzoom-smart-camera-benchmark'; Heading = '=== Phase 1 Smart Zone camera ===' },
-            @{ Name = 'arzoom-click-benchmark'; Heading = '=== Phase 2 fixed-state click visualization ===' }
+            @{ Name = 'arzoom-click-benchmark'; Heading = '=== Phase 2 fixed-state click visualization ===' },
+            @{ Name = 'arzoom-presenter-benchmark'; Heading = '=== Phase 3 presenter controls ===' }
         )
 
         foreach ($benchmark in $benchmarks) {
@@ -75,7 +76,7 @@ try {
         Write-Host "Benchmark report: $BenchmarkOutput"
     }
 
-    Write-Host 'ArZoom deterministic motion + click validation: PASS'
+    Write-Host 'ArZoom deterministic Phase 0/1/2/3 validation: PASS'
 }
 finally {
     Pop-Location

@@ -33,6 +33,10 @@ add_executable(arzoom-phase2-click-test arzoom-phase2-click-test.cpp)
 arzoom_configure_test_target(arzoom-phase2-click-test)
 add_test(NAME arzoom-phase2-click-visual COMMAND arzoom-phase2-click-test)
 
+add_executable(arzoom-phase3-presenter-test arzoom-phase3-presenter-test.cpp)
+arzoom_configure_test_target(arzoom-phase3-presenter-test)
+add_test(NAME arzoom-phase3-presenter-controls COMMAND arzoom-phase3-presenter-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 
@@ -41,3 +45,6 @@ arzoom_configure_test_target(arzoom-smart-camera-benchmark)
 
 add_executable(arzoom-click-benchmark arzoom-click-benchmark.cpp)
 arzoom_configure_test_target(arzoom-click-benchmark)
+
+add_executable(arzoom-presenter-benchmark arzoom-presenter-benchmark.cpp)
+arzoom_configure_test_target(arzoom-presenter-benchmark)
