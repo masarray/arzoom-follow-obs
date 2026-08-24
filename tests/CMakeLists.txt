@@ -33,6 +33,10 @@ add_executable(arzoom-phase2-click-test arzoom-phase2-click-test.cpp)
 arzoom_configure_test_target(arzoom-phase2-click-test)
 add_test(NAME arzoom-phase2-click-visual COMMAND arzoom-phase2-click-test)
 
+add_executable(arzoom-phase3-presenter-test arzoom-phase3-presenter-test.cpp)
+arzoom_configure_test_target(arzoom-phase3-presenter-test)
+add_test(NAME arzoom-phase3-presenter-controls COMMAND arzoom-phase3-presenter-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 
