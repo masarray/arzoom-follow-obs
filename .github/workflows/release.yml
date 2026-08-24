@@ -51,7 +51,7 @@ jobs:
           @"
           ## ArZoom for OBS v$env:VERSION
 
-          **Stable release** of the Smart Zone Gimbal Camera + Premium GPU Click Visualization for OBS Display Capture.
+          **Stable release** of the Smart Zone Gimbal Camera + Premium GPU Click Visualization + Presenter Controls for OBS Display Capture.
 
           ### Recommended download
 
@@ -63,26 +63,34 @@ jobs:
 
           A manual ZIP and SHA-256 checksums are also provided.
 
-          ### Highlights
+          ### Presenter Controls
+
+          - **Toggle Zoom** — existing profile-compatible latched zoom control;
+          - **Hold Zoom** — momentary zoom that composes correctly with Toggle Zoom;
+          - **Freeze Camera** — locks the exact current framing while the pointer can move elsewhere;
+          - **Toggle Smart Follow** — keeps zoom active while independently suspending/re-enabling pointer-driven framing;
+          - **Zoom In / Zoom Out** — live 0.25x presenter steps within the supported 1.10x–4.00x range;
+          - **Reset / Full Frame** — one safe recovery command that clears temporary presenter states and returns through the existing minimum-jerk 1x path;
+          - **Overview Peek** — hold for a smooth temporary 1x overview, release to return to the exact previous zoom + focus transform.
+
+          ### Camera + click highlights
 
           - **Smart Zone → Follow → Coast → SmoothIdle** follows real presentation-area changes instead of ordinary pointer jitter;
           - straight, focus-preserving quintic minimum-jerk zoom-in and wobble-free zoom-out;
           - local circles, pointing, and explanation gestures stay steady inside the current presentation area;
-          - **Premium GPU Click Visualization** uses two clean analytic vector rings with restrained polish and clean dissolve;
-          - left click: **Azure + Aqua**;
-          - right click: **Violet + Orchid**;
-          - middle click: compact **Amber + Gold**;
+          - **Premium GPU Click Visualization** uses clean analytic dual-vector rings with restrained polish and clean dissolve;
+          - left click: **Azure + Aqua**; right click: **Violet + Orchid**; middle click: compact **Amber + Gold**;
           - luminance-aware compositing keeps click feedback readable on white/Explorer and dark content;
           - click positions remain anchored to content while Smart Camera zoom/pan moves;
           - click feedback cannot wake, retarget, or accelerate Smart Zone camera motion;
-          - up to four overlapping click events use fixed allocation-free CPU state;
           - one GPU presentation pass — no PNG generation, particles, temporary textures, extra OBS source, frame readback, or separate bloom pass;
           - Cinematic, Balanced, and Responsive camera characters;
-          - persistent global OBS hotkey;
+          - presenter hotkeys persist per OBS profile;
+          - deterministic showing-filter target semantics with safe release behavior across scene changes;
           - fool-proof Standard OBS + OBS Portable/custom installer;
           - Windows 10/11 x64 and OBS Display Capture.
 
-          Phase 2 is complete in this release. The accepted Smart Zone camera and premium dual-vector click behavior are now frozen baselines for the next Presenter Controls phase.
+          Phase 3 is complete in this release. The accepted v0.4.0 Smart Camera, dual-vector click visualization, and presenter-control behavior are now frozen baselines for the next Presentation Cursor phase.
           "@ | Set-Content -LiteralPath ".github-release-notes.md" -Encoding utf8
 
       - name: Check whether release already exists
