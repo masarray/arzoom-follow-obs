@@ -9,6 +9,49 @@
 
 namespace {
 
+constexpr const char *kArZoomEnabledSetting = "enabled";
+
+bool managed_marker(obs_source_t *filter)
+{
+    if (!filter)
+        return false;
+    obs_data_t *settings = obs_source_get_settings(filter);
+    if (!settings)
+        return false;
+    const bool managed = obs_data_get_bool(
+        settings, arzoom::kSceneCameraManagedSetting.data());
+    obs_data_release(settings);
+    return managed;
+}
+
+bool arzoom_filter_effectively_enabled(obs_source_t *filter)
+{
+    if (!filter || !obs_source_enabled(filter))
+        return false;
+    obs_data_t *settings = obs_source_get_settings(filter);
+    if (!settings)
+        return true;
+    const bool enabled = obs_data_get_bool(settings, kArZoomEnabledSetting);
+    obs_data_release(settings);
+    return enabled;
+}
+
+void sync_managed_filter_enabled(obs_source_t *filter, bool enabled)
+{
+    if (!filter)
+        return;
+
+    obs_data_t *settings = obs_source_get_settings(filter);
+    if (settings) {
+        obs_data_set_bool(settings,
+                          arzoom::kSceneCameraManagedSetting.data(), true);
+        obs_data_set_bool(settings, kArZoomEnabledSetting, enabled);
+        obs_source_update(filter, settings);
+        obs_data_release(settings);
+    }
+    obs_source_set_enabled(filter, enabled);
+}
+
 struct FilterFindContext {
     obs_source_t *found = nullptr;
 };
@@ -24,8 +67,10 @@ void find_managed_filter_cb(obs_source_t *, obs_source_t *filter, void *param)
     if (!id || !name)
         return;
 
-    if (arzoom::scene_camera_filter_matches(id, name))
+    if (arzoom::scene_camera_filter_matches(
+            id, name, managed_marker(filter))) {
         ctx->found = obs_source_get_ref(filter);
+    }
 }
 
 obs_source_t *find_managed_scene_camera(obs_source_t *scene_source)
@@ -50,7 +95,7 @@ void count_arzoom_filter_cb(obs_source_t *, obs_source_t *filter, void *param)
 
     const char *id = obs_source_get_id(filter);
     if (id && std::strcmp(id, "arzoom_filter") == 0 &&
-        obs_source_enabled(filter)) {
+        arzoom_filter_effectively_enabled(filter)) {
         ++ctx->count;
     }
 }
@@ -107,13 +152,30 @@ size_t enabled_nested_arzoom_filter_count(obs_source_t *scene_source)
     return count;
 }
 
+void warn_double_zoom_if_needed(obs_source_t *scene_source)
+{
+    const size_t nested = enabled_nested_arzoom_filter_count(scene_source);
+    if (nested == 0)
+        return;
+    blog(LOG_WARNING,
+         "[ArZoom] Scene Camera detected %zu enabled nested/per-source ArZoom filter(s). "
+         "Disable those filters in this scene to avoid applying zoom twice.",
+         nested);
+}
+
 obs_source_t *create_managed_scene_camera(obs_source_t *scene_source)
 {
     if (!scene_source)
         return nullptr;
 
+    obs_data_t *settings = obs_data_create();
+    obs_data_set_bool(settings,
+                      arzoom::kSceneCameraManagedSetting.data(), true);
+    obs_data_set_bool(settings, kArZoomEnabledSetting, true);
     obs_source_t *filter = obs_source_create(
-        "arzoom_filter", "ArZoom Camera", nullptr, nullptr);
+        "arzoom_filter", "ArZoom Camera", settings, nullptr);
+    obs_data_release(settings);
+
     if (!filter) {
         blog(LOG_ERROR,
              "[ArZoom] Scene Camera could not create the arzoom_filter instance");
@@ -121,22 +183,14 @@ obs_source_t *create_managed_scene_camera(obs_source_t *scene_source)
     }
 
     obs_source_filter_add(scene_source, filter);
-    obs_source_set_enabled(filter, true);
+    sync_managed_filter_enabled(filter, true);
     obs_frontend_save();
 
     const char *scene_name = obs_source_get_name(scene_source);
     blog(LOG_INFO,
          "[ArZoom] Scene Camera attached to scene '%s' using the native OBS filter chain",
          scene_name ? scene_name : "<unnamed>");
-
-    const size_t nested = enabled_nested_arzoom_filter_count(scene_source);
-    if (nested > 0) {
-        blog(LOG_WARNING,
-             "[ArZoom] Scene Camera detected %zu enabled nested ArZoom filter(s). "
-             "Disable per-source ArZoom filters in this scene to avoid applying zoom twice.",
-             nested);
-    }
-
+    warn_double_zoom_if_needed(scene_source);
     return filter;
 }
 
@@ -160,7 +214,8 @@ void toggle_scene_camera_cb(void *)
 
     obs_source_t *filter = find_managed_scene_camera(scene_source);
     const bool exists = filter != nullptr;
-    const bool enabled = filter ? obs_source_enabled(filter) : false;
+    const bool enabled = filter ? arzoom_filter_effectively_enabled(filter)
+                                : false;
     const auto action = arzoom::scene_camera_toggle_action(exists, enabled);
 
     if (action == arzoom::SceneCameraToggleAction::CreateEnabled) {
@@ -168,23 +223,14 @@ void toggle_scene_camera_cb(void *)
     } else if (filter) {
         const bool next_enabled =
             action == arzoom::SceneCameraToggleAction::EnableExisting;
-        obs_source_set_enabled(filter, next_enabled);
+        sync_managed_filter_enabled(filter, next_enabled);
         obs_frontend_save();
         blog(LOG_INFO,
              "[ArZoom] Scene Camera %s for scene '%s'",
              next_enabled ? "enabled" : "disabled",
              obs_source_get_name(scene_source));
-
-        if (next_enabled) {
-            const size_t nested =
-                enabled_nested_arzoom_filter_count(scene_source);
-            if (nested > 0) {
-                blog(LOG_WARNING,
-                     "[ArZoom] Scene Camera detected %zu enabled nested ArZoom filter(s). "
-                     "Disable per-source ArZoom filters in this scene to avoid applying zoom twice.",
-                     nested);
-            }
-        }
+        if (next_enabled)
+            warn_double_zoom_if_needed(scene_source);
     }
 
     if (filter)
@@ -203,9 +249,10 @@ void configure_scene_camera_cb(void *)
 
     obs_source_t *filter = ensure_managed_scene_camera(scene_source);
     if (filter) {
-        obs_source_set_enabled(filter, true);
+        sync_managed_filter_enabled(filter, true);
         obs_source_release(filter);
         obs_frontend_save();
+        warn_double_zoom_if_needed(scene_source);
         obs_frontend_open_source_filters(scene_source);
     }
 
