@@ -45,3 +45,6 @@ arzoom_configure_test_target(arzoom-smart-camera-benchmark)
 
 add_executable(arzoom-click-benchmark arzoom-click-benchmark.cpp)
 arzoom_configure_test_target(arzoom-click-benchmark)
+
+add_executable(arzoom-presenter-benchmark arzoom-presenter-benchmark.cpp)
+arzoom_configure_test_target(arzoom-presenter-benchmark)
