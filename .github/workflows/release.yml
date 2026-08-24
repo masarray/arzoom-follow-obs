@@ -43,6 +43,48 @@ jobs:
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
+      - name: Prepare stable release notes
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          @"
+          ## ArZoom for OBS v$env:VERSION
+
+          **Stable release** of the Smart Zone Gimbal Camera + Premium GPU Click Visualization for OBS Display Capture.
+
+          ### Recommended download
+
+          Download **`ArZoom-OBS-Setup-windows-x64.exe`**. Close OBS completely and run the installer.
+
+          The same installer supports:
+          - **Standard OBS Studio** — auto-detected when possible.
+          - **OBS Portable / custom OBS folder** — browse to the OBS root that contains `bin\\64bit\\obs64.exe`.
+
+          A manual ZIP and SHA-256 checksums are also provided.
+
+          ### Highlights
+
+          - **Smart Zone → Follow → Coast → SmoothIdle** follows real presentation-area changes instead of ordinary pointer jitter;
+          - straight, focus-preserving quintic minimum-jerk zoom-in and wobble-free zoom-out;
+          - local circles, pointing, and explanation gestures stay steady inside the current presentation area;
+          - **Premium GPU Click Visualization** uses two clean analytic vector rings with restrained polish and clean dissolve;
+          - left click: **Azure + Aqua**;
+          - right click: **Violet + Orchid**;
+          - middle click: compact **Amber + Gold**;
+          - luminance-aware compositing keeps click feedback readable on white/Explorer and dark content;
+          - click positions remain anchored to content while Smart Camera zoom/pan moves;
+          - click feedback cannot wake, retarget, or accelerate Smart Zone camera motion;
+          - up to four overlapping click events use fixed allocation-free CPU state;
+          - one GPU presentation pass — no PNG generation, particles, temporary textures, extra OBS source, frame readback, or separate bloom pass;
+          - Cinematic, Balanced, and Responsive camera characters;
+          - persistent global OBS hotkey;
+          - fool-proof Standard OBS + OBS Portable/custom installer;
+          - Windows 10/11 x64 and OBS Display Capture.
+
+          Phase 2 is complete in this release. The accepted Smart Zone camera and premium dual-vector click behavior are now frozen baselines for the next Presenter Controls phase.
+          "@ | Set-Content -LiteralPath ".github-release-notes.md" -Encoding utf8
+
       - name: Check whether release already exists
         id: existing
         shell: pwsh
@@ -53,11 +95,28 @@ jobs:
           gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-            Write-Host "Release $env:RELEASE_TAG already exists; build and publishing will be skipped."
+            Write-Host "Release $env:RELEASE_TAG already exists; binary rebuild will be skipped and metadata will be refreshed."
           } else {
             "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           }
           exit 0
+
+      - name: Refresh existing stable release metadata
+        if: steps.existing.outputs.exists == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release edit $env:RELEASE_TAG `
+            --repo $env:GITHUB_REPOSITORY `
+            --title "ArZoom v$env:VERSION" `
+            --notes-file ".github-release-notes.md" `
+            --latest
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to refresh stable release metadata for $env:RELEASE_TAG"
+          }
 
       - name: Deterministic motion validation
         if: steps.existing.outputs.exists != 'true'
@@ -122,39 +181,7 @@ jobs:
           name: ArZoom v${{ steps.version.outputs.version }}
           make_latest: true
           generate_release_notes: true
-          body: |
-            ## ArZoom for OBS v${{ steps.version.outputs.version }}
-
-            Public-trial release of the **Smart Zone Gimbal Camera + GPU Click Visualization** for OBS Display Capture.
-
-            ### Recommended download
-
-            Download **`ArZoom-OBS-Setup-windows-x64.exe`**. Close OBS completely and run the installer.
-
-            The same installer supports:
-            - **Standard OBS Studio** — auto-detected when possible.
-            - **OBS Portable / custom OBS folder** — browse to the OBS root that contains `bin\\64bit\\obs64.exe`.
-
-            A manual ZIP remains available for users who prefer direct extraction.
-
-            ### Highlights
-
-            - **GPU Click Visualization** in the existing presentation pass — no PNG generation, temporary files, particles, or extra OBS source;
-            - left click uses a compact liquid cyan pulse;
-            - right click uses a visually distinct dual violet pulse;
-            - middle click uses a compact gold pulse;
-            - click positions are stored in content coordinates and remain attached while Smart Camera zoom/pan moves;
-            - click events do not wake, retarget, or accelerate Smart Zone camera motion by default;
-            - up to four overlapping click events use a fixed allocation-free CPU state;
-            - focus-preserving straight minimum-jerk zoom-in and wobble-free zoom-out;
-            - **Smart Zone → Follow → Coast → SmoothIdle** presentation-area camera behavior;
-            - local explanation gestures and pointer jitter remain steady;
-            - Cinematic, Balanced, and Responsive camera characters;
-            - persistent global OBS hotkey;
-            - fool-proof Standard OBS + OBS Portable/custom installer;
-            - Windows 10/11 x64 and OBS Display Capture.
-
-            This is a public trial. Validate the click visuals and camera behavior on your own OBS scene before an important production livestream.
+          body_path: .github-release-notes.md
           files: |
             release/ArZoom-OBS-Setup-windows-x64.exe
             release/ArZoom-OBS-Manual-v${{ steps.version.outputs.version }}-windows-x64.zip
