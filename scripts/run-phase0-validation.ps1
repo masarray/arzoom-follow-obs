@@ -38,6 +38,14 @@ function Resolve-BenchmarkExecutable {
 
 Push-Location $RepoRoot
 try {
+    $cameraSource = Join-Path $RepoRoot 'src/arzoom-camera-source.cpp'
+    if (Test-Path -LiteralPath $cameraSource -PathType Leaf) {
+        $forbiddenMutation = Select-String -LiteralPath $cameraSource -Pattern 'obs_sceneitem_set_' -SimpleMatch
+        if ($forbiddenMutation) {
+            throw 'Phase 4 scene-safety contract violated: ArZoom Camera must not mutate scene-item transforms.'
+        }
+    }
+
     if (Test-Path -LiteralPath $BuildPath) {
         Remove-Item -LiteralPath $BuildPath -Recurse -Force
     }
@@ -76,7 +84,7 @@ try {
         Write-Host "Benchmark report: $BenchmarkOutput"
     }
 
-    Write-Host 'ArZoom deterministic Phase 0/1/2/3 validation: PASS'
+    Write-Host 'ArZoom deterministic Phase 0/1/2/3/3.5/4 validation: PASS'
 }
 finally {
     Pop-Location
