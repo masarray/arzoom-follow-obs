@@ -51,7 +51,7 @@ jobs:
           @"
           ## ArZoom for OBS v$env:VERSION
 
-          **Stable release** of the Smart Zone Gimbal Camera + Premium GPU Click Visualization + Presenter Controls for OBS Display Capture.
+          **Stable release** of the Smart Zone Gimbal Camera + Premium GPU Click Visualization + Presenter Controls + tactile Presentation Cursor for OBS Display Capture.
 
           ### Recommended download
 
@@ -73,6 +73,18 @@ jobs:
           - **Reset / Full Frame** — one safe recovery command that clears temporary presenter states and returns through the existing minimum-jerk 1x path;
           - **Overview Peek** — hold for a smooth temporary 1x overview, release to return to the exact previous zoom + focus transform.
 
+          ### Presentation Cursor
+
+          - preset-first GUI: choose a built-in style and it works immediately;
+          - seven original ArZoom cursor styles: **Prism, Outline, Azure, Orchid, Parakeet, Classic Hand, Sticker Hand**;
+          - built-in clicks use a short tactile micro-interaction: fast press → elastic release → tiny rebound → exact settle;
+          - arrow-tip and fingertip hotspots remain aligned through camera zoom/pan;
+          - cursor magnifies with the camera at 1x/2x/3x/4x;
+          - built-ins are rendered to a transparent GPU atlas only when the preset/settings change — no image decoding on click or per video frame;
+          - **Custom…** remains available as an Advanced GIF/WebP/PNG path;
+          - ArZoom warns when native Display Capture cursor capture is still enabled to avoid double cursors;
+          - third-party prototype artwork is not redistributed; shipped built-ins are original ArZoom geometry.
+
           ### Camera + click highlights
 
           - **Smart Zone → Follow → Coast → SmoothIdle** follows real presentation-area changes instead of ordinary pointer jitter;
@@ -83,14 +95,14 @@ jobs:
           - luminance-aware compositing keeps click feedback readable on white/Explorer and dark content;
           - click positions remain anchored to content while Smart Camera zoom/pan moves;
           - click feedback cannot wake, retarget, or accelerate Smart Zone camera motion;
-          - one GPU presentation pass — no PNG generation, particles, temporary textures, extra OBS source, frame readback, or separate bloom pass;
+          - one GPU presentation pass for active presentation effects;
           - Cinematic, Balanced, and Responsive camera characters;
           - presenter hotkeys persist per OBS profile;
           - deterministic showing-filter target semantics with safe release behavior across scene changes;
           - fool-proof Standard OBS + OBS Portable/custom installer;
           - Windows 10/11 x64 and OBS Display Capture.
 
-          Phase 3 is complete in this release. The accepted v0.4.0 Smart Camera, dual-vector click visualization, and presenter-control behavior are now frozen baselines for the next Presentation Cursor phase.
+          Phase 3.5 is complete in this release. v0.4.1 is the frozen baseline for **Phase 4 — ArZoom Camera**, the upcoming scene-wide GPU presentation camera mode.
           "@ | Set-Content -LiteralPath ".github-release-notes.md" -Encoding utf8
 
       - name: Check whether release already exists
