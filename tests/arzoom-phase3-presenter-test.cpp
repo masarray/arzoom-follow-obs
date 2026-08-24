@@ -25,6 +25,23 @@ bool near(arzoom::Vec2 a, arzoom::Vec2 b, float epsilon = 1.0e-5f)
     return near(a.x, b.x, epsilon) && near(a.y, b.y, epsilon);
 }
 
+arzoom::CameraInput camera_input(float dt, arzoom::Vec2 cursor,
+                                 bool cursor_valid, bool zoom_requested,
+                                 float zoom)
+{
+    arzoom::CameraInput input;
+    input.dt = dt;
+    input.cursor = cursor;
+    input.cursor_valid = cursor_valid;
+    input.zoom_requested = zoom_requested;
+    input.configured_zoom = zoom;
+    input.follow_policy = arzoom::CameraFollowPolicy::Smart;
+    input.motion_style = arzoom::CameraMotionStyle::Balanced;
+    input.safe_zone = 0.28f;
+    input.anchor = {0.5f, 0.45f};
+    return input;
+}
+
 void hold_zoom_composes_with_latched_zoom()
 {
     require(!arzoom::presenter_zoom_requested(false, false),
@@ -47,6 +64,100 @@ void zoom_steps_are_bounded_and_predictable()
             "Zoom In exceeded the supported 4x ceiling");
     require(near(arzoom::presenter_zoom_step(1.15f, -0.25f), 1.10f),
             "Zoom Out exceeded the supported 1.10x floor");
+}
+
+void freeze_contract_is_exact_and_reset_still_wins()
+{
+    using namespace arzoom;
+    SmartCamera camera;
+    constexpr float dt = 1.0f / 60.0f;
+    const Vec2 focus{0.78f, 0.34f};
+
+    for (int frame = 0; frame < 90; ++frame)
+        camera.step(camera_input(dt, focus, true, true, 2.6f));
+
+    const CameraOutput frozen = camera.output();
+    require(frozen.zoom > 2.4f,
+            "freeze gate did not first reach a useful zoomed shot");
+
+    /* Freeze is deliberately implemented by pausing SmartCamera::step(). */
+    for (int frame = 0; frame < 180; ++frame) {
+        const CameraOutput output = camera.output();
+        require(near(output.center, frozen.center, 1.0e-7f) &&
+                    near(output.zoom, frozen.zoom, 1.0e-7f),
+                "paused Freeze contract changed camera framing");
+    }
+
+    CameraOutput output;
+    for (int frame = 0; frame < 90; ++frame)
+        output = camera.step(camera_input(
+            dt, {0.15f, 0.82f}, true, false, 2.6f));
+
+    require(near(output.center, {0.5f, 0.5f}, 2.0e-6f) &&
+                near(output.zoom, 1.0f, 2.0e-6f),
+            "Reset/toggle-off did not override Freeze and return full frame");
+}
+
+void follow_off_holds_center_while_live_zoom_remains_available()
+{
+    using namespace arzoom;
+    SmartCamera camera;
+    constexpr float dt = 1.0f / 60.0f;
+    const Vec2 old_cursor{0.76f, 0.40f};
+
+    for (int frame = 0; frame < 100; ++frame)
+        camera.step(camera_input(dt, old_cursor, true, true, 2.4f));
+
+    const CameraOutput before = camera.output();
+    require(before.zoom > 2.25f,
+            "follow-off gate did not reach initial zoom");
+
+    CameraOutput output = before;
+    for (int frame = 0; frame < 90; ++frame)
+        output = camera.step(camera_input(
+            dt, {0.08f, 0.84f}, false, true, 3.2f));
+
+    require(near(output.center, before.center, 2.0e-6f),
+            "Smart Follow OFF allowed pointer relocation to move center");
+    require(output.zoom > before.zoom + 0.30f,
+            "Smart Follow OFF blocked live Zoom +/- smoothing");
+}
+
+void follow_resume_uses_smart_zone_instead_of_first_frame_snap()
+{
+    using namespace arzoom;
+    SmartCamera camera;
+    constexpr float dt = 1.0f / 60.0f;
+    const Vec2 old_cursor{0.72f, 0.43f};
+    const Vec2 new_cursor{0.14f, 0.76f};
+
+    for (int frame = 0; frame < 100; ++frame)
+        camera.step(camera_input(dt, old_cursor, true, true, 2.5f));
+
+    for (int frame = 0; frame < 45; ++frame)
+        camera.step(camera_input(dt, new_cursor, false, true, 2.5f));
+
+    const CameraOutput disabled = camera.output();
+
+    /* Runtime P3 seeds the old presentation-area anchor for exactly one video
+     * tick before exposing the new cursor. */
+    const CameraOutput seeded = camera.step(
+        camera_input(dt, old_cursor, true, true, 2.5f));
+    require(near(seeded.center, disabled.center, 1.0e-6f),
+            "Follow ON seed moved the camera on its first frame");
+
+    CameraOutput first_actual = camera.step(
+        camera_input(dt, new_cursor, true, true, 2.5f));
+    const float first_step = length(sub(first_actual.center, seeded.center));
+    require(first_step < 0.004f,
+            "Follow ON snapped toward the remote cursor on reacquisition");
+
+    CameraOutput final = first_actual;
+    for (int frame = 0; frame < 180; ++frame)
+        final = camera.step(camera_input(dt, new_cursor, true, true, 2.5f));
+
+    require(length(sub(final.center, disabled.center)) > 0.08f,
+            "Follow ON never resumed a real remote relocation");
 }
 
 arzoom::OverviewOutput run_until(
@@ -201,6 +312,9 @@ int main()
 {
     hold_zoom_composes_with_latched_zoom();
     zoom_steps_are_bounded_and_predictable();
+    freeze_contract_is_exact_and_reset_still_wins();
+    follow_off_holds_center_while_live_zoom_remains_available();
+    follow_resume_uses_smart_zone_instead_of_first_frame_snap();
     overview_peek_returns_exact_saved_transform();
     overview_trajectory_is_straight_in_screen_space();
     overview_release_ignores_cursor_motion_by_construction();
