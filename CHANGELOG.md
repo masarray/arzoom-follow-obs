@@ -1,16 +1,18 @@
 # Changelog
 
-## v0.3.1 — Water-dimple click candidate
+## v0.3.1 — Premium dual-vector click candidate
 
-- Replaced the noisy/deformed-ring concept with a physically suggestive **press → dimple → rebound ripple → settle** interaction.
-- Click feedback now distorts the captured pixels themselves through a small radial GPU displacement field before texture sampling, so the screen appears to flex/refract instead of merely drawing a ring on top.
-- Added a short contact depression with directional highlight/shadow to create visible depth at the click point.
-- Added a clean signed refractive rebound wave; left click uses one primary water ripple, right click adds a restrained secondary echo, and middle click stays compact.
-- Removed random-looking angular wobble and thick neon-ring emphasis. Color is now only a subtle visibility cue while refraction/depth is the primary effect.
-- Preserved luminance-aware contrast so the effect remains readable on Explorer and other bright/white applications without clipping to white.
-- Retuned fixed click lifetimes to 0.46 s left / 0.54 s right / 0.38 s middle so the contact and rebound read as one satisfying gesture without lingering.
-- Preserved the one-pass GPU architecture, one source texture sample, fixed four-slot CPU click state, content-space anchoring, and frozen Smart Zone camera contract.
-- No global mouse hook is added in this patch. Explorer input capture remains isolated from the confirmed visual/compositing issue; the input layer will only be replaced if real missed click events remain after visual visibility is fixed.
+- Replaced the rejected water-dimple/blob experiment with a clean **dual analytic vector-ring** interaction designed for professional screen recording and teaching.
+- Left click now uses two thin staggered circles in a modern Azure + Aqua palette; right click uses the same visual language in Violet + Orchid so intent is distinguishable without labels or symbols.
+- Both rings expand with quintic minimum-jerk timing, giving soft launch and soft finish instead of linear pop/stop motion.
+- The second ring starts roughly 45–60 ms after the first, creating a deliberate premium cadence rather than a noisy particle burst.
+- Removed all click-time texture distortion, refraction, angular wobble, blobs, liquid noise, and thick neon-ring emphasis. The captured frame stays optically clean.
+- Rings are generated analytically in the GPU shader from distance fields, so they remain perfectly circular, symmetric, sharp, resolution-independent, and require no PNG/vector asset files.
+- Added luminance-aware compositing with a subtle chromatic under-stroke on bright/white surfaces, keeping clicks visible in Explorer and document UIs without clipping cyan/violet to white.
+- Glow is intentionally restrained and primarily visible on dark content; the exact vector line remains the visual hero.
+- Retuned fixed click lifetimes to 0.44 s left / 0.50 s right / 0.32 s middle so the effect is noticeable but disappears quickly during rapid tutorials.
+- Preserved the one-pass GPU architecture, fixed four-slot allocation-free CPU state, content-space anchoring, and frozen Smart Zone camera contract.
+- No global mouse hook is added in this patch. Explorer input capture remains isolated from the visual/compositing issue; the input layer will only be replaced if real missed click events remain after visibility is confirmed.
 
 ## v0.3.0 — GPU Click Visualization public trial
 
