@@ -60,6 +60,9 @@ bool presenter_frontend_event_registered = false;
 struct Phase3Filter {
     Phase2Filter *phase2 = nullptr;
 
+    /* Hotkey thread -> video tick communication is deliberately atomic and
+     * scalar only. Camera geometry / monitor descriptors are never read from a
+     * hotkey callback. */
     std::atomic<bool> hold_zoom{false};
     std::atomic<bool> freeze_camera{false};
     std::atomic<bool> follow_enabled{true};
@@ -67,6 +70,8 @@ struct Phase3Filter {
 
     arzoom::OverviewPeekController overview;
 
+    /* Video-tick-owned Smart Follow resume state. */
+    bool last_follow_enabled = true;
     bool follow_resume_seed_pending = false;
     bool follow_resume_anchor_valid = false;
     arzoom::Vec2 follow_resume_anchor{0.5f, 0.5f};
@@ -200,27 +205,12 @@ void toggle_follow_hotkey(void *, obs_hotkey_id, obs_hotkey_t *, bool pressed)
     if (!pressed_once(PresenterHotkey::ToggleFollow, pressed))
         return;
 
+    /* Do not inspect camera or monitor state here. The video tick detects this
+     * atomic transition and owns all resume geometry. */
     for_presenter_targets([](Phase3Filter *filter) {
         const bool current =
             filter->follow_enabled.load(std::memory_order_acquire);
-        const bool next = !current;
-
-        if (!next) {
-            ArZoomFilter *phase1 = phase1_filter(filter);
-            arzoom::Vec2 cursor;
-            filter->follow_resume_anchor_valid =
-                normalized_cursor_for_filter(phase1, cursor);
-            if (filter->follow_resume_anchor_valid)
-                filter->follow_resume_anchor = cursor;
-            filter->follow_resume_seed_pending = false;
-        } else {
-            ArZoomFilter *phase1 = phase1_filter(filter);
-            filter->follow_resume_seed_pending =
-                phase1 && phase1->current_zoom > 1.001f &&
-                filter->follow_resume_anchor_valid;
-        }
-
-        filter->follow_enabled.store(next, std::memory_order_release);
+        filter->follow_enabled.store(!current, std::memory_order_release);
     });
 }
 
@@ -304,7 +294,6 @@ void reset_hotkey(void *, obs_hotkey_id, obs_hotkey_t *, bool pressed)
         filter->hold_zoom.store(false, std::memory_order_release);
         filter->freeze_camera.store(false, std::memory_order_release);
         filter->overview_requested.store(false, std::memory_order_release);
-        filter->follow_resume_seed_pending = false;
     });
 }
 
@@ -431,6 +420,26 @@ void presenter_frontend_event(enum obs_frontend_event event, void *)
     }
 }
 
+void update_follow_transition(Phase3Filter *filter, bool follow_now)
+{
+    if (filter->last_follow_enabled == follow_now)
+        return;
+
+    ArZoomFilter *phase1 = phase1_filter(filter);
+    if (!follow_now) {
+        arzoom::Vec2 cursor;
+        filter->follow_resume_anchor_valid =
+            normalized_cursor_for_filter(phase1, cursor);
+        if (filter->follow_resume_anchor_valid)
+            filter->follow_resume_anchor = cursor;
+        filter->follow_resume_seed_pending = false;
+    } else {
+        filter->follow_resume_seed_pending =
+            filter->follow_resume_anchor_valid;
+    }
+    filter->last_follow_enabled = follow_now;
+}
+
 arzoom::CameraInput make_phase3_camera_input(Phase3Filter *filter, float dt,
                                              bool wants_zoom)
 {
@@ -540,6 +549,10 @@ void phase3_tick(void *data, float seconds)
     const bool zoom_active = wants_zoom || phase1->current_zoom > 1.001f;
     refresh_monitor_if_needed(phase1, dt, zoom_active);
 
+    const bool follow_now =
+        filter->follow_enabled.load(std::memory_order_acquire);
+    update_follow_transition(filter, follow_now);
+
     step_overview(filter, dt, wants_zoom);
     if (filter->overview.active()) {
         capture_clicks(filter->phase2, dt);
@@ -620,6 +633,9 @@ void phase3_deactivate(void *data)
     filter->overview_requested.store(false, std::memory_order_release);
     filter->overview.reset();
     filter->follow_resume_seed_pending = false;
+    filter->follow_resume_anchor_valid = false;
+    filter->last_follow_enabled =
+        filter->follow_enabled.load(std::memory_order_acquire);
 }
 
 void phase3_render(void *data, gs_effect_t *effect)
@@ -653,6 +669,8 @@ void *phase3_create(obs_data_t *settings, obs_source_t *context)
         return nullptr;
     }
     filter->phase2 = phase2;
+    filter->last_follow_enabled =
+        filter->follow_enabled.load(std::memory_order_acquire);
     register_presenter_instance(filter);
     blog(LOG_INFO, "[ArZoom] Phase 3 presenter controls ready");
     return filter;
