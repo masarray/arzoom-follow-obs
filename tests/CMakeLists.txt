@@ -45,6 +45,10 @@ add_executable(arzoom-phase35-preset-test arzoom-phase35-preset-test.cpp)
 arzoom_configure_test_target(arzoom-phase35-preset-test)
 add_test(NAME arzoom-phase35-cursor-presets COMMAND arzoom-phase35-preset-test)
 
+add_executable(arzoom-phase4-camera-source-test arzoom-phase4-camera-source-test.cpp)
+arzoom_configure_test_target(arzoom-phase4-camera-source-test)
+add_test(NAME arzoom-phase4-camera-source-safety COMMAND arzoom-phase4-camera-source-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 
