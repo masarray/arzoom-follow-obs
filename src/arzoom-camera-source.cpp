@@ -335,21 +335,34 @@ void *camera_create(obs_data_t *settings, obs_source_t *context)
     return camera;
 }
 
+struct CameraSourceInfoInitializer {
+    CameraSourceInfoInitializer();
+};
+
 } // namespace
 
-obs_source_info arzoom_camera_source_info = {
-    .id = kCameraSourceId,
-    .type = OBS_SOURCE_TYPE_INPUT,
-    .output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW |
-                    OBS_SOURCE_COMPOSITE,
-    .get_name = camera_get_name,
-    .create = camera_create,
-    .destroy = camera_destroy,
-    .get_width = camera_get_width,
-    .get_height = camera_get_height,
-    .get_defaults = camera_defaults,
-    .get_properties = camera_properties,
-    .update = camera_update,
-    .video_render = camera_render,
-    .enum_active_sources = camera_enum_active_sources,
-};
+obs_source_info arzoom_camera_source_info = {};
+
+namespace {
+
+CameraSourceInfoInitializer::CameraSourceInfoInitializer()
+{
+    arzoom_camera_source_info.id = kCameraSourceId;
+    arzoom_camera_source_info.type = OBS_SOURCE_TYPE_INPUT;
+    arzoom_camera_source_info.output_flags =
+        OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_COMPOSITE;
+    arzoom_camera_source_info.get_name = camera_get_name;
+    arzoom_camera_source_info.create = camera_create;
+    arzoom_camera_source_info.destroy = camera_destroy;
+    arzoom_camera_source_info.get_width = camera_get_width;
+    arzoom_camera_source_info.get_height = camera_get_height;
+    arzoom_camera_source_info.get_defaults = camera_defaults;
+    arzoom_camera_source_info.get_properties = camera_properties;
+    arzoom_camera_source_info.update = camera_update;
+    arzoom_camera_source_info.video_render = camera_render;
+    arzoom_camera_source_info.enum_active_sources = camera_enum_active_sources;
+}
+
+CameraSourceInfoInitializer camera_source_info_initializer;
+
+} // namespace
