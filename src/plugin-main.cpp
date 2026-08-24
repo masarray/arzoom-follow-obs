@@ -17,8 +17,27 @@ void arzoom_unregister_global_hotkey();
 bool arzoom_register_presenter_hotkeys();
 void arzoom_unregister_presenter_hotkeys();
 
+namespace {
+constexpr const char *kPhase4BuildIdentity =
+    "v0.5.0-p4a-regdiag2-cc29ec0-plus";
+}
+
 bool obs_module_load(void)
 {
+    obs_module_t *module = obs_current_module();
+    const char *binary_path = module ? obs_get_module_binary_path(module) : nullptr;
+    const char *data_path = module ? obs_get_module_data_path(module) : nullptr;
+
+    blog(LOG_INFO,
+         "[ArZoom] BUILD %s",
+         kPhase4BuildIdentity);
+    blog(LOG_INFO,
+         "[ArZoom] Loaded module binary: %s",
+         (binary_path && *binary_path) ? binary_path : "<unknown>");
+    blog(LOG_INFO,
+         "[ArZoom] Loaded module data: %s",
+         (data_path && *data_path) ? data_path : "<unknown>");
+
     obs_register_source(&arzoom_filter_info);
 
     /* Give the source a first-class camera icon in the OBS add-source UI and
