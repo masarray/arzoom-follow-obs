@@ -28,7 +28,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
 OutputBaseFilename=ArZoom-OBS-Setup-v{#AppVersion}-windows-x64
 SetupIconFile=arzoom.ico
-UninstallDisplayIcon={uninstallexe}
+UninstallDisplayIcon={app}\data\obs-plugins\arzoom\arzoom.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -39,6 +39,7 @@ RestartApplications=no
 [Files]
 Source: "{#SourceDir}\obs-plugins\64bit\arzoom.dll"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
 Source: "{#SourceDir}\data\obs-plugins\arzoom\*"; DestDir: "{app}\data\obs-plugins\arzoom"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "arzoom.ico"; DestDir: "{app}\data\obs-plugins\arzoom"; Flags: ignoreversion
 
 [Run]
 Filename: "{app}\bin\64bit\obs64.exe"; Description: "Launch OBS Studio"; Flags: nowait postinstall skipifsilent; Check: FileExists(ExpandConstant('{app}\bin\64bit\obs64.exe'))
