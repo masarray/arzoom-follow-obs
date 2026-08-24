@@ -10,6 +10,8 @@ namespace arzoom {
 
 inline constexpr std::string_view kSceneCameraFilterId = "arzoom_filter";
 inline constexpr std::string_view kSceneCameraFilterName = "ArZoom Camera";
+inline constexpr std::string_view kSceneCameraManagedSetting =
+    "arzoom_scene_camera_managed";
 
 enum class SceneCameraToggleAction {
     CreateEnabled,
@@ -18,9 +20,12 @@ enum class SceneCameraToggleAction {
 };
 
 inline bool scene_camera_filter_matches(std::string_view id,
-                                        std::string_view name)
+                                        std::string_view name,
+                                        bool managed_marker)
 {
-    return id == kSceneCameraFilterId && name == kSceneCameraFilterName;
+    if (id != kSceneCameraFilterId)
+        return false;
+    return managed_marker || name == kSceneCameraFilterName;
 }
 
 inline SceneCameraToggleAction scene_camera_toggle_action(bool exists,
