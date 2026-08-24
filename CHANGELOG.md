@@ -1,124 +1,88 @@
 # Changelog
 
-## v0.3.1 — Premium dual-vector click candidate
+## v0.5.0 — ArZoom Scene Camera public release
 
-- Replaced the rejected water-dimple/blob experiment with a clean **dual analytic vector-ring** interaction designed for professional screen recording and teaching.
-- Left click now uses two thin staggered circles in a modern Azure + Aqua palette; right click uses the same visual language in Violet + Orchid so intent is distinguishable without labels or symbols.
-- Both rings expand with quintic minimum-jerk timing, giving soft launch and soft finish instead of linear pop/stop motion.
-- The second ring starts roughly 45–60 ms after the first, creating a deliberate premium cadence rather than a noisy particle burst.
-- Removed all click-time texture distortion, refraction, angular wobble, blobs, liquid noise, and thick neon-ring emphasis. The captured frame stays optically clean.
-- Rings are generated analytically in the GPU shader from distance fields, so they remain perfectly circular, symmetric, sharp, resolution-independent, and require no PNG/vector asset files.
-- Added luminance-aware compositing with a subtle chromatic under-stroke on bright/white surfaces, keeping clicks visible in Explorer and document UIs without clipping cyan/violet to white.
-- Glow is intentionally restrained and primarily visible on dark content; the exact vector line remains the visual hero.
-- Retuned fixed click lifetimes to 0.44 s left / 0.50 s right / 0.32 s middle so the effect is noticeable but disappears quickly during rapid tutorials.
-- Preserved the one-pass GPU architecture, fixed four-slot allocation-free CPU state, content-space anchoring, and frozen Smart Zone camera contract.
-- No global mouse hook is added in this patch. Explorer input capture remains isolated from the visual/compositing issue; the input layer will only be replaced if real missed click events remain after visibility is confirmed.
+- Added **ArZoom Scene Camera**, a managed instance of the existing `arzoom_filter` attached directly to the current OBS scene source.
+- Added **Tools → ArZoom — Toggle Scene Camera** and **Tools → ArZoom — Configure Scene Camera**.
+- Scene Camera processes the already-composed OBS scene, so Display Capture, webcam, browser, logo, and nested-scene content can zoom together.
+- Reused the accepted Smart Zone / Presenter Controls / click / Presentation Cursor runtime instead of creating a second motion engine.
+- Explicitly rejected persistent `obs_sceneitem_set_*` scene transform mutation; ArZoom does not write scene-item position, scale, rotation, bounds, or crop.
+- Removed the early P4 custom-camera-source / off-screen `gs_texrender_t` experiment in favor of OBS-native scene filter semantics.
+- Added deterministic Scene Camera identity and toggle-policy gates.
+- Added conservative Display Capture → scene mapping: exactly one visible fullscreen Display Capture with a deterministically resolved monitor is required for pointer-driven scene-wide Smart Follow/click/cursor mapping.
+- Ambiguous inset/scaled/rotated/multiple Display Capture layouts fail safe instead of guessing cursor coordinates.
+- Added warnings for nested/per-source ArZoom filters that can cause double zoom and for native Display Capture cursor capture when Presentation Cursor is active.
+- Fixed a fresh-install **first-click black-frame/flicker** path by binding a permanent transparent fallback cursor sampler before the shared GPU effect can be activated without a real cursor atlas.
+- Added deterministic render-safety tests covering disabled/not-ready/missing-atlas cursor states.
+- Added a branded multi-resolution Windows installer icon and current v0.5.0 installer/version metadata.
+- Updated installer/manual package guidance, README, release notes, and public website for the Scene Camera workflow.
+- Windows packaging continues to publish an installer, manual ZIP, and SHA-256 checksums.
+
+## v0.4.1 — Presentation Cursor
+
+- Added preset-first Presentation Cursor UI.
+- Added seven original ArZoom-native cursor styles: Prism, Outline, Azure, Orchid, Parakeet, Classic Hand, and Sticker Hand.
+- Added short tactile click micro-interactions with exact return to frame 0.
+- Added arrow-tip/fingertip hotspot ownership and cursor scaling with camera zoom.
+- Built-ins render to a transparent GPU atlas only when preset/settings change; no image decoding occurs on click or per video frame.
+- Kept Advanced custom GIF/WebP/PNG assets.
+- Added double-cursor warning when Display Capture still captures its native cursor.
+- Added deterministic playback, hotspot, zoom-scaling, Overview Peek, and Smart Camera isolation gates.
+
+## v0.4.0 — Presenter Controls
+
+- Added Toggle Zoom, Hold Zoom, Freeze Camera, Toggle Smart Follow, Zoom In/Out, Reset / Full Frame, and Overview Peek.
+- Overview Peek holds a smooth exact 1× overview and restores the exact saved affine shot on release.
+- Added deterministic multi-filter target semantics and profile-persistent OBS hotkeys.
+- Kept presenter-control state bounded and isolated from Smart Zone camera math.
+
+## v0.3.1 — Premium dual-vector click visualization
+
+- Replaced experimental liquid/blob visuals with clean dual analytic vector rings.
+- Left click: Azure + Aqua; right click: Violet + Orchid; middle click: compact Amber + Gold.
+- Added quintic minimum-jerk expansion, staggered second ring, clean dissolve, and luminance-aware support on bright/dark content.
+- Preserved one-pass GPU rendering, fixed four-slot allocation-free click state, content anchoring, and Smart Camera isolation.
 
 ## v0.3.0 — GPU Click Visualization public trial
 
-- Added procedural GPU click feedback to the existing ArZoom presentation pass; no PNG generation, temporary files, particle system, extra OBS image source, frame readback, or separate bloom pass.
-- Left click uses a compact liquid-like cyan expanding ring with subtle analytic deformation and soft glow.
-- Right click uses a visually distinct violet dual/delayed ring so it is recognizable without text labels.
-- Middle click uses a compact gold pulse.
-- Click events are stored in normalized source/content coordinates and reprojected through the live camera transform every frame, so feedback stays attached to the clicked content while zoom/pan moves.
-- Added a fixed four-slot, allocation-free click event core with deterministic expiry and bounded overwrite behavior.
-- Windows click capture uses compact mouse-button edge sampling and records only clicks inside the mapped Display Capture monitor.
-- Click visualization remains independent of Smart Zone intent: click events do not set camera emphasis, urgency, wake SmoothIdle, or retarget Follow by default.
-- Rendering remains one filter pass whether zoom, click feedback, or both are visible; when neither is visible the OBS pass-through path remains active.
-- Added a simple **Show click visualization** toggle without exposing shader-engineering controls in the Basic UI.
-- Added deterministic Phase 2 gates for click ordering/capacity, expiry, content anchoring under 1x/2x/3x/4x camera transforms, finite edge/corner projection, and camera-output isolation.
-- Retained the complete Phase 0 + Phase 1 regression and closeout matrix unchanged.
-- Added Phase 2 microbenchmarks; hosted Windows diagnostics are approximately 7 ns/update for idle/one-click state and 9 ns/update for four overlapping clicks. Absolute timings are runner-specific engineering diagnostics.
+- Added procedural GPU click feedback to the existing presentation pass.
+- Click events are stored in normalized content coordinates and remain anchored while zoom/pan moves.
+- Added deterministic click capacity/expiry/anchoring/isolation gates.
+- No PNG generation, particle system, extra OBS image source, CPU rasterization, frame readback, or separate bloom pass.
 
-## v0.2.0 — Smart Zone Gimbal Camera + portable-aware installer
+## v0.2.0 — Smart Zone Gimbal Camera
 
-- Replaced the v0.1.x edge-triggered follower with a shared platform-neutral Smart Camera core.
-- Rejected the early ballistic/spring experiment after visual trial showed follow snapping and zoom-out hunting; the final camera is a super-steady gimbal model.
-- Added focus-preserving zoom activation so edge/corner zoom goes directly toward the intended subject instead of detouring through unrelated center content.
-- Added affine-transform zoom-in and zoom-out with quintic minimum-jerk easing; fixed source pixels follow straight screen-space paths with soft start and soft finish.
-- Added **Smart Zone** semantics: ArZoom follows presentation-area changes rather than ordinary local mouse movement.
-- Added **SmoothIdle**: circles, repeated pointing, jitter, and explanatory cursor movement inside the current area keep the viewport exact-stable without waiting for the mouse to stop.
-- Added **Coast** handoff so Follow does not snap to steady; live-pointer influence fades while camera speed decays naturally before exact idle lock.
-- Added inner/outer zone hysteresis and short relocation dwell so boundary movement does not chatter between Follow and Idle.
-- Leaving the outer Smart Zone starts a new follow with a soft first movement step; edge risk and semantic emphasis may shorten the delay without changing physics.
-- Preserved continuous retargeting during real travel: moving the mouse again changes only the destination while gimbal filter state remains continuous.
-- Removed default predictive look-ahead to prioritize stability and avoid unnecessary correction movement.
-- Kept edge urgency, but it only shortens the same gimbal time constants through a filtered urgency value; there is no alternate high-energy motion mode.
-- Added deterministic closeout gates for straight zoom paths, local explanation lock, Follow → Coast → SmoothIdle, soft idle wake-up, continuous retargeting, rapid zone switching, 2x/3x/4x corner zoom-out, and 30/60/120/144 fps behavior.
-- Retained Phase 0 randomized edge/math invariants and benchmark gates.
-- Motion styles are presented as Cinematic, Balanced, and Responsive while preserving old persisted setting values for profile compatibility.
-- Added a fool-proof Windows installer mode selector for Standard OBS Studio or OBS Portable/custom folders.
-- Standard mode auto-detects common OBS install locations; portable/custom mode lets the user browse to a specific OBS root.
-- Installer validates `bin\\64bit\\obs64.exe` before copying plugin files, remembers the last valid custom root, and launches the selected OBS installation after setup.
-- Windows CI compiles the actual Inno Setup installer in addition to the manual ZIP.
+- Replaced the early edge-triggered follower with the shared platform-neutral Smart Camera core.
+- Added focus-preserving zoom activation and straight affine minimum-jerk zoom-in/zoom-out.
+- Added Smart Zone presentation-area semantics, SmoothIdle, Coast handoff, hysteresis, soft wake-up, continuous retargeting, edge safety, and exact settle.
+- Added Cinematic, Balanced, and Responsive camera characters.
+- Added deterministic closeout gates across common frame rates and edge/corner stress cases.
+- Added the Standard OBS / OBS Portable-aware Windows installer.
 
-## Unreleased — Public repository and website
+## v0.1.4 — Persistent hotkey and beginner setup
 
-- Rebuilt the public README around the user problem, download flow, five-minute setup, recommended defaults, compatibility, privacy, troubleshooting, and honest preview status.
-- Added a responsive GitHub Pages product website with a landing page, beginner guide, troubleshooting guide, privacy overview, branded 404 page, sitemap, robots directives, structured data, and accessible reduced-motion behavior.
-- Added automated static-site deployment from `docs/` through GitHub Actions.
-- Added public support, contribution, security, and community conduct policies.
-- Added structured bug and feature request forms for actionable OBS, GPU, monitor, DPI, and reproduction data.
-- Added automatic Windows release publishing from `buildspec.json`.
-- Added the stable release asset name `ArZoom-OBS-Setup-windows-x64.exe` so every public Download button can point directly to the latest installer.
-- Added a clearly named manual-install ZIP and SHA-256 checksums for advanced users.
+- Explicitly save/restore the global ArZoom frontend hotkey across OBS restarts and profile changes.
+- Added Open OBS Hotkeys Settings from the filter UI.
+- Added visible hotkey configuration status.
 
-## v0.1.4 — Persistent hotkey and beginner-friendly setup
-
-- Restore the ArZoom frontend hotkey explicitly from the active OBS profile at startup.
-- Save the binding on profile changes, OBS exit, module unload, and on-demand from the filter panel.
-- Clear or reload bindings correctly when the active OBS profile changes.
-- Add **Open OBS Hotkeys Settings** directly in the filter properties and jump to the Hotkeys page.
-- Add visible configured/not-configured hotkey status in the filter panel.
-- Enable the required OBS frontend API and Qt Widgets dependencies.
-- Automatically reconfigure an older cached build when frontend/Qt support was previously disabled.
-
-## Repository hygiene
-
-- Hardened `.gitignore` against OBS template caches, CMake/MSBuild output, staging/release packages, installers, archives, patch files, and generated workflow/build Markdown reports.
-- Added `untrack-ignored-files.bat` to remove previously tracked generated files from the Git index without deleting local build caches.
-
-## v0.1.3 — Global OBS hotkey visibility fix
+## v0.1.3 — Global OBS hotkey visibility
 
 - Replaced the per-filter source hotkey with one module-level frontend hotkey.
-- The row `ArZoom — Toggle Zoom & Mouse Follow` is now registered as soon as OBS loads the plugin, so it appears in Settings → Hotkeys even before a filter instance is created.
-- The global hotkey toggles all currently showing and enabled ArZoom filters in sync; if none are showing, it toggles all enabled instances.
-- Removed the ineffective per-filter hotkey save/load path.
-- Kept anti-repeat behavior and atomic filter state updates.
-- Added explicit load log: `[ArZoom] Global frontend hotkey registered`.
+- Added multiple-filter target semantics for enabled/showing ArZoom filters.
 
-## v0.1.2 — Runtime creation and shader compatibility fix
+## v0.1.2 — Runtime creation and shader compatibility
 
 - Fixed the blank “No properties available” filter panel.
-- Registers properties and the per-source hotkey even when the GPU effect cannot load.
-- Replaced the effect interface with an OBS-reference-compatible vertex/fragment contract.
-- Added ABI-v2 uniform names to prevent mixed old DLL/new effect packages from partially running.
-- Uses texture-backed filter processing for reliable Display Capture input.
-- Shows a clear ready/error status inside the filter instead of creating a ghost instance.
-- Keeps fail-safe pass-through behavior on every graphics-resource failure.
+- Replaced the effect interface with an OBS-compatible vertex/fragment contract.
+- Added fail-safe pass-through behavior for graphics-resource failure.
 
-## v0.1.1
+## v0.1.1 — Windows packaging fixes
 
-- Fixed Windows packaging for the official OBS template install layout (`arzoom/bin/64bit` and `arzoom/data`).
-- Added `package-existing-build.bat` so a successful compile can be packaged without rebuilding OBS.
-- Added cached fast-build behavior; existing template dependencies and CMake configuration are reused by default.
-- Added explicit `-PackageOnly`, `-RefreshTemplate`, and `-Reconfigure` options.
-- Added ZIP payload verification before reporting packaging success.
+- Fixed OBS plugin-template install layout packaging.
+- Added package-only mode and cached fast-build behavior.
+- Added ZIP payload verification.
 
-## v0.1.0
+## v0.1.0 — Initial native Windows MVP
 
-Initial native Windows MVP source:
-
-- one OBS hotkey toggles zoom and mouse follow
-- Smart Follow safe zone for comfortable viewing
-- smooth, frame-rate-independent zoom and pan
-- hard viewport edge clamping
-- centered and fixed zoom modes
-- automatic OBS Display Capture monitor mapping
-- manual monitor fallback
-- multi-monitor negative-coordinate support
-- idle OBS pass-through
-- fail-safe shader and mapping behavior
-- Windows local build, ZIP packaging, installer, and GitHub Actions
-- English and Indonesian locale
-- deterministic motion and 200,000-case edge invariant test
+- OBS hotkey-driven zoom and mouse follow.
+- Safe-zone following, smooth frame-rate-independent zoom/pan, hard viewport clamping, monitor mapping, multi-monitor support, idle pass-through, fail-safe rendering, Windows build/installer, English/Indonesian locale, and deterministic edge math tests.
