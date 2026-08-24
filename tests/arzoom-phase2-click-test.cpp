@@ -76,6 +76,19 @@ void fixed_slots_are_bounded_and_ordered()
     require(!found_oldest, "oldest click slot was not recycled");
 }
 
+void premium_click_lifetime_contract()
+{
+    using namespace arzoom;
+    require(near(click_lifetime_seconds(ClickType::Left), 0.44f),
+            "left click lifetime drifted from premium dual-ring timing");
+    require(near(click_lifetime_seconds(ClickType::Right), 0.50f),
+            "right click lifetime drifted from premium dual-ring timing");
+    require(near(click_lifetime_seconds(ClickType::Middle), 0.32f),
+            "middle click lifetime drifted from compact timing");
+    require(click_lifetime_seconds(ClickType::Right) <= 0.50f,
+            "click feedback is allowed to linger too long for tutorials");
+}
+
 void click_lifetimes_expire_without_residual_state()
 {
     using namespace arzoom;
@@ -186,6 +199,7 @@ void edge_click_coordinates_remain_finite()
 int main()
 {
     fixed_slots_are_bounded_and_ordered();
+    premium_click_lifetime_contract();
     click_lifetimes_expire_without_residual_state();
     content_anchor_tracks_camera_transform();
     click_subsystem_does_not_retarget_camera();
