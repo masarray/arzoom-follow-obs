@@ -1,11 +1,12 @@
 /*
- * ArZoom - Smart Zone Camera + GPU Click Visualization for OBS
- * One-pass viewport transform + premium analytic dual-ring click feedback.
+ * ArZoom - Smart Zone Camera + GPU Presentation Feedback for OBS
+ * One-pass viewport transform + premium click rings + Presentation Cursor.
  * GPL-2.0-or-later
  */
 
 uniform float4x4 ViewProj;
 uniform texture2d image;
+uniform texture2d cursor_atlas;
 
 /* Camera ABI. */
 uniform float zoom_amount;
@@ -19,7 +20,25 @@ uniform float4 click_event1;
 uniform float4 click_event2;
 uniform float4 click_event3;
 
+/* Presentation Cursor ABI.
+ * Cursor position is stored in the same source/content coordinate system used
+ * by click events. Size is deliberately output-pixel constant while the
+ * hotspot follows the camera transform exactly. */
+uniform float2 cursor_content_position;
+uniform float2 cursor_asset_size;
+uniform float2 cursor_hotspot;
+uniform float2 cursor_atlas_grid;
+uniform float cursor_frame;
+uniform float cursor_size_px;
+uniform float cursor_visible;
+
 sampler_state textureSampler {
+    Filter   = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
+sampler_state cursorSampler {
     Filter   = Linear;
     AddressU = Clamp;
     AddressV = Clamp;
@@ -83,10 +102,15 @@ float event_lifetime(float type)
     return 0.32;
 }
 
-float2 event_center(float4 event_data, float safe_zoom)
+float2 project_content(float2 content_position, float safe_zoom)
 {
     return float2(0.5, 0.5) +
-           (event_data.xy - zoom_center) * safe_zoom;
+           (content_position - zoom_center) * safe_zoom;
+}
+
+float2 event_center(float4 event_data, float safe_zoom)
+{
+    return project_content(event_data.xy, safe_zoom);
 }
 
 float2 event_delta_px(float2 output_uv, float4 event_data,
@@ -254,6 +278,58 @@ float3 apply_click(float3 base, float2 output_uv,
         float3(1.00, 0.82, 0.25));
 }
 
+float4 sample_cursor_frame(float2 local_uv)
+{
+    const float2 safe_grid = max(cursor_atlas_grid, float2(1.0, 1.0));
+    const float frame = max(cursor_frame, 0.0);
+    const float column = fmod(frame, safe_grid.x);
+    const float row = floor(frame / safe_grid.x);
+    const float2 atlas_uv =
+        (float2(column, row) + saturate(local_uv)) / safe_grid;
+    return cursor_atlas.Sample(cursorSampler, atlas_uv);
+}
+
+float3 apply_presentation_cursor(float3 base, float2 output_uv,
+                                 float safe_zoom,
+                                 float2 safe_viewport)
+{
+    if (cursor_visible < 0.5)
+        return base;
+
+    const float2 safe_asset = max(cursor_asset_size, float2(1.0, 1.0));
+    const float display_height_px = clamp(cursor_size_px, 8.0, 256.0);
+    const float display_width_px =
+        display_height_px * safe_asset.x / safe_asset.y;
+    const float2 display_size_px =
+        float2(display_width_px, display_height_px);
+    const float2 display_size_uv = display_size_px / safe_viewport;
+
+    const float2 hotspot_output =
+        project_content(cursor_content_position, safe_zoom);
+    const float2 safe_hotspot = saturate(cursor_hotspot);
+    const float2 top_left =
+        hotspot_output - safe_hotspot * display_size_uv;
+    const float2 local_uv =
+        (output_uv - top_left) / max(display_size_uv, float2(1e-6, 1e-6));
+
+    if (local_uv.x < 0.0 || local_uv.x > 1.0 ||
+        local_uv.y < 0.0 || local_uv.y > 1.0) {
+        return base;
+    }
+
+    /* Restrained one-sample offset shadow gives light/dark separation without
+     * turning the cursor into a neon/gaming pointer. */
+    const float2 shadow_offset_uv =
+        float2(1.35, 1.55) / max(display_size_px, float2(1.0, 1.0));
+    const float4 shadow_sample = sample_cursor_frame(local_uv - shadow_offset_uv);
+    const float shadow_alpha = shadow_sample.a * 0.22;
+    base = lerp(base, float3(0.015, 0.025, 0.040), shadow_alpha);
+
+    const float4 cursor = sample_cursor_frame(local_uv);
+    base = lerp(base, cursor.rgb, saturate(cursor.a));
+    return base;
+}
+
 float4 PSZoom(FragData f_in) : TARGET
 {
     const float safe_zoom = max(zoom_amount, 1.0);
@@ -262,7 +338,7 @@ float4 PSZoom(FragData f_in) : TARGET
         zoom_center + (f_in.uv - float2(0.5, 0.5)) / safe_zoom;
 
     /* No click-time texture distortion. The presentation remains optically
-     * clean and the analytic vector circles are the only visual motion. */
+     * clean and the analytic vector circles are the only click overlay. */
     float4 color = image.Sample(textureSampler, saturate(sample_uv));
 
     color.rgb = apply_click(
@@ -273,6 +349,10 @@ float4 PSZoom(FragData f_in) : TARGET
         color.rgb, f_in.uv, click_event2, safe_zoom, safe_viewport);
     color.rgb = apply_click(
         color.rgb, f_in.uv, click_event3, safe_zoom, safe_viewport);
+
+    /* Cursor is composited last so click rings naturally radiate behind it. */
+    color.rgb = apply_presentation_cursor(
+        color.rgb, f_in.uv, safe_zoom, safe_viewport);
     return color;
 }
 
