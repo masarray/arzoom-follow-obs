@@ -32,6 +32,9 @@ void preset_metadata_is_safe_and_unique()
                 std::string("duplicate built-in cursor id: ") + preset.id);
         require(arzoom::find_cursor_preset(preset.id) == &preset,
                 std::string("preset lookup mismatch: ") + preset.id);
+        require(preset.play_seconds <= 0.30f,
+                std::string("built-in cursor is too slow for tactile feedback: ") +
+                    preset.id);
     }
     require(ids.size() == arzoom::kCursorPresets.size(),
             "preset id count changed unexpectedly");
@@ -47,6 +50,20 @@ void style_helpers_are_unambiguous()
             "built-in style mistaken for custom");
     require(arzoom::find_cursor_preset("unknown") == nullptr,
             "unknown preset unexpectedly resolved");
+}
+
+void tactile_curve_has_press_rebound_and_settle()
+{
+    require(near(arzoom::cursor_tactile_press_curve(0.0f), 0.0f),
+            "tactile curve does not begin neutral");
+    require(arzoom::cursor_tactile_press_curve(0.18f) > 0.98f,
+            "tactile curve does not reach a fast press peak");
+    require(arzoom::cursor_tactile_press_curve(0.42f) < -0.15f,
+            "tactile curve does not overshoot neutral on release");
+    require(arzoom::cursor_tactile_press_curve(0.68f) > 0.05f,
+            "tactile curve is missing its small counter-bounce");
+    require(near(arzoom::cursor_tactile_press_curve(1.0f), 0.0f),
+            "tactile curve does not settle exactly to neutral");
 }
 
 void preset_hotspots_stay_exact_across_zoom()
@@ -83,8 +100,19 @@ void shipped_playback_contract_is_play_once()
         playback.trigger();
         require(playback.frame_index() == 1 && playback.playing(),
                 "preset click did not start at frame 1");
-        for (int i = 0; i < 400; ++i)
+
+        bool saw_press_region = false;
+        bool saw_late_region = false;
+        for (int i = 0; i < 100; ++i) {
             playback.advance(1.0f / 240.0f);
+            saw_press_region = saw_press_region ||
+                               (playback.playing() && playback.frame_index() >= 4);
+            saw_late_region = saw_late_region ||
+                              (playback.playing() &&
+                               playback.frame_index() > preset.frame_count / 2);
+        }
+        require(saw_press_region && saw_late_region,
+                "tactile preset did not progress through its gesture");
         require(playback.frame_index() == 0 && !playback.playing(),
                 "preset did not return to idle after one pass");
     }
@@ -96,6 +124,7 @@ int main()
 {
     preset_metadata_is_safe_and_unique();
     style_helpers_are_unambiguous();
+    tactile_curve_has_press_rebound_and_settle();
     preset_hotspots_stay_exact_across_zoom();
     shipped_playback_contract_is_play_once();
     std::cout << "ArZoom Phase 3.5 built-in cursor preset gates: PASS\n";
