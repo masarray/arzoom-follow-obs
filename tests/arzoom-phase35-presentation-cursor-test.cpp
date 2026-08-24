@@ -58,6 +58,25 @@ void click_plays_once_and_returns_idle()
             "play-once cursor did not return to idle frame 0");
 }
 
+void asset_duration_is_respected()
+{
+    arzoom::PresentationCursorPlayback playback;
+    playback.configure(25, 1.03f);
+    playback.trigger();
+
+    for (int i = 0; i < 60; ++i)
+        playback.advance(1.0f / 120.0f);
+    require(playback.playing(),
+            "asset-timed cursor ended far earlier than configured duration");
+    require(playback.frame_index() > 1 && playback.frame_index() < 24,
+            "asset-timed cursor did not progress through intermediate frames");
+
+    for (int i = 0; i < 80; ++i)
+        playback.advance(1.0f / 120.0f);
+    require(!playback.playing() && playback.frame_index() == 0,
+            "asset-timed cursor did not settle back to idle");
+}
+
 void click_during_playback_restarts()
 {
     arzoom::PresentationCursorPlayback playback;
@@ -101,7 +120,7 @@ void hotspot_tracks_click_center_across_zoom()
     }
 }
 
-void cursor_size_is_output_pixel_constant()
+void cursor_size_tracks_camera_zoom()
 {
     using namespace arzoom;
     const Vec2 content{0.63f, 0.48f};
@@ -109,11 +128,19 @@ void cursor_size_is_output_pixel_constant()
     const PresentationCursorGeometry one = presentation_cursor_geometry(
         content, {0.5f, 0.5f}, 1.0f,
         {1920.0f, 1080.0f}, {192.0f, 192.0f}, hotspot, 52.0f);
+    const PresentationCursorGeometry two = presentation_cursor_geometry(
+        content, {0.5f, 0.5f}, 2.0f,
+        {1920.0f, 1080.0f}, {192.0f, 192.0f}, hotspot, 52.0f);
     const PresentationCursorGeometry four = presentation_cursor_geometry(
         content, {0.5f, 0.5f}, 4.0f,
         {1920.0f, 1080.0f}, {192.0f, 192.0f}, hotspot, 52.0f);
-    require(near(one.size_output, four.size_output, 1.0e-8f),
-            "Presentation Cursor size changed with camera zoom");
+
+    require(near(two.size_output.x, one.size_output.x * 2.0f, 1.0e-7f) &&
+                near(two.size_output.y, one.size_output.y * 2.0f, 1.0e-7f),
+            "Presentation Cursor did not scale 2x with the camera");
+    require(near(four.size_output.x, one.size_output.x * 4.0f, 1.0e-7f) &&
+                near(four.size_output.y, one.size_output.y * 4.0f, 1.0e-7f),
+            "Presentation Cursor did not scale 4x with the camera");
 }
 
 void overview_mapping_keeps_hotspot_exact()
@@ -182,9 +209,10 @@ int main()
 {
     idle_frame_is_stable();
     click_plays_once_and_returns_idle();
+    asset_duration_is_respected();
     click_during_playback_restarts();
     hotspot_tracks_click_center_across_zoom();
-    cursor_size_is_output_pixel_constant();
+    cursor_size_tracks_camera_zoom();
     overview_mapping_keeps_hotspot_exact();
     cursor_state_is_camera_isolated();
     std::cout << "ArZoom Phase 3.5 Presentation Cursor gates: PASS\n";
