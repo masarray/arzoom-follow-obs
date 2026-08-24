@@ -38,6 +38,8 @@ void preset_metadata_is_safe_and_unique()
     }
     require(ids.size() == arzoom::kCursorPresets.size(),
             "preset id count changed unexpectedly");
+    require(arzoom::kCursorPresets.size() == 7,
+            "public built-in cursor palette should contain seven presets");
 }
 
 void style_helpers_are_unambiguous()
@@ -50,6 +52,13 @@ void style_helpers_are_unambiguous()
             "built-in style mistaken for custom");
     require(arzoom::find_cursor_preset("unknown") == nullptr,
             "unknown preset unexpectedly resolved");
+
+    require(arzoom::find_cursor_preset("parakeet") != nullptr,
+            "Parakeet preset missing");
+    require(arzoom::find_cursor_preset("classic_hand") != nullptr,
+            "Classic Hand preset missing");
+    require(arzoom::find_cursor_preset("sticker_hand") != nullptr,
+            "Sticker Hand preset missing");
 }
 
 void tactile_curve_has_press_rebound_and_settle()
@@ -64,6 +73,24 @@ void tactile_curve_has_press_rebound_and_settle()
             "tactile curve is missing its small counter-bounce");
     require(near(arzoom::cursor_tactile_press_curve(1.0f), 0.0f),
             "tactile curve does not settle exactly to neutral");
+}
+
+void hand_presets_use_fingertip_hotspots()
+{
+    const auto *classic = arzoom::find_cursor_preset("classic_hand");
+    const auto *sticker = arzoom::find_cursor_preset("sticker_hand");
+    require(classic && sticker, "hand presets unavailable for hotspot gate");
+
+    for (const auto *preset : {classic, sticker}) {
+        require(preset->hotspot_x > 0.35f && preset->hotspot_x < 0.48f,
+                std::string("hand hotspot X is not on index fingertip: ") +
+                    preset->id);
+        require(preset->hotspot_y >= 0.0f && preset->hotspot_y < 0.10f,
+                std::string("hand hotspot Y is not near fingertip: ") +
+                    preset->id);
+        require(preset->recommended_size_px >= 56.0f,
+                std::string("hand cursor default is too small: ") + preset->id);
+    }
 }
 
 void preset_hotspots_stay_exact_across_zoom()
@@ -125,6 +152,7 @@ int main()
     preset_metadata_is_safe_and_unique();
     style_helpers_are_unambiguous();
     tactile_curve_has_press_rebound_and_settle();
+    hand_presets_use_fingertip_hotspots();
     preset_hotspots_stay_exact_across_zoom();
     shipped_playback_contract_is_play_once();
     std::cout << "ArZoom Phase 3.5 built-in cursor preset gates: PASS\n";
