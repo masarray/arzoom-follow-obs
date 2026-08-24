@@ -37,6 +37,14 @@ add_executable(arzoom-phase3-presenter-test arzoom-phase3-presenter-test.cpp)
 arzoom_configure_test_target(arzoom-phase3-presenter-test)
 add_test(NAME arzoom-phase3-presenter-controls COMMAND arzoom-phase3-presenter-test)
 
+add_executable(arzoom-phase35-presentation-cursor-test arzoom-phase35-presentation-cursor-test.cpp)
+arzoom_configure_test_target(arzoom-phase35-presentation-cursor-test)
+add_test(NAME arzoom-phase35-presentation-cursor COMMAND arzoom-phase35-presentation-cursor-test)
+
+add_executable(arzoom-phase35-preset-test arzoom-phase35-preset-test.cpp)
+arzoom_configure_test_target(arzoom-phase35-preset-test)
+add_test(NAME arzoom-phase35-cursor-presets COMMAND arzoom-phase35-preset-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 

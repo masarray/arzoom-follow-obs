@@ -23,6 +23,11 @@ struct Phase2Filter {
     arzoom::ClickVisualState clicks;
     std::atomic<bool> click_visual_enabled{true};
 
+    /* P3.5 may reuse the exact same Windows click sample for cursor animation
+     * even when the visual rings are disabled. Default false preserves the
+     * frozen Phase 2 behavior bit-for-bit. */
+    std::atomic<bool> click_capture_for_cursor{false};
+
     bool left_down = false;
     bool right_down = false;
     bool middle_down = false;
@@ -62,7 +67,10 @@ void capture_clicks(Phase2Filter *filter, float dt)
 {
     filter->clicks.advance(dt);
 
-    if (!filter->click_visual_enabled.load(std::memory_order_acquire) ||
+    const bool capture_needed =
+        filter->click_visual_enabled.load(std::memory_order_acquire) ||
+        filter->click_capture_for_cursor.load(std::memory_order_acquire);
+    if (!capture_needed ||
         !filter->phase1->enabled.load(std::memory_order_acquire)) {
         filter->clicks.clear();
         clear_button_edges(filter);
@@ -109,8 +117,10 @@ void phase2_update(void *data, obs_data_t *settings)
     filter->click_visual_enabled.store(
         obs_data_get_bool(settings, SETTING_CLICK_VISUAL),
         std::memory_order_release);
-    if (!filter->click_visual_enabled.load(std::memory_order_acquire))
+    if (!filter->click_visual_enabled.load(std::memory_order_acquire) &&
+        !filter->click_capture_for_cursor.load(std::memory_order_acquire)) {
         filter->clicks.clear();
+    }
 }
 
 void phase2_defaults(obs_data_t *settings)

@@ -14,7 +14,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake")
   include(defaults)
   include(helpers)
 else()
-  project(arzoom VERSION 0.4.0 LANGUAGES C CXX)
+  project(arzoom VERSION 0.4.1 LANGUAGES C CXX)
   option(ENABLE_FRONTEND_API "Use obs-frontend-api" ON)
   option(ENABLE_QT "Use Qt" ON)
 endif()
@@ -27,17 +27,19 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
 find_package(obs-frontend-api REQUIRED)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
 
 target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
     src/plugin-main.cpp
-    src/arzoom-filter-v4.cpp
+    src/arzoom-filter-v10.cpp
     src/arzoom-camera.hpp
     src/arzoom-click-visual.hpp
     src/arzoom-presenter-controls.hpp
+    src/arzoom-presentation-cursor.hpp
+    src/arzoom-cursor-presets.hpp
     src/arzoom-math.hpp
 )
 
