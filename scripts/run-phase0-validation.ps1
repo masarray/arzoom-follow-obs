@@ -38,12 +38,19 @@ function Resolve-BenchmarkExecutable {
 
 Push-Location $RepoRoot
 try {
-    $cameraSource = Join-Path $RepoRoot 'src/arzoom-camera-source.cpp'
-    if (Test-Path -LiteralPath $cameraSource -PathType Leaf) {
-        $forbiddenMutation = Select-String -LiteralPath $cameraSource -Pattern 'obs_sceneitem_set_' -SimpleMatch
-        if ($forbiddenMutation) {
-            throw 'Phase 4 scene-safety contract violated: ArZoom Camera must not mutate scene-item transforms.'
-        }
+    $sceneCamera = Join-Path $RepoRoot 'src/arzoom-scene-camera.cpp'
+    if (-not (Test-Path -LiteralPath $sceneCamera -PathType Leaf)) {
+        throw 'Phase 4 Scene Camera manager is missing.'
+    }
+
+    $forbiddenMutation = Select-String -LiteralPath $sceneCamera -Pattern 'obs_sceneitem_set_' -SimpleMatch
+    if ($forbiddenMutation) {
+        throw 'Phase 4 scene-safety contract violated: Scene Camera must not mutate scene-item transforms.'
+    }
+
+    $legacyCameraSource = Join-Path $RepoRoot 'src/arzoom-camera-source.cpp'
+    if (Test-Path -LiteralPath $legacyCameraSource -PathType Leaf) {
+        throw 'Phase 4 architecture regression: legacy custom ArZoom Camera input-source path is still present.'
     }
 
     if (Test-Path -LiteralPath $BuildPath) {
