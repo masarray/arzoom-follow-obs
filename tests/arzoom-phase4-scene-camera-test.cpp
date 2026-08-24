@@ -14,17 +14,20 @@ void require(bool condition, const std::string &message)
     }
 }
 
-void managed_filter_identity_is_exact()
+void managed_filter_identity_is_exact_and_rename_safe()
 {
     require(arzoom::scene_camera_filter_matches(
-                "arzoom_filter", "ArZoom Camera"),
-            "managed scene-camera filter identity was not recognized");
+                "arzoom_filter", "ArZoom Camera", false),
+            "legacy/name-based managed Scene Camera was not recognized");
+    require(arzoom::scene_camera_filter_matches(
+                "arzoom_filter", "My Presentation Camera", true),
+            "persisted managed marker did not survive a user rename");
     require(!arzoom::scene_camera_filter_matches(
-                "arzoom_filter", "ArZoom - Smart Camera Zoom & Follow"),
+                "arzoom_filter", "ArZoom - Smart Camera Zoom & Follow", false),
             "ordinary per-source ArZoom filter was mistaken for Scene Camera");
     require(!arzoom::scene_camera_filter_matches(
-                "other_filter", "ArZoom Camera"),
-            "foreign filter with matching name was mistaken for Scene Camera");
+                "other_filter", "ArZoom Camera", true),
+            "foreign filter with managed-looking metadata was mistaken for Scene Camera");
 }
 
 void toggle_policy_is_deterministic()
@@ -81,7 +84,7 @@ void fullscreen_mapping_contract_rejects_guesses()
 
 int main()
 {
-    managed_filter_identity_is_exact();
+    managed_filter_identity_is_exact_and_rename_safe();
     toggle_policy_is_deterministic();
     fullscreen_mapping_contract_rejects_guesses();
     std::cout << "ArZoom Phase 4 native Scene Camera gates: PASS\n";
