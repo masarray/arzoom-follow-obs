@@ -87,10 +87,19 @@ struct PresentationCursorGeometry {
     Vec2 size_output{0.0f, 0.0f};
 };
 
+inline float presentation_cursor_scaled_height(float base_height_pixels,
+                                                float zoom)
+{
+    const float safe_zoom = std::max(zoom, 1.0f);
+    return std::clamp(base_height_pixels * safe_zoom, 8.0f, 256.0f);
+}
+
 /*
- * Presentation Cursor is composited after the camera transform, so its visual
- * size remains constant in output pixels even at 2x/3x/4x. Its hotspot still
- * follows the same content->output transform as the accepted click rings.
+ * Presentation Cursor is composited after the camera transform. Direct OBS
+ * trial established that a replacement pointer should magnify with the
+ * captured screen, matching the visual behavior users expect from a cursor
+ * that belongs to the presentation content. Its hotspot follows exactly the
+ * same content->output transform as the accepted click rings.
  */
 inline PresentationCursorGeometry presentation_cursor_geometry(
     Vec2 content_position,
@@ -109,7 +118,8 @@ inline PresentationCursorGeometry presentation_cursor_geometry(
     const float viewport_height = std::max(viewport_pixels.y, 1.0f);
     const float asset_width = std::max(asset_pixels.x, 1.0f);
     const float asset_height = std::max(asset_pixels.y, 1.0f);
-    const float safe_height = std::clamp(cursor_height_pixels, 8.0f, 256.0f);
+    const float safe_height =
+        presentation_cursor_scaled_height(cursor_height_pixels, zoom);
     const float display_width = safe_height * (asset_width / asset_height);
 
     geometry.size_output = {
