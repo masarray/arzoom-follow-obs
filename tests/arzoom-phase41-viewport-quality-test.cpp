@@ -201,8 +201,6 @@ void high_zoom_final_pointer_context_is_recovered()
     float zoom = 2.0f;
     warm(camera, cursor, zoom);
 
-    /* Reproduce the user interaction: press Increase repeatedly until the
-     * viewport is small enough that stale framing becomes obvious. */
     for (int step = 0; step < 5; ++step) {
         zoom += 0.25f;
         for (int frame = 0; frame < 55; ++frame)
@@ -216,8 +214,6 @@ void high_zoom_final_pointer_context_is_recovered()
     Vec2 previous_center = camera.output().center;
     float max_step_output = 0.0f;
 
-    /* Move from centre toward the middle/lower-left region. The camera may
-     * remain calm during motion; the contract is about the final context. */
     for (int frame = 1; frame <= 45; ++frame) {
         const float t = static_cast<float>(frame) / 45.0f;
         cursor = add(start, mul(sub(final_cursor, start), t));
@@ -270,9 +266,6 @@ void stale_corner_target_rebases_to_final_pointer()
     PresenterAwareSmartCamera camera;
     warm(camera, {0.50f, 0.50f}, 3.5f);
 
-    /* Start a recovery toward lower-left, then move the pointer to a different
-     * final context while that shot is in flight. The old corner target must
-     * not remain authoritative. */
     const Vec2 stale_corner{0.08f, 0.90f};
     for (int frame = 0; frame < 18; ++frame)
         camera.step(input(dt, stale_corner, true, 3.5f));
@@ -299,6 +292,70 @@ void stale_corner_target_rebases_to_final_pointer()
             "stale-target rebase introduced a viewport snap");
 }
 
+void rule_of_thirds_edge_release_covers_all_directions()
+{
+    using namespace arzoom;
+    constexpr float zoom = 3.5f;
+    const float half = 0.5f / zoom;
+
+    const Vec2 left_center{half, 0.5f};
+    const Vec2 right_center{1.0f - half, 0.5f};
+    const Vec2 top_center{0.5f, half};
+    const Vec2 bottom_center{0.5f, 1.0f - half};
+
+    const auto cursor_for_output = [](Vec2 center, Vec2 output) {
+        constexpr float z = 3.5f;
+        return Vec2{
+            center.x + (output.x - 0.5f) / z,
+            center.y + (output.y - 0.5f) / z,
+        };
+    };
+
+    const EdgeContextPlan from_left = edge_context_release_plan(
+        cursor_for_output(left_center, {0.66f, 0.50f}),
+        left_center, zoom, true);
+    require(from_left.active && from_left.target_center.x > left_center.x,
+            "left-edge viewport did not release at the inner two-thirds line");
+    require(std::fabs(from_left.target_pointer_output.x - 0.56f) < 0.015f,
+            "left-edge release did not preserve contextual pointer framing");
+
+    const EdgeContextPlan from_right = edge_context_release_plan(
+        cursor_for_output(right_center, {0.34f, 0.50f}),
+        right_center, zoom, true);
+    require(from_right.active && from_right.target_center.x < right_center.x,
+            "right-edge viewport did not release at the inner one-third line");
+    require(std::fabs(from_right.target_pointer_output.x - 0.44f) < 0.015f,
+            "right-edge release did not preserve contextual pointer framing");
+
+    const EdgeContextPlan from_top = edge_context_release_plan(
+        cursor_for_output(top_center, {0.50f, 0.66f}),
+        top_center, zoom, true);
+    require(from_top.active && from_top.target_center.y > top_center.y,
+            "top-edge viewport did not release at the inner two-thirds line");
+    require(std::fabs(from_top.target_pointer_output.y - 0.56f) < 0.015f,
+            "top-edge release did not preserve contextual pointer framing");
+
+    const EdgeContextPlan from_bottom = edge_context_release_plan(
+        cursor_for_output(bottom_center, {0.50f, 0.34f}),
+        bottom_center, zoom, true);
+    require(from_bottom.active && from_bottom.target_center.y < bottom_center.y,
+            "bottom-edge viewport did not release at the inner one-third line");
+    require(std::fabs(from_bottom.target_pointer_output.y - 0.44f) < 0.015f,
+            "bottom-edge release did not preserve contextual pointer framing");
+
+    const EdgeContextPlan moving_pointer = edge_context_release_plan(
+        cursor_for_output(bottom_center, {0.50f, 0.34f}),
+        bottom_center, zoom, false);
+    require(!moving_pointer.active,
+            "edge release chased a pointer before final motion settled");
+
+    const EdgeContextPlan local_pointer = edge_context_release_plan(
+        cursor_for_output(bottom_center, {0.50f, 0.48f}),
+        bottom_center, zoom, true);
+    require(!local_pointer.active,
+            "edge release disturbed a local explanation gesture near the edge");
+}
+
 } // namespace
 
 int main()
@@ -309,6 +366,7 @@ int main()
     coast_cannot_keep_pulling_away_from_pointer();
     high_zoom_final_pointer_context_is_recovered();
     stale_corner_target_rebases_to_final_pointer();
+    rule_of_thirds_edge_release_covers_all_directions();
     std::cout << "ArZoom P4.1 viewport quality gates: PASS\n";
     return 0;
 }
