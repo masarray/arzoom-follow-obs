@@ -166,7 +166,7 @@ Seven built-in ArZoom-native cursor presets are available:
 
 Built-ins use short tactile click micro-interactions with exact return to the idle pose. Arrow-tip/fingertip hotspots remain aligned through camera zoom and pan. Advanced users may use custom GIF/WebP/PNG assets.
 
-v0.5.0 also hardens the shared GPU pass so a fresh installation cannot enter the click render path with an unbound cursor sampler before a cursor style has ever been selected.
+v0.5.0 also hardens the shared GPU pass so a fresh installation cannot enter the click render path with an unbound cursor sampler before any cursor style has ever been selected.
 
 ## Performance principles
 
@@ -244,13 +244,20 @@ Run:
 build-local-windows.bat
 ```
 
+## Contributor / AI development direction
+
+Before proposing or implementing architectural work, read **[Current Project Direction](docs/PROJECT_DIRECTION.md)**. It is the source of truth for current priorities and for approaches that were explored but explicitly rejected.
+
+In particular, Phase 4 is **complete**. Scene Camera is a managed scene-level `arzoom_filter`; do not revive the superseded custom `ArZoom Camera` input-source/off-screen-render experiment or Zoominator-style persistent scene-item transform mutation.
+
 ## Project documentation
 
-- [Phase 4 tracker](https://github.com/masarray/arzoom-follow-obs/issues/15)
-- [Phase 4 Zoominator / architecture audit](docs/PHASE4_ZOOMINATOR_AUDIT.md)
+- **[Current Project Direction — start here](docs/PROJECT_DIRECTION.md)**
+- [Runtime architecture](docs/ARCHITECTURE.md)
+- [Phase 4 Zoominator / architecture decision](docs/PHASE4_ZOOMINATOR_AUDIT.md)
+- [Smart Camera architecture contract](docs/SMART_CAMERA_ARCHITECTURE.md)
 - [Presentation Cursor](docs/PRESENTATION_CURSOR_PRESETS.md)
 - [Presenter Controls](docs/PRESENTER_CONTROLS_PHASE3.md)
-- [Smart Camera architecture](docs/SMART_CAMERA_ARCHITECTURE.md)
 - [Getting started](https://masarray.github.io/arzoom-follow-obs/guide.html)
 - [Troubleshooting](https://masarray.github.io/arzoom-follow-obs/troubleshooting.html)
 - [Latest release](https://github.com/masarray/arzoom-follow-obs/releases/latest)
