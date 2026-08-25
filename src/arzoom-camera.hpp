@@ -17,15 +17,16 @@ namespace arzoom {
  * 1. Active Zoom +/- is a joint affine viewport shot. Scale and center move
  *    together with one minimum-jerk trajectory toward the current pointer, so
  *    zoom-out never has to freeze merely to preserve an old off-centre frame.
- * 2. Pointer visibility is a hard semantic priority over COAST/SMOOTH_IDLE.
+ * 2. Pointer visibility is a hard semantic priority over stale COAST intent.
  *    When the pointer approaches the output edge, the same SmartCamera is
  *    temporarily asked for a centered recovery shot with hysteresis. Once the
- *    pointer is comfortably visible again, normal Smart Zone semantics resume.
+ *    best reachable pointer position is safely recovered, normal Smart Zone
+ *    semantics resume.
  *
  * There is no second follow engine, no scene mutation, no frame readback and no
- * alternate render path. The coordinator owns only presenter transition intent
+ * alternate render graph. The coordinator owns only presenter transition intent
  * and the public affine shot while the existing SmartCamera synchronizes behind
- * it, analogous to the already accepted Overview Peek controller.
+ * it, analogous to the accepted Overview Peek controller.
  */
 class PresenterAwareSmartCamera {
 public:
@@ -88,7 +89,7 @@ public:
         previous_zoom_requested_ = input.zoom_requested;
 
         if (return_shot_active_)
-            return step_return_override(input, profile, dt);
+            return step_return_override(input, dt);
 
         if (zoom_shot_active_)
             return step_pointer_zoom_shot(input, dt);
@@ -173,6 +174,9 @@ private:
         sync.zoom_requested = true;
         sync.configured_zoom = sync_target_zoom_;
         sync.emphasis_event = true;
+        /* Hidden synchronization may converge faster because the public affine
+         * shot remains the only visible motion during this interval. */
+        sync.motion_style = CameraMotionStyle::Responsive;
 
         const CameraOutput internal = camera_.output();
         const float required_zoom = minimum_zoom_for_center(internal.center);
@@ -197,8 +201,7 @@ private:
 
     void synchronize_camera(const CameraInput &input)
     {
-        CameraInput sync = make_sync_input(input);
-        camera_.step(sync);
+        camera_.step(make_sync_input(input));
     }
 
     bool camera_close_to_public() const
@@ -209,7 +212,7 @@ private:
         const float center_error_output =
             length(sub(internal.center, public_output_.center)) *
             std::max(public_output_.zoom, 1.0f);
-        return zoom_error <= 0.006f && center_error_output <= 0.010f;
+        return zoom_error <= 0.0008f && center_error_output <= 0.006f;
     }
 
     CameraOutput step_pointer_zoom_shot(const CameraInput &input, float dt)
@@ -265,9 +268,7 @@ private:
         visibility_reframe_active_ = false;
     }
 
-    CameraOutput step_return_override(const CameraInput &input,
-                                      const CameraProfile &,
-                                      float dt)
+    CameraOutput step_return_override(const CameraInput &input, float dt)
     {
         CameraInput background = input;
         background.zoom_requested = false;
@@ -309,35 +310,41 @@ private:
             return guarded;
         }
 
+        /* Never perturb the already-proven P1 activation/return trajectories. */
+        if (before.state == CameraState::Activating ||
+            before.state == CameraState::Returning) {
+            visibility_reframe_active_ = false;
+            return guarded;
+        }
+
         const Vec2 pointer_output = cursor_output_position(
             input.cursor, before.center, before.zoom);
+        const Vec2 preferred_center = centered_target(
+            input.cursor, presentation_anchor(input.anchor), before.zoom);
+        const Vec2 best_reachable_output = cursor_output_position(
+            input.cursor, preferred_center, before.zoom);
 
-        /* Hysteresis: enter before the pointer can disappear, release only after
-         * it has returned to a comfortable presentation region. */
+        /* Enter before disappearance. Release either in the comfortable inner
+         * margin or when we have reached the best physically possible frame at
+         * a scene edge (where 14.5% margin may be mathematically impossible). */
         if (!visibility_reframe_active_ &&
             !inside_output_margin(pointer_output, 0.075f)) {
             visibility_reframe_active_ = true;
-        } else if (visibility_reframe_active_ &&
-                   inside_output_margin(pointer_output, 0.145f)) {
-            visibility_reframe_active_ = false;
+        } else if (visibility_reframe_active_) {
+            const bool comfortably_visible =
+                inside_output_margin(pointer_output, 0.145f);
+            const bool reached_best_possible =
+                inside_output_margin(pointer_output, 0.012f) &&
+                length(sub(pointer_output, best_reachable_output)) <= 0.020f;
+            if (comfortably_visible || reached_best_possible)
+                visibility_reframe_active_ = false;
         }
 
-        const bool context_zone_escaped =
-            (before.state == CameraState::SmoothIdle ||
-             before.state == CameraState::Observe) &&
-            !inside_anchor_zone(pointer_output, input.anchor,
-                                input.safe_zone + 0.10f);
-
-        const bool coast_zone_misaligned =
-            before.state == CameraState::Coast &&
-            !inside_anchor_zone(pointer_output, input.anchor,
-                                std::max(input.safe_zone * 0.68f, 0.12f));
-
-        const Vec2 preferred_center = centered_target(
-            input.cursor, presentation_anchor(input.anchor), before.zoom);
         const Vec2 toward_preferred = sub(preferred_center, before.center);
         const bool coast_pulling_away =
             before.state == CameraState::Coast &&
+            !inside_anchor_zone(pointer_output, input.anchor,
+                                std::max(input.safe_zone, 0.14f)) &&
             length(toward_preferred) * before.zoom > 0.018f &&
             dot(before.velocity, toward_preferred) < -0.00015f;
 
@@ -345,9 +352,9 @@ private:
             guarded.follow_policy = CameraFollowPolicy::Centered;
             guarded.anchor = presentation_anchor(input.anchor);
             guarded.emphasis_event = true;
-        } else if (context_zone_escaped || coast_zone_misaligned ||
-                   coast_pulling_away) {
-            /* Keep Smart semantics but veto stale idle/coast intent. */
+        } else if (coast_pulling_away) {
+            /* Veto only demonstrably stale coast motion. Normal Coast and
+             * SmoothIdle behavior remain bit-for-bit owned by SmartCamera. */
             guarded.emphasis_event = true;
         }
         return guarded;
