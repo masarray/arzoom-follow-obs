@@ -1,8 +1,8 @@
 # ArZoom Runtime Architecture
 
-**Current baseline:** v0.5.x scene-level filter architecture.
+**Current baseline:** v0.6.0 scene-level filter + P4.1 generalized read-only mapping + Kinematic Smart Viewport.
 
-For current project direction and superseded approaches, read [`PROJECT_DIRECTION.md`](PROJECT_DIRECTION.md) first.
+For current project direction and the accepted regression lock, read [`PROJECT_DIRECTION.md`](PROJECT_DIRECTION.md) and [`P4_1_STABLE_BASELINE.md`](P4_1_STABLE_BASELINE.md) first.
 
 ## Runtime layers
 
@@ -13,7 +13,11 @@ Platform input / OBS hotkeys
         ↓
 small input snapshots + presenter commands
         ↓
-Smart Camera state machine and math
+read-only scene mapping
+        ↓
+SceneViewportPlanner (WHERE)
+        ↓
+SceneKinematicMotion (HOW)
         ↓
 OBS source/filter integration
         ↓
@@ -64,41 +68,26 @@ Scene Camera must not be reimplemented using:
 - `obs_sceneitem_set_pos` / `obs_sceneitem_set_scale` / rotation / bounds / crop writes to the user's composition;
 - a custom scene-wide `ArZoom Camera` input source;
 - a duplicate off-screen scene render solely for zoom/follow;
-- a second Smart Camera engine;
+- a second semantic Smart Camera/planner;
 - CPU frame readback;
 - per-frame file I/O or settings writes.
 
 The user's scene composition remains the source of truth. ArZoom changes the filtered output, not persistent scene-item state.
 
-## Camera state flow
+## Scene Camera motion authority
 
-The accepted Smart Camera behavior is richer than the original binary zoom state:
+P4.1 deliberately separates semantic framing from physical motion inside one camera authority:
 
-```text
-REST
-  ↓ activate
-ACTIVATING
-  ↓
-SMOOTH_IDLE
-  ↕
-OBSERVE
-  ↓ real relocation
-FOLLOW / CATCH_UP
-  ↓
-COAST
-  ↓
-SMOOTH_IDLE
+- `SceneViewportPlanner` owns pointer/context semantics and decides **WHERE** to frame.
+- `SceneKinematicMotion` owns position/velocity/acceleration continuity and decides **HOW** to reach that frame.
 
-RETURNING → REST
-```
+The kinematic synthesizer is not a second semantic engine. It has no OBS scene ownership or pointer-intent policy.
 
-Presenter controls such as Freeze Camera and Overview Peek temporarily alter camera intent/state without creating a separate motion engine.
+The accepted motion contract includes bounded jerk, no artificial stop/restart at tracking→settle, bounded far-distance cruise for moving targets, automatic jerk-aware precision braking for immutable targets, and exact drift-free HOLD.
 
 ## Zoom trajectory
 
-Zoom transitions use deterministic minimum-jerk motion and preserve the chosen focus point. Completed idle states settle exactly rather than continuously micro-correcting.
-
-The visible viewport must always remain within valid source/scene bounds.
+Explicit Zoom In/Out trajectories remain deterministic and focus-aware. The visible viewport must remain inside valid source/scene bounds.
 
 For normalized zoom `z` in the simple source-aligned case:
 
@@ -118,7 +107,7 @@ Equivalent safety rules apply after coordinate transforms in scene-wide mapping.
 
 ## Coordinate systems
 
-ArZoom must distinguish these spaces instead of assuming they are identical:
+ArZoom distinguishes these spaces instead of assuming they are identical:
 
 1. Windows virtual-desktop pixels;
 2. selected monitor-local pixels;
@@ -128,27 +117,26 @@ ArZoom must distinguish these spaces instead of assuming they are identical:
 6. normalized ArZoom camera coordinates;
 7. final filtered output coordinates.
 
-A fullscreen top-level Display Capture makes several of these transforms effectively identity mappings, which is why v0.5.x can prove that case safely.
-
-Complex layouts require explicit read-only transform composition.
-
-## Scene-wide mapping contract
+## P4.1 scene-wide mapping contract
 
 Pointer-driven Scene Camera features are enabled only when ArZoom can prove a deterministic desktop-to-scene mapping.
 
-Current v0.5.x proven case:
+v0.6.0 proven scope:
 
-- exactly one visible top-level Display Capture;
-- it fills the scene canvas;
-- the captured monitor can be resolved deterministically.
+- exactly one visible top-level Display Capture owns the mapping;
+- the captured monitor resolves deterministically;
+- positive axis-aligned fullscreen, scaled, or inset placement can be mapped;
+- crop-aware mapping is supported when the transform can be proven;
+- Smart Follow, click anchoring, and Presentation Cursor use one mapped coordinate path;
+- Presentation Cursor size follows exact live camera zoom.
 
-If scale, crop, rotation, nesting, or multiple Display Captures make ownership/mapping ambiguous, ArZoom must fail safe instead of guessing.
+ArZoom fails safe for unsupported/ambiguous cases including multiple candidate Display Captures, unproven rotation/skew/flips, unsupported bounds modes, unresolved nested capture ownership, or invalid monitor/source geometry.
 
-Future mapping work should read scene geometry using APIs such as `obs_sceneitem_get_box_transform()` / `obs_sceneitem_get_draw_transform()` and compose/invert those transforms without writing scene-item state.
+Mapping remains read-only. Future mapping work may extend transform composition, but must not write scene-item state to make mapping easier.
 
 ## Presentation effects
 
-GPU click feedback and Presentation Cursor are presentation-output effects. Their state is bounded and they must not wake, retarget, or accelerate Smart Camera motion.
+GPU click feedback and Presentation Cursor are presentation-output effects. Their state is bounded and they must not wake, retarget, or accelerate the semantic camera planner.
 
 When presentation effects are inactive, OBS pass-through should remain available.
 
@@ -161,3 +149,7 @@ The safe fallback is always:
 - stop pointer-driven retargeting when mapping is not proven;
 - preserve presenter controls/fixed framing where safe;
 - leave the user's scene-item transforms untouched.
+
+## Regression contract
+
+The v0.6.0 P4.1 motion and mapping contracts are frozen in [`P4_1_STABLE_BASELINE.md`](P4_1_STABLE_BASELINE.md). User-visible camera-motion changes must preserve both pointer acquisition and smooth kinematic quality and require direct OBS trial before replacing that baseline.

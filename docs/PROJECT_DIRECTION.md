@@ -1,15 +1,16 @@
 # ArZoom Project Direction — Current Source of Truth
 
-**Status:** authoritative for current development direction after v0.5.1.
+**Status:** authoritative for current development direction after v0.6.0.
 
-This document exists to prevent contributors, automation, and AI agents from reviving superseded experiments or following stale roadmap text. When another planning document conflicts with this file, this file and the accepted architecture documents linked below take precedence until an explicit architecture decision changes them.
+This document exists to prevent contributors, automation, and AI agents from reviving superseded experiments or regressing the accepted Scene Camera behavior. When another planning document conflicts with this file, this file and the stable-baseline contracts linked below take precedence until an explicit architecture decision changes them.
 
 ## Current stable baseline
 
-- Public product line: **ArZoom v0.5.1 for Windows 10/11 x64**.
-- Phase 0 through Phase 4 are complete.
-- The accepted Smart Camera runtime is shared by the per-source **ArZoom Filter** and the managed scene-level **ArZoom Camera** filter.
-- Phase 4 is not an experiment anymore. Its scene-level filter architecture is the baseline for future work.
+- Public product line: **ArZoom v0.6.0 for Windows 10/11 x64**.
+- Phase 0 through Phase 4.1 are complete.
+- Phase 4 scene-wide filter architecture is accepted and must not be reimplemented through scene-item mutation or duplicate scene rendering.
+- Phase 4.1 generalized read-only mapping and **Kinematic Smart Viewport** behavior are accepted stable product behavior.
+- The direct-OBS accepted P4.1 runtime candidate is recorded in [`P4_1_STABLE_BASELINE.md`](P4_1_STABLE_BASELINE.md).
 
 ## Product North Star
 
@@ -18,17 +19,17 @@ ArZoom should become the most pleasant, lightweight, reliable, and beginner-frie
 The camera should behave like a skilled stabilized camera operator rather than a robotic mouse follower:
 
 1. viewer comfort first;
-2. follow presentation areas, not every pointer movement;
-3. preserve the accepted Smart Zone → Follow / Catch-Up → Coast → SmoothIdle behavior;
-4. keep presentation effects GPU-native and bounded;
-5. keep the user's OBS composition safe;
-6. keep idle cost very low;
-7. make the common path one-click usable;
-8. make every development phase independently releasable.
+2. pointer context must stay acquired without continuous cursor chasing;
+3. local explanation gestures should remain calm;
+4. meaningful relocation should begin promptly and move decisively but smoothly;
+5. final framing should be confident and completely still;
+6. presentation effects stay GPU-native and bounded;
+7. the user's OBS composition remains safe;
+8. idle cost remains very low;
+9. the common path remains one-click usable;
+10. every development phase remains independently releasable.
 
-## Accepted Phase 4 architecture
-
-The current scene-wide architecture is:
+## Accepted Scene Camera architecture
 
 ```text
 OBS Scene
@@ -42,32 +43,37 @@ scene obs_source_t
        ↓ normal OBS source-filter pipeline
 managed ArZoom Camera filter
        ↓
-Smart Camera + Presenter Controls + click/cursor effects
+SceneViewportPlanner (WHERE)
+       ↓
+SceneKinematicMotion (HOW)
+       ↓
+Presenter Controls + click/cursor presentation pass
        ↓
 final scene output
 ```
 
-ArZoom attaches the existing `arzoom_filter` directly to the current OBS scene source. OBS performs scene composition first; ArZoom processes the completed scene through OBS's normal filter path.
+ArZoom attaches the existing `arzoom_filter` directly to the current OBS scene source. OBS composes the scene first; ArZoom processes that completed scene through OBS's normal filter path.
 
-### This is intentional
+`SceneViewportPlanner` is the semantic camera authority for scene-wide framing. `SceneKinematicMotion` is the accepted deterministic motion synthesizer for reaching the selected target; it does not own scene semantics, pointer intent policy, or OBS composition.
+
+## Non-negotiable architecture boundaries
 
 Future work must preserve these properties unless a new architecture decision is explicitly reviewed and documented:
 
 - no persistent scene-item transform mutation;
 - no custom scene-wide `ArZoom Camera` input source;
 - no private duplicate scene-render graph;
-- no reusable off-screen scene copy solely to implement scene-wide zoom;
-- no hidden helper scene item for the camera;
+- no reusable off-screen scene copy solely for scene-wide zoom;
+- no hidden helper scene item for camera motion;
 - no CPU frame readback;
-- no second Smart Camera/motion engine;
+- no second semantic Smart Camera/planner competing with `SceneViewportPlanner`;
 - no per-frame file or settings writes;
+- no unbounded pointer/frame histories;
 - OBS pass-through remains available when presentation effects are inactive.
 
 ## Explicitly rejected / superseded directions
 
-The following Phase 4 ideas were explored or proposed earlier and are **not current implementation tasks**:
-
-### Rejected: custom `ArZoom Camera` OBS input source
+### Rejected: custom ArZoom Camera OBS input source
 
 Do not register a second source type that asks the user to select a scene/source and then re-renders that target into an off-screen texture. That experiment introduced unnecessary source registration, recursion, lifecycle, and duplicate-composition complexity.
 
@@ -75,43 +81,49 @@ Do not register a second source type that asks the user to select a scene/source
 
 Do not implement scene-wide zoom by writing `obs_sceneitem_set_pos`, `obs_sceneitem_set_scale`, rotation, bounds, or crop on the user's composition. ArZoom deliberately avoids the transform-recovery problem by leaving scene items untouched.
 
-### Rejected: parallel motion engine
+### Rejected: competing camera/motion policy
 
-Do not fork Smart Zone, Coast, SmoothIdle, Presenter Controls, click logic, or Presentation Cursor behavior for Scene Camera. Scene-level and per-source modes share the accepted camera runtime.
+Do not create a second semantic follow engine, parallel Smart Zone policy, or another planner that competes with the accepted Scene Camera authority. Improvements to physical motion belong in the shared deterministic kinematic layer unless an explicit architecture decision proves otherwise.
 
-## Current limitation to solve
+## P4.1 stable behavior — locked
 
-The principal technical gap after Phase 4 is **pointer mapping for complex scene layouts**, not scene rendering.
+The complete behavioral contract lives in [`P4_1_STABLE_BASELINE.md`](P4_1_STABLE_BASELINE.md). Key requirements are:
 
-v0.5.x only enables pointer-driven scene-wide Smart Follow/click/cursor mapping when ArZoom can prove a deterministic mapping for one visible top-level fullscreen Display Capture.
+- local pointer work remains calm;
+- leaving useful viewport context begins tracking promptly;
+- normal/high-zoom far movement keeps pointer acquisition bounded;
+- far travel may cruise faster but remains acceleration/jerk smooth;
+- no stop → restart → stop cadence;
+- no repeated searching/reversal after final pointer intent is known;
+- final pointer lands in a useful near-centre contextual area;
+- final HOLD is exact and drift-free;
+- TRACK → final SETTLE preserves meaningful velocity/acceleration continuity;
+- pressure changes HOW decisively the camera moves, not WHERE the target corridor continuously shifts;
+- regression gates must not be weakened merely to make a new implementation pass.
 
-Arbitrary scale, inset placement, crop, rotation, nested presentation layouts, and multiple Display Captures require a more general read-only coordinate mapping system.
+## P4.1 read-only mapping boundary
+
+v0.6.0 supports deterministic mapping for exactly one visible top-level Display Capture when the mapping can be proven, including:
+
+- positive axis-aligned scale/inset placement;
+- crop-aware mapping;
+- deterministic monitor ownership;
+- one shared mapped path for Smart Follow, click anchoring, and Presentation Cursor;
+- Presentation Cursor size tied to exact live camera zoom.
+
+ArZoom fails safe instead of guessing for unsupported/ambiguous cases such as multiple candidate Display Captures, unproven rotation/skew/flips, unsupported bounds modes, unresolved nested capture ownership, or invalid monitor/source geometry.
+
+**Invariant:** mapping remains read-only with respect to the user's scene composition.
 
 ## Next engineering priorities
 
-### P4.1 — Generalized read-only scene mapping
-
-Extend Desktop → Display Capture → scene-canvas coordinate mapping without mutating scene items.
-
-Preferred direction:
-
-- inspect source settings and monitor identity;
-- read scene-item box/draw transforms;
-- compose/invert transforms deterministically;
-- support scale/inset and crop first;
-- add nested-scene mapping only with an explicit transform chain;
-- add rotation only when mathematically proven and covered by tests;
-- fail safe with a diagnostic reason when a mapping cannot be proven.
-
-**Invariant:** mapping work is read-only with respect to the user's scene composition.
-
 ### P4.2 — Deterministic multi-capture target selection
 
-Multiple Display Captures must not automatically force permanent failure. Add an explicit or otherwise deterministic presentation target selection contract. Never guess which capture owns the pointer.
+Multiple Display Captures must not force permanent failure, but ArZoom must never guess capture ownership. Add explicit or otherwise deterministic presentation-target selection while preserving the v0.6.0 mapping and motion contracts.
 
 ### Reliability hardening
 
-Before expanding scope aggressively, validate:
+Continue field/soak validation for:
 
 - scene changes while zoomed;
 - rapid enable/disable and hotkey stress;
@@ -137,32 +149,34 @@ Advanced camera, cursor, mapping, and diagnostics controls should remain availab
 
 ### Cross-platform later
 
-macOS and Linux remain important for the North Star, but Windows mapping and reliability should be made field-proven first. Platform input backends must feed the same platform-neutral camera model rather than duplicate camera policy.
+macOS and Linux remain important for the North Star, but Windows reliability should be made field-proven first. Platform input backends must feed the same platform-neutral camera model rather than duplicate camera policy.
 
 ## Engineering change protocol
 
-Before changing any non-negotiable architecture boundary above:
+Before changing any non-negotiable architecture or P4.1 motion-quality boundary:
 
-1. document the problem with a reproducible case;
-2. show why the current architecture cannot solve it;
-3. compare the proposed design against the existing scene-filter approach;
-4. state scene-safety, render-path, lifecycle, performance, and recovery consequences;
-5. add/update deterministic regression tests;
-6. update this document and the relevant architecture document in the same PR.
+1. document the reproducible problem;
+2. show why the current architecture/behavior cannot solve it;
+3. state scene-safety, render-path, lifecycle, performance, and recovery consequences;
+4. preserve or strengthen pointer-acquisition and motion-quality gates together;
+5. provide before/after deterministic traces for user-visible motion changes;
+6. run direct OBS trial for user-visible motion changes;
+7. update this document and the relevant stable-baseline/architecture document in the same PR.
 
-A feature request alone is not sufficient reason to revive a rejected architecture.
+A feature request alone is not sufficient reason to revive a rejected architecture or weaken an accepted regression gate.
 
 ## Source-of-truth order
 
 For contributors and AI agents, use this order:
 
 1. **`docs/PROJECT_DIRECTION.md`** — current priorities and prohibited/superseded directions.
-2. **`docs/PHASE4_ZOOMINATOR_AUDIT.md`** — why the accepted scene-level filter architecture was chosen.
-3. **`docs/SMART_CAMERA_ARCHITECTURE.md`** — camera/rendering invariants.
-4. **`docs/ARCHITECTURE.md`** — current runtime and coordinate-flow overview.
-5. Phase-specific historical specs — useful for accepted behavior, but they do not override the current architecture.
-6. GitHub roadmap/issues — planning surfaces; they must be kept synchronized with the documents above.
+2. **`docs/P4_1_STABLE_BASELINE.md`** — accepted v0.6.0 mapping and Kinematic Smart Viewport regression contract.
+3. **`docs/PHASE4_ZOOMINATOR_AUDIT.md`** — why the accepted scene-level filter architecture was chosen.
+4. **`docs/SMART_CAMERA_ARCHITECTURE.md`** — camera/rendering invariants.
+5. **`docs/ARCHITECTURE.md`** — runtime and coordinate-flow overview.
+6. Phase-specific historical specs — useful for accepted behavior, but they do not override current contracts.
+7. GitHub roadmap/issues — planning surfaces; they must stay synchronized with the documents above.
 
 ## Current release boundary
 
-v0.5.1 is a public Windows release that adds product identity/media and packaging hardening on top of the v0.5.0 Scene Camera runtime. It does not replace the accepted Phase 4 architecture.
+v0.6.0 is the first stable public release that combines generalized P4.1 read-only scale/inset/crop mapping with the accepted Kinematic Smart Viewport behavior. The release does not change the accepted Phase 4 scene-level filter architecture; it strengthens mapping coverage and the physical quality/reliability of pointer-aware viewport movement.
