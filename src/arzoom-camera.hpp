@@ -11,22 +11,20 @@ namespace arzoom {
  * Presenter-aware Smart Camera coordinator
  * ----------------------------------------
  *
- * The accepted SmartCamera remains the one semantic follow engine. This thin
- * coordinator adds two presentation contracts around it:
+ * The accepted SmartCamera remains the one semantic follow engine. Scene Camera
+ * P4.1 can opt into two additional presentation contracts:
  *
  * 1. Active Zoom +/- is a joint affine viewport shot. Scale and center move
  *    together with one minimum-jerk trajectory toward the current pointer, so
  *    zoom-out never has to freeze merely to preserve an old off-centre frame.
  * 2. Pointer visibility is a semantic priority over stale COAST intent. When
  *    the pointer approaches the output edge, the same SmartCamera keeps its
- *    proven gimbal semantics but gets an emphasis event and a temporarily
- *    tighter safe zone. Once the best reachable pointer position is recovered,
- *    ordinary Smart Zone semantics resume.
+ *    proven gimbal semantics but gets an emphasis event. Once the best reachable
+ *    pointer position is recovered, ordinary Smart Zone semantics resume.
  *
- * There is no second follow engine, no scene mutation, no frame readback and no
- * alternate render graph. The coordinator owns only presenter transition intent
- * and the public affine shot while the existing SmartCamera synchronizes behind
- * it, analogous to the accepted Overview Peek controller.
+ * Per-source ArZoom does not opt in and therefore delegates bit-for-bit to the
+ * accepted P1 SmartCamera. There is no second follow engine, scene mutation,
+ * frame readback, or alternate scene render graph.
  */
 class PresenterAwareSmartCamera {
 public:
@@ -40,10 +38,25 @@ public:
         return public_output_;
     }
 
+    void set_scene_context(bool enabled)
+    {
+        scene_context_enabled_ = enabled;
+        if (!enabled) {
+            zoom_shot_active_ = false;
+            return_shot_active_ = false;
+            sync_active_ = false;
+            zoom_lock_active_ = false;
+            visibility_reframe_active_ = false;
+            initialized_ = false;
+            public_output_ = camera_.output();
+        }
+    }
+
     void reset()
     {
         camera_.reset();
         public_output_ = camera_.output();
+        scene_context_enabled_ = false;
         initialized_ = false;
         previous_zoom_requested_ = false;
         requested_zoom_target_ = 2.0f;
@@ -62,6 +75,11 @@ public:
 
     CameraOutput step(const CameraInput &source_input)
     {
+        if (!scene_context_enabled_) {
+            public_output_ = camera_.step(source_input);
+            return public_output_;
+        }
+
         CameraInput input = source_input;
         const float dt = std::clamp(input.dt, 0.0f, 0.10f);
         const float desired_zoom =
@@ -107,10 +125,6 @@ public:
         CameraInput guarded = apply_context_guard(input, camera_.output());
         CameraOutput next = camera_.step(guarded);
 
-        /* After an explicit presenter Zoom +/- shot, keep the visible scale on
-         * the exact requested level. The hidden semantic camera is already
-         * synchronized within a sub-pixel tolerance; this prevents its final
-         * exponential tail from causing a perceptible 1-frame zoom rebound. */
         if (zoom_lock_active_ && input.zoom_requested &&
             std::fabs(desired_zoom - sync_target_zoom_) <= 0.0005f) {
             next.zoom = sync_target_zoom_;
@@ -164,8 +178,8 @@ private:
         if (input.follow_policy == CameraFollowPolicy::Fixed) {
             target_center = clamp_center({0.5f, 0.5f}, target_zoom);
         } else if (sync_focus_valid_) {
-            /* Zoom +/- is a deliberate presenter command: unlike ordinary
-             * Smart Zone follow, the pointer becomes the shot anchor. */
+            /* Zoom +/- is a deliberate presenter command: the pointer becomes
+             * the semantic anchor for this temporary affine shot. */
             target_center = centered_target(
                 sync_focus_, sync_anchor_, target_zoom);
         }
@@ -173,8 +187,8 @@ private:
         shot_target_ = screen_transform(target_center, target_zoom);
         shot_elapsed_ = 0.0f;
         shot_duration_ = zooming_in
-            ? std::clamp(profile.zoom_in_seconds * 0.88f, 0.28f, 0.52f)
-            : std::clamp(profile.zoom_out_seconds * 0.88f, 0.32f, 0.62f);
+            ? std::clamp(profile.zoom_in_seconds * 1.05f, 0.36f, 0.62f)
+            : std::clamp(profile.zoom_out_seconds * 0.95f, 0.36f, 0.68f);
         zoom_shot_active_ = true;
         return_shot_active_ = false;
         sync_active_ = true;
@@ -197,9 +211,6 @@ private:
             required_zoom > sync_target_zoom_ + 0.010f;
 
         if (zoom_out_blocked) {
-            /* Re-center the hidden engine only as much as required to make the
-             * lower target zoom geometrically legal. The public shot remains
-             * the sole visible motion while this happens. */
             sync.follow_policy = CameraFollowPolicy::Fixed;
             sync.cursor_valid = false;
         } else if (sync_focus_valid_) {
@@ -323,7 +334,6 @@ private:
             return guarded;
         }
 
-        /* Never perturb the already-proven P1 activation/return trajectories. */
         if (before.state == CameraState::Activating ||
             before.state == CameraState::Returning) {
             visibility_reframe_active_ = false;
@@ -358,21 +368,15 @@ private:
             length(toward_preferred) * before.zoom > 0.018f &&
             dot(before.velocity, toward_preferred) < -0.00015f;
 
-        if (visibility_reframe_active_) {
-            /* Do not switch camera policy: preserving Smart mode avoids a
-             * response-gain discontinuity during rapid zone changes. */
-            guarded.safe_zone = std::min(input.safe_zone, 0.16f);
-            guarded.anchor = presentation_anchor(input.anchor);
+        if (visibility_reframe_active_ || coast_pulling_away)
             guarded.emphasis_event = true;
-        } else if (coast_pulling_away) {
-            guarded.emphasis_event = true;
-        }
         return guarded;
     }
 
     SmartCamera camera_;
     CameraOutput public_output_{};
 
+    bool scene_context_enabled_ = false;
     bool initialized_ = false;
     bool previous_zoom_requested_ = false;
     float requested_zoom_target_ = 2.0f;
