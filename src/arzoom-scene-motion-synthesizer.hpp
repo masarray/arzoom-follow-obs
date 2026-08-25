@@ -14,15 +14,15 @@ namespace arzoom {
  * This layer owns HOW an already-selected viewport target is reached. It has no
  * pointer semantics, scene mapping or presentation-zone decisions.
  *
- * Motion state is explicitly position + velocity + acceleration. The target is
- * converted to a conservative braking-aware desired velocity; acceleration
- * toward that velocity is jerk-limited. The proportional speed near the target
- * is deliberately low enough to brake before crossing, so no terminal position
- * snap or acceleration reset is needed.
+ * Motion state is explicitly position + velocity + acceleration. A far target
+ * may request a decisive cruise velocity, but that request is always limited by
+ * a conservative braking envelope. Near the target, proportional speed takes
+ * over. Acceleration toward desired velocity is jerk-limited, so extra chase
+ * authority never becomes a one-frame speed or direction jump.
  *
  * The same state survives TRACK -> SETTLE. No velocity reset occurs at handoff.
- * Limits are expressed in output-space units and integrated with bounded fixed
- * substeps for stable 30/60/120/144 fps behavior. State/work remain O(1).
+ * Limits are output-space values and are integrated with bounded fixed substeps
+ * for stable 30/60/120/144 fps behavior. State/work remain O(1).
  */
 
 struct SceneMotionLimits {
@@ -165,13 +165,26 @@ private:
             ? mul(error_output, 1.0f / distance_output)
             : Vec2{0.0f, 0.0f};
 
+        /* Close work is calm and proportional. Far work gets a smooth cruise
+         * floor so the camera can actually keep pace with a rapidly moving
+         * pointer. The floor fades completely before the precision-settle zone. */
         const float proportional_speed =
             std::max(limits.position_gain, 0.1f) * distance_output;
-        const float braking_speed = 0.68f * std::sqrt(std::max(
+        const float cruise_mix = scene_smoothstep01(
+            std::clamp((distance_output - 0.045f) / 0.20f, 0.0f, 1.0f));
+        const float cruise_speed =
+            limits.max_speed_output * (0.68f * cruise_mix);
+        const float requested_speed = std::max(
+            proportional_speed, cruise_speed);
+
+        /* The braking envelope remains authoritative. Even if the far cruise
+         * wants more speed, it starts yielding early enough for bounded
+         * acceleration/jerk to produce a calm monotonic arrival. */
+        const float braking_speed = 0.78f * std::sqrt(std::max(
             0.0f, 2.0f * limits.max_acceleration_output * distance_output));
         const float desired_speed = std::min(
             limits.max_speed_output,
-            std::min(proportional_speed, braking_speed));
+            std::min(requested_speed, braking_speed));
         const Vec2 desired_velocity = mul(direction, desired_speed);
 
         const float response =
