@@ -14,11 +14,11 @@ namespace arzoom {
  * This layer owns HOW an already-selected viewport target is reached. It has no
  * pointer semantics, scene mapping or presentation-zone decisions.
  *
- * Motion state is explicitly position + velocity + acceleration. A moving
- * tracking target may use decisive cruise authority so the pointer stays
- * acquired. A final/static target uses a much more conservative jerk-aware
- * stopping envelope. The mode changes limits only; position/velocity/
- * acceleration are never reset at TRACK -> SETTLE handoff.
+ * Motion state is explicitly position + velocity + acceleration. A target that
+ * is itself moving frame-to-frame is treated as live tracking and may use
+ * decisive cruise authority. Once the planner's target becomes immutable, the
+ * same state automatically switches to conservative precision braking. No
+ * position/velocity/acceleration reset is needed at TRACK -> SETTLE handoff.
  *
  * Acceleration is jerk-limited every substep. Limits are output-space values and
  * integration uses bounded fixed substeps for stable 30/60/120/144 fps behavior.
@@ -98,17 +98,14 @@ inline SceneMotionLimits scene_motion_limits(CameraMotionStyle style,
 inline float scene_jerk_stopping_speed(float distance_output,
                                        float max_acceleration_output,
                                        float max_jerk_output,
-                                       bool live_tracking)
+                                       bool moving_target)
 {
     const float distance = std::max(distance_output, 0.0f);
     const float acceleration = std::max(max_acceleration_output, 0.1f);
     const float jerk = std::max(max_jerk_output, 1.0f);
 
-    /* A live target is allowed more runway because it is recomputed next frame.
-     * A committed final target deliberately brakes much earlier so one arrival
-     * does not turn into an overshoot + corrective reversal. */
-    const float jerk_safety = live_tracking ? 0.78f : 0.24f;
-    const float accel_safety = live_tracking ? 0.82f : 0.52f;
+    const float jerk_safety = moving_target ? 0.78f : 0.24f;
+    const float accel_safety = moving_target ? 0.82f : 0.52f;
     const float jerk_speed = std::pow(
         std::max(distance * std::sqrt(jerk) * jerk_safety, 0.0f),
         2.0f / 3.0f);
@@ -131,6 +128,8 @@ public:
         center_ = center;
         velocity_ = {0.0f, 0.0f};
         acceleration_ = {0.0f, 0.0f};
+        target_initialized_ = false;
+        previous_target_ = center;
     }
 
     void adopt(Vec2 center, Vec2 velocity, Vec2 acceleration, float zoom)
@@ -138,6 +137,8 @@ public:
         center_ = clamp_center(center, std::max(zoom, 1.0f));
         velocity_ = velocity;
         acceleration_ = acceleration;
+        target_initialized_ = false;
+        previous_target_ = center_;
     }
 
     SceneMotionSample sample() const
@@ -147,10 +148,18 @@ public:
 
     SceneMotionSample step(Vec2 target_center, float zoom, float dt,
                            const SceneMotionLimits &limits,
-                           bool live_tracking = false)
+                           bool force_live_tracking = false)
     {
         const float safe_zoom = std::max(zoom, 1.0f);
         target_center = clamp_center(target_center, safe_zoom);
+        const float target_motion_output = target_initialized_
+            ? length(sub(target_center, previous_target_)) * safe_zoom
+            : 0.0f;
+        const bool moving_target = force_live_tracking ||
+                                   target_motion_output > 0.0010f;
+        previous_target_ = target_center;
+        target_initialized_ = true;
+
         const float total_dt = std::clamp(dt, 0.0f, 0.10f);
         if (total_dt <= 1.0e-7f)
             return current_sample(target_center, safe_zoom, limits);
@@ -161,7 +170,7 @@ public:
         const float h = total_dt / static_cast<float>(steps);
         for (int i = 0; i < steps; ++i)
             integrate_substep(target_center, safe_zoom, h, limits,
-                              live_tracking);
+                              moving_target);
 
         SceneMotionSample result = current_sample(
             target_center, safe_zoom, limits);
@@ -179,7 +188,7 @@ public:
 private:
     void integrate_substep(Vec2 target_center, float zoom, float dt,
                            const SceneMotionLimits &limits,
-                           bool live_tracking)
+                           bool moving_target)
     {
         const Vec2 error_output = mul(sub(target_center, center_), zoom);
         const float distance_output = length(error_output);
@@ -194,7 +203,7 @@ private:
             std::max(limits.position_gain, 0.1f) * distance_output;
         const float cruise_mix = scene_smoothstep01(
             std::clamp((distance_output - 0.045f) / 0.20f, 0.0f, 1.0f));
-        const float cruise_fraction = live_tracking ? 0.70f : 0.30f;
+        const float cruise_fraction = moving_target ? 0.70f : 0.30f;
         const float cruise_speed =
             limits.max_speed_output * (cruise_fraction * cruise_mix);
         const float requested_speed = std::max(
@@ -202,7 +211,7 @@ private:
 
         const float stopping_speed = scene_jerk_stopping_speed(
             distance_output, limits.max_acceleration_output,
-            limits.max_jerk_output, live_tracking);
+            limits.max_jerk_output, moving_target);
         const float desired_speed = std::min(
             limits.max_speed_output,
             std::min(requested_speed, stopping_speed));
@@ -263,6 +272,8 @@ private:
     Vec2 center_{0.5f, 0.5f};
     Vec2 velocity_{0.0f, 0.0f};
     Vec2 acceleration_{0.0f, 0.0f};
+    bool target_initialized_ = false;
+    Vec2 previous_target_{0.5f, 0.5f};
 };
 
 } // namespace arzoom
