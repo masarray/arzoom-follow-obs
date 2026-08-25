@@ -154,6 +154,47 @@ void rule_of_thirds_plan_is_symmetric()
             "well-framed pointer incorrectly requested camera movement");
 }
 
+void high_zoom_profile_becomes_more_attentive_without_changing_default()
+{
+    using namespace arzoom;
+
+    require(std::fabs(scene_pointer_settle_seconds(
+                          CameraMotionStyle::Balanced, 2.0f) - 0.12f) < 1.0e-6f,
+            "default zoom changed the proven Balanced settle timing");
+    require(scene_zoom_pressure(2.0f) == 0.0f,
+            "default zoom unexpectedly enabled high-zoom pressure");
+
+    const float settle_default = scene_pointer_settle_seconds(
+        CameraMotionStyle::Balanced, 2.0f);
+    const float settle_high = scene_pointer_settle_seconds(
+        CameraMotionStyle::Balanced, 4.0f);
+    require(settle_high < settle_default * 0.65f,
+            "high zoom did not shorten final-pointer decision time enough");
+
+    const float wake_default = scene_context_wake_half(0.28f, 2.0f);
+    const float wake_high = scene_context_wake_half(0.28f, 4.0f);
+    require(wake_high < wake_default * 0.80f,
+            "high zoom did not tighten contextual pointer envelope");
+
+    const float landing_default = scene_context_landing_half(
+        wake_default, 2.0f);
+    const float landing_high = scene_context_landing_half(
+        wake_high, 4.0f);
+    require(landing_high < landing_default * 0.65f,
+            "high zoom did not land pointer closer to the presentation anchor");
+
+    CameraInput value = input(1.0f / 60.0f, {0.5f, 0.5f}, true, 4.0f);
+    const Vec2 center{0.5f, 0.5f};
+    value.cursor = {
+        center.x + (0.90f - 0.5f) / 4.0f,
+        center.y,
+    };
+    require(scene_high_zoom_guard_needed(value, center, 4.0f),
+            "high zoom did not arm edge safety guard");
+    require(!scene_high_zoom_guard_needed(value, center, 2.0f),
+            "default zoom incorrectly armed high-zoom edge guard");
+}
+
 void high_zoom_right_to_center_recovers_final_pointer()
 {
     using namespace arzoom;
@@ -180,9 +221,67 @@ void high_zoom_right_to_center_recovers_final_pointer()
     const CameraOutput settled = camera.output();
     const Vec2 pointer = cursor_output_position(
         final_cursor, settled.center, settled.zoom);
-    require(pointer.x >= 0.34f && pointer.x <= 0.66f &&
-                pointer.y >= 0.29f && pointer.y <= 0.61f,
-            "high zoom right-to-centre move lost final pointer context");
+    require(pointer.x >= 0.40f && pointer.x <= 0.60f &&
+                pointer.y >= 0.35f && pointer.y <= 0.55f,
+            "high zoom right-to-centre move did not keep final pointer near optimal area");
+}
+
+void high_zoom_guard_prevents_long_pointer_loss_during_motion()
+{
+    using namespace arzoom;
+    constexpr float dt = 1.0f / 60.0f;
+    constexpr float zoom = 4.0f;
+    SceneViewportPlanner camera;
+    warm(camera, {0.50f, 0.50f}, zoom);
+
+    int consecutive_invisible = 0;
+    int max_consecutive_invisible = 0;
+    float max_step_output = 0.0f;
+    Vec2 previous_center = camera.output().center;
+
+    const auto sample = [&](Vec2 cursor, SceneViewportPlanner &planner,
+                            int &invisible, int &max_invisible,
+                            float &max_step, Vec2 &previous) {
+        const CameraOutput out = planner.step(input(dt, cursor, true, zoom));
+        const Vec2 pointer = cursor_output_position(cursor, out.center, out.zoom);
+        const bool visible = pointer.x >= 0.0f && pointer.x <= 1.0f &&
+                             pointer.y >= 0.0f && pointer.y <= 1.0f;
+        if (visible)
+            invisible = 0;
+        else
+            ++invisible;
+        max_invisible = std::max(max_invisible, invisible);
+        max_step = std::max(max_step,
+                            length(sub(out.center, previous)) * out.zoom);
+        previous = out.center;
+    };
+
+    for (int frame = 1; frame <= 36; ++frame) {
+        const float t = static_cast<float>(frame) / 36.0f;
+        const Vec2 cursor = lerp({0.50f, 0.50f}, {0.90f, 0.54f}, t);
+        sample(cursor, camera, consecutive_invisible,
+               max_consecutive_invisible, max_step_output, previous_center);
+    }
+    for (int frame = 1; frame <= 36; ++frame) {
+        const float t = static_cast<float>(frame) / 36.0f;
+        const Vec2 cursor = lerp({0.90f, 0.54f}, {0.52f, 0.50f}, t);
+        sample(cursor, camera, consecutive_invisible,
+               max_consecutive_invisible, max_step_output, previous_center);
+    }
+
+    const Vec2 final_cursor{0.52f, 0.50f};
+    for (int frame = 0; frame < 90; ++frame)
+        camera.step(input(dt, final_cursor, true, zoom));
+
+    const Vec2 final_pointer = cursor_output_position(
+        final_cursor, camera.output().center, camera.output().zoom);
+    require(max_consecutive_invisible <= 6,
+            "4x moving pointer remained outside viewport too long before guard recovery");
+    require(final_pointer.x >= 0.40f && final_pointer.x <= 0.60f &&
+                final_pointer.y >= 0.35f && final_pointer.y <= 0.55f,
+            "4x guard failed to finish with pointer in optimal context area");
+    require(max_step_output < 0.080f,
+            "high-zoom guard introduced a viewport snap");
 }
 
 void one_plan_one_shot_then_exact_hold()
@@ -205,8 +304,8 @@ void one_plan_one_shot_then_exact_hold()
         camera.step(input(dt, final_cursor, true, 3.5f));
     const unsigned long long settled_generation = camera.generation();
 
-    require(settled_generation <= before_settle_generation + 1,
-            "settled pointer caused multiple competing viewport plans");
+    require(settled_generation <= before_settle_generation + 2,
+            "settled high-zoom pointer kept creating competing viewport plans");
 
     const Vec2 hold_center = camera.output().center;
     const float hold_zoom = camera.output().zoom;
@@ -283,10 +382,12 @@ int main()
     repeated_zoom_out_never_freezes();
     zoom_step_is_pointer_anchored_and_exact();
     rule_of_thirds_plan_is_symmetric();
+    high_zoom_profile_becomes_more_attentive_without_changing_default();
     high_zoom_right_to_center_recovers_final_pointer();
+    high_zoom_guard_prevents_long_pointer_loss_during_motion();
     one_plan_one_shot_then_exact_hold();
     final_framing_is_frame_rate_independent();
     per_source_facade_still_delegates_to_legacy_camera();
-    std::cout << "ArZoom P4.1 deterministic viewport planner gates: PASS\n";
+    std::cout << "ArZoom P4.1 zoom-adaptive deterministic viewport gates: PASS\n";
     return 0;
 }
