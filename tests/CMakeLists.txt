@@ -53,6 +53,10 @@ add_executable(arzoom-phase41-scene-mapping-test arzoom-phase41-scene-mapping-te
 arzoom_configure_test_target(arzoom-phase41-scene-mapping-test)
 add_test(NAME arzoom-phase41-read-only-scene-mapping COMMAND arzoom-phase41-scene-mapping-test)
 
+add_executable(arzoom-phase41-viewport-quality-test arzoom-phase41-viewport-quality-test.cpp)
+arzoom_configure_test_target(arzoom-phase41-viewport-quality-test)
+add_test(NAME arzoom-phase41-viewport-quality COMMAND arzoom-phase41-viewport-quality-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 
