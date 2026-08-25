@@ -15,10 +15,10 @@ namespace arzoom {
  * pointer semantics, scene mapping or presentation-zone decisions.
  *
  * Motion state is explicitly position + velocity + acceleration. The target is
- * converted to a braking-aware desired velocity; acceleration toward that
- * velocity is jerk-limited. This avoids the overshoot/oscillation that a raw
- * jerk-limited spring can produce while still preserving velocity continuity
- * when a live tracking target changes.
+ * converted to a conservative braking-aware desired velocity; acceleration
+ * toward that velocity is jerk-limited. The proportional speed near the target
+ * is deliberately low enough to brake before crossing, so no terminal position
+ * snap or acceleration reset is needed.
  *
  * The same state survives TRACK -> SETTLE. No velocity reset occurs at handoff.
  * Limits are expressed in output-space units and integrated with bounded fixed
@@ -26,7 +26,7 @@ namespace arzoom {
  */
 
 struct SceneMotionLimits {
-    float position_gain = 6.0f;
+    float position_gain = 3.6f;
     float velocity_response_seconds = 0.10f;
     float max_speed_output = 3.0f;
     float max_acceleration_output = 18.0f;
@@ -67,23 +67,23 @@ inline SceneMotionLimits scene_motion_limits(CameraMotionStyle style,
     SceneMotionLimits limits;
     switch (style) {
     case CameraMotionStyle::Responsive:
-        limits.position_gain = 6.8f + 1.6f * urgency;
-        limits.velocity_response_seconds = 0.092f - 0.022f * urgency;
+        limits.position_gain = 4.0f;
+        limits.velocity_response_seconds = 0.092f - 0.020f * urgency;
         limits.max_speed_output = 3.15f + 2.25f * urgency;
         limits.max_acceleration_output = 19.0f + 13.0f * urgency;
         limits.max_jerk_output = 125.0f + 95.0f * urgency;
         break;
     case CameraMotionStyle::Cinematic:
-        limits.position_gain = 4.8f + 1.4f * urgency;
-        limits.velocity_response_seconds = 0.135f - 0.025f * urgency;
+        limits.position_gain = 3.0f;
+        limits.velocity_response_seconds = 0.135f - 0.023f * urgency;
         limits.max_speed_output = 2.15f + 1.75f * urgency;
         limits.max_acceleration_output = 12.5f + 9.5f * urgency;
         limits.max_jerk_output = 78.0f + 70.0f * urgency;
         break;
     case CameraMotionStyle::Balanced:
     default:
-        limits.position_gain = 5.8f + 1.5f * urgency;
-        limits.velocity_response_seconds = 0.108f - 0.026f * urgency;
+        limits.position_gain = 3.6f;
+        limits.velocity_response_seconds = 0.108f - 0.024f * urgency;
         limits.max_speed_output = 2.65f + 2.05f * urgency;
         limits.max_acceleration_output = 15.5f + 11.0f * urgency;
         limits.max_jerk_output = 95.0f + 82.0f * urgency;
@@ -165,9 +165,6 @@ private:
             ? mul(error_output, 1.0f / distance_output)
             : Vec2{0.0f, 0.0f};
 
-        /* Desired speed falls with remaining distance and also obeys a
-         * conservative braking envelope. This makes the approach monotonic even
-         * when acceleration itself cannot change instantly because of jerk. */
         const float proportional_speed =
             std::max(limits.position_gain, 0.1f) * distance_output;
         const float braking_speed = 0.68f * std::sqrt(std::max(
@@ -199,19 +196,8 @@ private:
         velocity_output = scene_clamp_magnitude(
             velocity_output, limits.max_speed_output);
 
-        const Vec2 step_output = mul(velocity_output, dt);
-        const Vec2 error_after_step = sub(error_output, step_output);
-        const bool crossing_target =
-            distance_output <= 0.035f &&
-            dot(error_output, error_after_step) <= 0.0f;
-        if (crossing_target) {
-            center_ = target_center;
-            velocity_ = {0.0f, 0.0f};
-            acceleration_ = {0.0f, 0.0f};
-            return;
-        }
-
-        const Vec2 proposed = add(center_, mul(step_output, 1.0f / zoom));
+        const Vec2 proposed = add(
+            center_, mul(velocity_output, dt / zoom));
         const Vec2 clamped = clamp_center(proposed, zoom);
         if (std::fabs(clamped.x - proposed.x) > 1.0e-7f) {
             velocity_output.x = 0.0f;
