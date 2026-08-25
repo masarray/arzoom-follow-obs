@@ -16,7 +16,8 @@ uniform float2 zoom_center;
  * Center is already expressed in final output UV space. Size/feather/corner
  * are final-output pixels so Spotlight never grows with camera zoom.
  * shape: 0=ellipse, 1=rounded rectangle. The CPU presentation layer owns
- * mode semantics; the shader owns appearance only. */
+ * mode semantics; the shader owns appearance only.
+ * P5.1 adds an output-space area multiplier plus a true-circle coercion. */
 uniform float spotlight_enabled;
 uniform float2 spotlight_center;
 uniform float2 spotlight_half_size_px;
@@ -24,6 +25,8 @@ uniform float spotlight_feather_px;
 uniform float spotlight_dim_strength;
 uniform float spotlight_shape;
 uniform float spotlight_corner_radius_px;
+uniform float spotlight_area_scale;
+uniform float spotlight_circle;
 
 /* Click ABI: xy=content position, z=age seconds, w=click type.
  * type: 0=inactive, 1=left, 2=right, 3=middle. */
@@ -150,16 +153,22 @@ float3 apply_spotlight(float3 base, float2 output_uv,
     if (spotlight_enabled < 0.5)
         return base;
 
-    const float2 safe_half = max(spotlight_half_size_px,
-                                 float2(1.0, 1.0));
+    const float area_scale = clamp(spotlight_area_scale, 0.5, 2.0);
+    float2 safe_half = max(spotlight_half_size_px * area_scale,
+                           float2(1.0, 1.0));
+    if (spotlight_circle >= 0.5) {
+        const float radius = min(safe_half.x, safe_half.y);
+        safe_half = float2(radius, radius);
+    }
+
     const float2 delta_px =
         (output_uv - saturate(spotlight_center)) * safe_viewport;
 
     float signed_distance_px = spotlight_ellipse_distance_px(
         delta_px, safe_half);
-    if (spotlight_shape >= 0.5) {
+    if (spotlight_shape >= 0.5 && spotlight_circle < 0.5) {
         signed_distance_px = spotlight_rounded_rect_distance_px(
-            delta_px, safe_half, spotlight_corner_radius_px);
+            delta_px, safe_half, spotlight_corner_radius_px * area_scale);
     }
 
     const float feather = max(spotlight_feather_px, 1.0);
