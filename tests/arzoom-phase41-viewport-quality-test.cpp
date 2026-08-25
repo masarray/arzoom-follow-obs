@@ -192,6 +192,113 @@ void coast_cannot_keep_pulling_away_from_pointer()
             "settled Smart viewport left pointer outside useful view");
 }
 
+void high_zoom_final_pointer_context_is_recovered()
+{
+    using namespace arzoom;
+    constexpr float dt = 1.0f / 60.0f;
+    PresenterAwareSmartCamera camera;
+    Vec2 cursor{0.50f, 0.50f};
+    float zoom = 2.0f;
+    warm(camera, cursor, zoom);
+
+    /* Reproduce the user interaction: press Increase repeatedly until the
+     * viewport is small enough that stale framing becomes obvious. */
+    for (int step = 0; step < 5; ++step) {
+        zoom += 0.25f;
+        for (int frame = 0; frame < 55; ++frame)
+            camera.step(input(dt, cursor, true, zoom));
+    }
+    require(std::fabs(camera.output().zoom - zoom) < 0.012f,
+            "five active Increase steps did not reach the high zoom target");
+
+    const Vec2 start = cursor;
+    const Vec2 final_cursor{0.32f, 0.76f};
+    Vec2 previous_center = camera.output().center;
+    float max_step_output = 0.0f;
+
+    /* Move from centre toward the middle/lower-left region. The camera may
+     * remain calm during motion; the contract is about the final context. */
+    for (int frame = 1; frame <= 45; ++frame) {
+        const float t = static_cast<float>(frame) / 45.0f;
+        cursor = lerp(start, final_cursor, t);
+        const CameraOutput out = camera.step(input(dt, cursor, true, zoom));
+        max_step_output = std::max(
+            max_step_output,
+            length(sub(out.center, previous_center)) * out.zoom);
+        previous_center = out.center;
+    }
+
+    bool final_context_reached = false;
+    int final_pointer_invisible_frames = 0;
+    for (int frame = 0; frame < 150; ++frame) {
+        const CameraOutput out = camera.step(
+            input(dt, final_cursor, true, zoom));
+        const Vec2 pointer = cursor_output_position(
+            final_cursor, out.center, out.zoom);
+        if (pointer.x < 0.0f || pointer.x > 1.0f ||
+            pointer.y < 0.0f || pointer.y > 1.0f) {
+            ++final_pointer_invisible_frames;
+        }
+        if (pointer.x >= 0.16f && pointer.x <= 0.84f &&
+            pointer.y >= 0.16f && pointer.y <= 0.84f) {
+            final_context_reached = true;
+        }
+        max_step_output = std::max(
+            max_step_output,
+            length(sub(out.center, previous_center)) * out.zoom);
+        previous_center = out.center;
+    }
+
+    const CameraOutput settled = camera.output();
+    const Vec2 final_pointer = cursor_output_position(
+        final_cursor, settled.center, settled.zoom);
+    require(final_context_reached,
+            "high zoom never reframed around the settled final pointer context");
+    require(final_pointer_invisible_frames < 36,
+            "high zoom left the settled final pointer invisible for too long");
+    require(final_pointer.x >= 0.15f && final_pointer.x <= 0.85f &&
+                final_pointer.y >= 0.15f && final_pointer.y <= 0.85f,
+            "high zoom settled on stale viewport context instead of final mouse location");
+    require(max_step_output < 0.075f,
+            "high-zoom final-context recovery introduced a viewport snap");
+}
+
+void stale_corner_target_rebases_to_final_pointer()
+{
+    using namespace arzoom;
+    constexpr float dt = 1.0f / 60.0f;
+    PresenterAwareSmartCamera camera;
+    warm(camera, {0.50f, 0.50f}, 3.5f);
+
+    /* Start a recovery toward lower-left, then move the pointer to a different
+     * final context while that shot is in flight. The old corner target must
+     * not remain authoritative. */
+    const Vec2 stale_corner{0.08f, 0.90f};
+    for (int frame = 0; frame < 18; ++frame)
+        camera.step(input(dt, stale_corner, true, 3.5f));
+
+    const Vec2 final_cursor{0.40f, 0.67f};
+    Vec2 previous_center = camera.output().center;
+    float max_step_output = 0.0f;
+    for (int frame = 0; frame < 150; ++frame) {
+        const CameraOutput out = camera.step(
+            input(dt, final_cursor, true, 3.5f));
+        max_step_output = std::max(
+            max_step_output,
+            length(sub(out.center, previous_center)) * out.zoom);
+        previous_center = out.center;
+    }
+
+    const CameraOutput settled = camera.output();
+    const Vec2 final_pointer = cursor_output_position(
+        final_cursor, settled.center, settled.zoom);
+    require(final_pointer.x >= 0.15f && final_pointer.x <= 0.85f &&
+                final_pointer.y >= 0.15f && final_pointer.y <= 0.85f,
+            "viewport kept prioritizing obsolete lower-left target after pointer moved");
+    require(max_step_output < 0.075f,
+            "stale-target rebase introduced a viewport snap");
+}
+
 } // namespace
 
 int main()
@@ -200,6 +307,8 @@ int main()
     active_zoom_step_is_pointer_anchored();
     edge_pointer_has_visibility_priority();
     coast_cannot_keep_pulling_away_from_pointer();
+    high_zoom_final_pointer_context_is_recovered();
+    stale_corner_target_rebases_to_final_pointer();
     std::cout << "ArZoom P4.1 viewport quality gates: PASS\n";
     return 0;
 }
