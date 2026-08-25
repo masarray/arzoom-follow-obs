@@ -11,25 +11,23 @@ namespace arzoom {
  * Deterministic Scene Viewport Planner
  * ====================================
  *
- * Managed Scene Camera uses one exclusive decision loop:
+ * Managed Scene Camera has one exclusive authority. Normal operation remains:
  *
  *   OBSERVE pointer -> SETTLE -> PLAN ONCE -> COMMIT -> MINIMUM-JERK -> HOLD
  *
- * At high zoom the visible viewport is physically smaller, so the same spatial
- * and temporal thresholds used at 2x are not sufficient. The planner therefore
- * becomes progressively more attentive above ~2.6x without adding a second
- * controller: shorter settle time, tighter contextual envelope, a landing point
- * closer to the presentation anchor, and a bounded high-zoom guard when the
- * pointer is approaching the visible edge.
+ * High zoom adds one safety phase inside this same planner, not a second camera:
+ * when the viewport is >= ~3x, the pointer is still moving, and it approaches
+ * the visible edge, the planner temporarily performs bounded O(1) guard follow.
+ * The guard continuously recomputes only the closed-form center needed to keep
+ * the moving pointer on track. As soon as the pointer settles, guard follow ends
+ * and the normal one-shot planner commits one optimal final frame and HOLDs.
  *
- * There are no parallel Coast/edge/visibility controllers and no hidden camera
- * synchronization. There is always at most one committed target. A high-zoom
- * guard may supersede that target only after a short cooldown and only when the
- * current pointer itself is near the visible edge; final settled intent still
- * converges to one exact target and HOLD.
+ * This is intentionally asymmetric by zoom: Trial-5/default behavior is kept
+ * unchanged through ordinary zoom, while the much smaller >=3x viewport becomes
+ * progressively faster, tighter, and more pointer-aware.
  *
- * The planner is intentionally tiny and O(1): one pointer sample, a few scalar
- * comparisons, closed-form viewport geometry, and one quintic trajectory.
+ * There are no parallel Coast/edge/visibility controllers, no hidden camera
+ * synchronization, no frame history and no image analysis. State remains O(1).
  */
 
 struct SceneViewportPlan {
@@ -41,8 +39,6 @@ struct SceneViewportPlan {
 
 inline float scene_zoom_pressure(float zoom)
 {
-    /* Preserve Trial-5/default behavior through ordinary zoom. Pressure ramps
-     * only as the viewport becomes materially smaller. */
     return std::clamp((std::max(zoom, 1.0f) - 2.60f) / 1.40f,
                       0.0f, 1.0f);
 }
@@ -63,17 +59,12 @@ inline float scene_pointer_settle_seconds(CameraMotionStyle style, float zoom)
         break;
     }
 
-    /* At 4x use roughly 55% of the default wait. This makes final-location
-     * decisions noticeably more active without evaluating every cursor frame. */
     const float pressure = scene_zoom_pressure(zoom);
     return std::max(0.055f, base * (1.0f - 0.45f * pressure));
 }
 
 inline float scene_context_wake_half(float safe_zone, float zoom)
 {
-    /* Default safe_zone=0.28 -> ~0.115 output half-width at normal zoom.
-     * Above 3x tighten the acceptable contextual envelope so the pointer is
-     * kept nearer the visual centre of the small viewport. */
     const float base = std::clamp(safe_zone * 0.41f, 0.105f, 0.165f);
     const float pressure = scene_zoom_pressure(zoom);
     return std::clamp(base * (1.0f - 0.28f * pressure),
@@ -82,9 +73,6 @@ inline float scene_context_wake_half(float safe_zone, float zoom)
 
 inline float scene_context_landing_half(float wake_half, float zoom)
 {
-    /* Land farther inside than the wake envelope. High zoom deliberately lands
-     * closer to the anchor, increasing useful context around the pointer while
-     * leaving enough hysteresis for exact HOLD. */
     const float pressure = scene_zoom_pressure(zoom);
     const float ratio = 0.66f - 0.16f * pressure;
     return std::clamp(wake_half * ratio, 0.040f, 0.105f);
@@ -92,10 +80,10 @@ inline float scene_context_landing_half(float wake_half, float zoom)
 
 inline float scene_high_zoom_guard_margin(float zoom)
 {
-    /* Margin from the physical viewport edge. At low zoom this is effectively
-     * disabled; by 4x the outer ~14% becomes a safety guard. */
+    /* Start following earlier as the visible viewport shrinks. At 4x the outer
+     * 20% is safety territory; this still leaves a large stable inner region. */
     const float pressure = scene_zoom_pressure(zoom);
-    return 0.055f + 0.085f * pressure;
+    return 0.055f + 0.145f * pressure;
 }
 
 inline bool scene_high_zoom_guard_needed(const CameraInput &input,
@@ -116,16 +104,20 @@ inline bool scene_high_zoom_guard_needed(const CameraInput &input,
 
 inline float scene_high_zoom_retarget_threshold(float zoom)
 {
-    /* A new pointer does not need to move as far in output-space before it can
-     * supersede stale high-zoom intent. */
     const float pressure = scene_zoom_pressure(zoom);
     return 0.070f - 0.025f * pressure;
 }
 
-inline float scene_high_zoom_guard_cooldown(float zoom)
+inline float scene_guard_follow_time(float zoom)
 {
     const float pressure = scene_zoom_pressure(zoom);
-    return 0.085f - 0.025f * pressure;
+    return 0.19f - 0.065f * pressure;
+}
+
+inline float scene_guard_follow_max_output_speed(float zoom)
+{
+    const float pressure = scene_zoom_pressure(zoom);
+    return 2.45f + 1.35f * pressure;
 }
 
 inline SceneViewportPlan scene_context_plan(const CameraInput &input,
@@ -200,7 +192,7 @@ inline SceneViewportPlan scene_context_plan(const CameraInput &input,
     const float travel_output =
         length(sub(target_center, current_center)) * safe_zoom;
     if (travel_output <= 0.0075f)
-        return plan; // Requested framing is already the best reachable edge.
+        return plan;
 
     plan.active = true;
     plan.target_center = target_center;
@@ -243,12 +235,14 @@ public:
         shot_target_ = shot_start_;
         committed_cursor_valid_ = false;
         committed_cursor_ = {0.5f, 0.5f};
+        guard_follow_active_ = false;
         generation_ = 0;
     }
 
     CameraOutput output() const { return output_; }
     unsigned long long generation() const { return generation_; }
     bool shot_active() const { return shot_active_; }
+    bool guard_follow_active() const { return guard_follow_active_; }
 
     CameraOutput step(const CameraInput &source_input)
     {
@@ -275,11 +269,14 @@ public:
             std::fabs(desired_zoom - requested_zoom_target_) > 0.0005f;
 
         if (falling) {
+            guard_follow_active_ = false;
             commit_return(profile);
         } else if (rising) {
+            guard_follow_active_ = false;
             commit_zoom_shot(input, desired_zoom, profile,
                              SceneShotReason::Activation);
         } else if (zoom_step) {
+            guard_follow_active_ = false;
             commit_zoom_shot(input, desired_zoom, profile,
                              SceneShotReason::ZoomStep);
         }
@@ -288,6 +285,7 @@ public:
         previous_zoom_requested_ = input.zoom_requested;
 
         if (!input.zoom_requested) {
+            guard_follow_active_ = false;
             if (!shot_active_ &&
                 (output_.zoom > 1.0005f ||
                  !nearly_equal(output_.center, {0.5f, 0.5f}, 0.0005f))) {
@@ -299,18 +297,38 @@ public:
             return output_;
         }
 
-        if (shot_active_) {
-            maybe_supersede_stale_pointer_target(input, profile);
-            return step_committed_shot(dt);
-        }
-
         const bool settled =
             input.follow_policy != CameraFollowPolicy::Fixed &&
             input.cursor_valid && pointer_has_settled(input.motion_style);
         const bool high_zoom_guard = scene_high_zoom_guard_needed(
             input, output_.center, output_.zoom);
 
-        if (settled || high_zoom_guard) {
+        if (shot_active_) {
+            /* Context shots are allowed to yield to guard follow while the
+             * pointer is still moving. Explicit zoom trajectories remain atomic
+             * so scale never jitters or stalls during presenter Zoom +/-. */
+            if (shot_reason_ == SceneShotReason::PointerContext &&
+                high_zoom_guard && !settled) {
+                shot_active_ = false;
+                shot_reason_ = SceneShotReason::None;
+                committed_cursor_valid_ = false;
+                guard_follow_active_ = true;
+                return step_high_zoom_guard_follow(input, dt);
+            }
+
+            maybe_supersede_stale_pointer_target(input, profile);
+            return step_committed_shot(dt);
+        }
+
+        if (high_zoom_guard && !settled) {
+            guard_follow_active_ = true;
+            return step_high_zoom_guard_follow(input, dt);
+        }
+
+        /* Pointer has settled or no longer needs the moving safety guard. The
+         * next decision is again a single immutable target. */
+        guard_follow_active_ = false;
+        if (settled) {
             const SceneViewportPlan plan = scene_context_plan(
                 input, output_.center, output_.zoom);
             if (plan.active) {
@@ -352,9 +370,6 @@ private:
         pointer_motion_output_ =
             length(sub(input.cursor, tracked_cursor_)) * zoom;
 
-        /* GetCursorPos is integer based; at rest it is exactly stable. Reset on
-         * about one output-pixel of intentional motion at common resolutions so
-         * slow cursor travel is not misclassified as a final pointer. */
         if (pointer_motion_output_ <= 0.0012f)
             pointer_still_elapsed_ = std::min(pointer_still_elapsed_ + dt, 2.0f);
         else
@@ -391,6 +406,7 @@ private:
                      float duration, SceneShotReason reason,
                      const CameraInput *input)
     {
+        guard_follow_active_ = false;
         shot_start_ = screen_transform(output_.center,
                                        std::max(output_.zoom, 1.0f));
         shot_target_ = screen_transform(
@@ -435,26 +451,48 @@ private:
                     SceneShotReason::Return, nullptr);
     }
 
+    CameraOutput step_high_zoom_guard_follow(const CameraInput &input, float dt)
+    {
+        const SceneViewportPlan plan = scene_context_plan(
+            input, output_.center, output_.zoom);
+        if (!plan.active) {
+            guard_follow_active_ = false;
+            exact_hold();
+            return output_;
+        }
+
+        const CameraOutput previous = output_;
+        output_.center = smooth_center(
+            output_.center, plan.target_center, dt,
+            scene_guard_follow_time(output_.zoom),
+            scene_guard_follow_max_output_speed(output_.zoom),
+            output_.zoom);
+        output_.state = CameraState::CatchUp;
+        output_.intent_confidence = 0.90f;
+        output_.urgency = scene_zoom_pressure(output_.zoom);
+
+        if (dt > 1.0e-6f) {
+            const Vec2 next_velocity =
+                mul(sub(output_.center, previous.center), 1.0f / dt);
+            output_.acceleration =
+                mul(sub(next_velocity, previous.velocity), 1.0f / dt);
+            output_.velocity = next_velocity;
+        } else {
+            output_.velocity = {0.0f, 0.0f};
+            output_.acceleration = {0.0f, 0.0f};
+        }
+        return output_;
+    }
+
     void maybe_supersede_stale_pointer_target(const CameraInput &input,
                                                const CameraProfile &profile)
     {
         if (!shot_active_ || shot_reason_ == SceneShotReason::Return ||
-            !input.cursor_valid || !committed_cursor_valid_)
+            !input.cursor_valid || !committed_cursor_valid_ ||
+            !pointer_has_settled(input.motion_style))
             return;
 
         const float zoom = std::max(output_.zoom, 1.0f);
-        const bool settled = pointer_has_settled(input.motion_style);
-        const bool high_zoom_guard = scene_high_zoom_guard_needed(
-            input, output_.center, zoom);
-
-        /* High-zoom safety can supersede a stale target before full settle, but
-         * never on every frame: one small cooldown preserves a confident camera
-         * trajectory while preventing a small viewport from losing the pointer. */
-        if (!settled &&
-            !(high_zoom_guard &&
-              shot_elapsed_ >= scene_high_zoom_guard_cooldown(zoom)))
-            return;
-
         const float moved_output =
             length(sub(input.cursor, committed_cursor_)) * zoom;
         if (moved_output <= scene_high_zoom_retarget_threshold(zoom))
@@ -471,10 +509,7 @@ private:
             input, output_.center, output_.zoom);
         if (plan.active) {
             commit_context_shot(input, plan, profile);
-        } else if (settled) {
-            /* Latest final pointer is already well framed. A settled intent may
-             * cancel the obsolete shot and HOLD exactly at the visible frame.
-             * Moving high-zoom guard intent never cancels a useful shot. */
+        } else {
             shot_active_ = false;
             shot_reason_ = SceneShotReason::None;
             committed_cursor_ = input.cursor;
@@ -551,6 +586,7 @@ private:
 
     void exact_hold()
     {
+        guard_follow_active_ = false;
         output_.center = clamp_center(output_.center, output_.zoom);
         output_.velocity = {0.0f, 0.0f};
         output_.acceleration = {0.0f, 0.0f};
@@ -561,6 +597,7 @@ private:
 
     void lock_full_frame()
     {
+        guard_follow_active_ = false;
         output_.center = {0.5f, 0.5f};
         output_.zoom = 1.0f;
         output_.velocity = {0.0f, 0.0f};
@@ -590,6 +627,7 @@ private:
     ScreenTransform shot_target_{};
     bool committed_cursor_valid_ = false;
     Vec2 committed_cursor_{0.5f, 0.5f};
+    bool guard_follow_active_ = false;
     unsigned long long generation_ = 0;
 };
 
