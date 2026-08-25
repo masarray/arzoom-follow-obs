@@ -14,15 +14,15 @@ namespace arzoom {
  * This layer owns HOW an already-selected viewport target is reached. It has no
  * pointer semantics, scene mapping or presentation-zone decisions.
  *
- * Motion state is explicitly position + velocity + acceleration. A far target
- * may request decisive cruise velocity. The request is capped by both
- * acceleration-aware and jerk-aware stopping envelopes, so the camera can run
- * fast while there is runway yet starts braking early enough to arrive without
- * repeated overshoot. Acceleration itself is jerk-limited every substep.
+ * Motion state is explicitly position + velocity + acceleration. A moving
+ * tracking target may use decisive cruise authority so the pointer stays
+ * acquired. A final/static target uses a much more conservative jerk-aware
+ * stopping envelope. The mode changes limits only; position/velocity/
+ * acceleration are never reset at TRACK -> SETTLE handoff.
  *
- * The same state survives TRACK -> SETTLE. No velocity reset occurs at handoff.
- * Limits are output-space values and are integrated with bounded fixed substeps
- * for stable 30/60/120/144 fps behavior. State/work remain O(1).
+ * Acceleration is jerk-limited every substep. Limits are output-space values and
+ * integration uses bounded fixed substeps for stable 30/60/120/144 fps behavior.
+ * State/work remain O(1).
  */
 
 struct SceneMotionLimits {
@@ -97,20 +97,23 @@ inline SceneMotionLimits scene_motion_limits(CameraMotionStyle style,
 
 inline float scene_jerk_stopping_speed(float distance_output,
                                        float max_acceleration_output,
-                                       float max_jerk_output)
+                                       float max_jerk_output,
+                                       bool live_tracking)
 {
     const float distance = std::max(distance_output, 0.0f);
     const float acceleration = std::max(max_acceleration_output, 0.1f);
     const float jerk = std::max(max_jerk_output, 1.0f);
 
-    /* For a symmetric jerk-only stop (0 -> -a -> 0), stopping distance scales
-     * as v^(3/2)/sqrt(jerk). Solving for v gives the 2/3-power envelope below.
-     * The constant-acceleration envelope is also enforced. The safety factors
-     * leave runway for non-zero current acceleration and discrete integration. */
+    /* A live target is allowed more runway because it is recomputed next frame.
+     * A committed final target deliberately brakes much earlier so one arrival
+     * does not turn into an overshoot + corrective reversal. */
+    const float jerk_safety = live_tracking ? 0.78f : 0.24f;
+    const float accel_safety = live_tracking ? 0.82f : 0.52f;
     const float jerk_speed = std::pow(
-        std::max(distance * std::sqrt(jerk) * 0.78f, 0.0f), 2.0f / 3.0f);
-    const float acceleration_speed =
-        0.82f * std::sqrt(std::max(0.0f, 2.0f * acceleration * distance));
+        std::max(distance * std::sqrt(jerk) * jerk_safety, 0.0f),
+        2.0f / 3.0f);
+    const float acceleration_speed = accel_safety * std::sqrt(
+        std::max(0.0f, 2.0f * acceleration * distance));
     return std::min(jerk_speed, acceleration_speed);
 }
 
@@ -143,7 +146,8 @@ public:
     }
 
     SceneMotionSample step(Vec2 target_center, float zoom, float dt,
-                           const SceneMotionLimits &limits)
+                           const SceneMotionLimits &limits,
+                           bool live_tracking = false)
     {
         const float safe_zoom = std::max(zoom, 1.0f);
         target_center = clamp_center(target_center, safe_zoom);
@@ -156,7 +160,8 @@ public:
             static_cast<int>(std::ceil(total_dt / max_substep)), 1, 12);
         const float h = total_dt / static_cast<float>(steps);
         for (int i = 0; i < steps; ++i)
-            integrate_substep(target_center, safe_zoom, h, limits);
+            integrate_substep(target_center, safe_zoom, h, limits,
+                              live_tracking);
 
         SceneMotionSample result = current_sample(
             target_center, safe_zoom, limits);
@@ -173,7 +178,8 @@ public:
 
 private:
     void integrate_substep(Vec2 target_center, float zoom, float dt,
-                           const SceneMotionLimits &limits)
+                           const SceneMotionLimits &limits,
+                           bool live_tracking)
     {
         const Vec2 error_output = mul(sub(target_center, center_), zoom);
         const float distance_output = length(error_output);
@@ -188,14 +194,15 @@ private:
             std::max(limits.position_gain, 0.1f) * distance_output;
         const float cruise_mix = scene_smoothstep01(
             std::clamp((distance_output - 0.045f) / 0.20f, 0.0f, 1.0f));
+        const float cruise_fraction = live_tracking ? 0.70f : 0.30f;
         const float cruise_speed =
-            limits.max_speed_output * (0.70f * cruise_mix);
+            limits.max_speed_output * (cruise_fraction * cruise_mix);
         const float requested_speed = std::max(
             proportional_speed, cruise_speed);
 
         const float stopping_speed = scene_jerk_stopping_speed(
             distance_output, limits.max_acceleration_output,
-            limits.max_jerk_output);
+            limits.max_jerk_output, live_tracking);
         const float desired_speed = std::min(
             limits.max_speed_output,
             std::min(requested_speed, stopping_speed));
