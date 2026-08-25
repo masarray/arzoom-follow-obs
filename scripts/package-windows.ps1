@@ -151,6 +151,14 @@ try {
 
 Write-Host "[OK] ZIP package: $ZipPath"
 
+# Rebuild the Windows icon from the canonical ArZoom brand source before invoking Inno Setup.
+# This prevents malformed/PNG-in-ICO resources from reaching the installer compiler.
+$PrepareIcon = Join-Path $PSScriptRoot 'prepare-windows-icon.ps1'
+if (-not (Test-Path -LiteralPath $PrepareIcon -PathType Leaf)) {
+    throw "ArZoom Windows icon generator is missing: $PrepareIcon"
+}
+& $PrepareIcon
+
 $isccCandidates = @(
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
     "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
