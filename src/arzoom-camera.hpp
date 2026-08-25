@@ -22,9 +22,10 @@ struct EdgeContextPlan {
  * symmetric SmoothIdle radius suggests. Treat roughly the inner rule-of-thirds
  * crossing as a wake signal, then move only enough to restore breathing room.
  *
- * This is intentionally not continuous pointer following. The caller supplies
- * `settled=true` only after pointer motion has paused long enough to represent a
- * final presenter context.
+ * The release is directional on all four edges and corners. Local pointer work
+ * near the pinned edge remains idle; only settled motion back toward the scene
+ * interior wakes the viewport. This is intentionally not continuous pointer
+ * following.
  */
 inline EdgeContextPlan edge_context_release_plan(Vec2 cursor, Vec2 center,
                                                  float zoom, bool settled)
@@ -48,10 +49,6 @@ inline EdgeContextPlan edge_context_release_plan(Vec2 cursor, Vec2 center,
     Vec2 desired_output = pointer_output;
     bool release = false;
 
-    /* Wake near the one-third / two-thirds lines rather than waiting for the
-     * pointer to travel all the way to screen centre. The settle targets stay
-     * on the same side of centre so the camera still feels contextual rather
-     * than cursor-locked. */
     constexpr float wake_low = 0.37f;
     constexpr float wake_high = 0.63f;
     constexpr float settle_low = 0.44f;
@@ -237,9 +234,6 @@ public:
             sync_active_ = false;
         }
 
-        /* All contextual decisions are made against the frame the viewer
-         * actually sees, not a hidden SmartCamera state that may still be in the
-         * last few frames of synchronization. */
         if (should_begin_visibility_shot(input, public_output_)) {
             begin_visibility_shot(input, profile);
             return step_visibility_shot(input, dt);
@@ -311,8 +305,6 @@ private:
 
     static float edge_release_settle_seconds(CameraMotionStyle style)
     {
-        /* Edge release should wake a little earlier than general final-context
-         * reframing, but still only after the pointer has clearly paused. */
         return std::max(0.075f, pointer_settle_seconds(style) * 0.72f);
     }
 
