@@ -57,6 +57,10 @@ add_executable(arzoom-phase41-viewport-quality-test arzoom-phase41-viewport-qual
 arzoom_configure_test_target(arzoom-phase41-viewport-quality-test)
 add_test(NAME arzoom-phase41-viewport-quality COMMAND arzoom-phase41-viewport-quality-test)
 
+add_executable(arzoom-phase41-follow-reliability-test arzoom-phase41-follow-reliability-test.cpp)
+arzoom_configure_test_target(arzoom-phase41-follow-reliability-test)
+add_test(NAME arzoom-phase41-follow-reliability COMMAND arzoom-phase41-follow-reliability-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 
