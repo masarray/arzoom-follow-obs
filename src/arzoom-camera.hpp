@@ -7,6 +7,94 @@
 
 namespace arzoom {
 
+struct EdgeContextPlan {
+    bool active = false;
+    Vec2 target_center{0.5f, 0.5f};
+    Vec2 target_pointer_output{0.5f, 0.5f};
+};
+
+/*
+ * Directional edge release
+ * ------------------------
+ * A viewport that has physically clamped to a scene edge has an asymmetric
+ * presentation problem: movement farther toward that edge is impossible, while
+ * movement back toward the interior is meaningful much earlier than the legacy
+ * symmetric SmoothIdle radius suggests. Treat roughly the inner rule-of-thirds
+ * crossing as a wake signal, then move only enough to restore breathing room.
+ *
+ * This is intentionally not continuous pointer following. The caller supplies
+ * `settled=true` only after pointer motion has paused long enough to represent a
+ * final presenter context.
+ */
+inline EdgeContextPlan edge_context_release_plan(Vec2 cursor, Vec2 center,
+                                                 float zoom, bool settled)
+{
+    EdgeContextPlan plan;
+    const float safe_zoom = std::max(zoom, 1.0f);
+    if (!settled || safe_zoom <= 1.0005f)
+        return plan;
+
+    const float half = 0.5f / safe_zoom;
+    const float edge_epsilon = 0.012f / safe_zoom;
+    const bool pinned_left = center.x <= half + edge_epsilon;
+    const bool pinned_right = center.x >= 1.0f - half - edge_epsilon;
+    const bool pinned_top = center.y <= half + edge_epsilon;
+    const bool pinned_bottom = center.y >= 1.0f - half - edge_epsilon;
+
+    if (!pinned_left && !pinned_right && !pinned_top && !pinned_bottom)
+        return plan;
+
+    const Vec2 pointer_output = cursor_output_position(cursor, center, safe_zoom);
+    Vec2 desired_output = pointer_output;
+    bool release = false;
+
+    /* Wake near the one-third / two-thirds lines rather than waiting for the
+     * pointer to travel all the way to screen centre. The settle targets stay
+     * on the same side of centre so the camera still feels contextual rather
+     * than cursor-locked. */
+    constexpr float wake_low = 0.37f;
+    constexpr float wake_high = 0.63f;
+    constexpr float settle_low = 0.44f;
+    constexpr float settle_high = 0.56f;
+
+    if (pinned_left && pointer_output.x >= wake_high) {
+        desired_output.x = settle_high;
+        release = true;
+    }
+    if (pinned_right && pointer_output.x <= wake_low) {
+        desired_output.x = settle_low;
+        release = true;
+    }
+    if (pinned_top && pointer_output.y >= wake_high) {
+        desired_output.y = settle_high;
+        release = true;
+    }
+    if (pinned_bottom && pointer_output.y <= wake_low) {
+        desired_output.y = settle_low;
+        release = true;
+    }
+
+    if (!release)
+        return plan;
+
+    Vec2 target_center{
+        center.x + (pointer_output.x - desired_output.x) / safe_zoom,
+        center.y + (pointer_output.y - desired_output.y) / safe_zoom,
+    };
+    target_center = clamp_center(target_center, safe_zoom);
+
+    const float travel_output =
+        length(sub(target_center, center)) * safe_zoom;
+    if (travel_output <= 0.008f)
+        return plan;
+
+    plan.active = true;
+    plan.target_center = target_center;
+    plan.target_pointer_output = cursor_output_position(
+        cursor, target_center, safe_zoom);
+    return plan;
+}
+
 /*
  * Presenter-aware Smart Camera coordinator
  * ----------------------------------------
@@ -25,7 +113,10 @@ namespace arzoom {
  *    displacement visibility shot. If the pointer moves materially while that
  *    shot is running, the shot is rebased from the current frame toward the new
  *    pointer instead of completing an obsolete corner target.
- * 4. Near-edge pointer context has priority over stale COAST intent. The same
+ * 4. A viewport physically pinned at top/bottom/left/right gets a directional
+ *    rule-of-thirds wake zone. Pointer motion back toward the interior releases
+ *    the edge earlier than legacy symmetric SmoothIdle hysteresis would.
+ * 5. Near-edge pointer context has priority over stale COAST intent. The same
  *    SmartCamera keeps its proven gimbal semantics and receives an emphasis
  *    event only when old coast momentum is demonstrably counter-useful.
  *
@@ -146,7 +237,10 @@ public:
             sync_active_ = false;
         }
 
-        if (should_begin_visibility_shot(input, camera_.output())) {
+        /* All contextual decisions are made against the frame the viewer
+         * actually sees, not a hidden SmartCamera state that may still be in the
+         * last few frames of synchronization. */
+        if (should_begin_visibility_shot(input, public_output_)) {
             begin_visibility_shot(input, profile);
             return step_visibility_shot(input, dt);
         }
@@ -197,8 +291,6 @@ private:
 
     static float settled_context_margin(float zoom)
     {
-        /* The visible viewport shrinks as zoom rises, so high magnification
-         * needs slightly more breathing room around the final pointer. */
         return std::clamp(
             0.16f + 0.025f * (std::max(zoom, 1.0f) - 2.0f),
             0.16f, 0.22f);
@@ -217,6 +309,13 @@ private:
         }
     }
 
+    static float edge_release_settle_seconds(CameraMotionStyle style)
+    {
+        /* Edge release should wake a little earlier than general final-context
+         * reframing, but still only after the pointer has clearly paused. */
+        return std::max(0.075f, pointer_settle_seconds(style) * 0.72f);
+    }
+
     static Vec2 minimum_visibility_center(Vec2 cursor, Vec2 current_center,
                                           float zoom, float margin)
     {
@@ -233,6 +332,15 @@ private:
             current_center.y + (output.y - desired_output.y) / safe_zoom,
         };
         return clamp_center(target, safe_zoom);
+    }
+
+    EdgeContextPlan current_edge_release_plan(const CameraInput &input,
+                                              const CameraOutput &before) const
+    {
+        const bool settled = pointer_still_elapsed_ >=
+                             edge_release_settle_seconds(input.motion_style);
+        return edge_context_release_plan(
+            input.cursor, before.center, before.zoom, settled);
     }
 
     void update_pointer_tracker(const CameraInput &input, float dt)
@@ -256,9 +364,6 @@ private:
         pointer_motion_output_ =
             length(sub(input.cursor, tracked_cursor_)) * zoom;
 
-        /* Roughly 1-3 physical pixels at common desktop resolutions should not
-         * keep resetting the settle timer. Larger intentional cursor motion
-         * postpones final-context reframing instead of making the camera chase. */
         if (pointer_motion_output_ <= 0.0060f)
             pointer_still_elapsed_ = std::min(pointer_still_elapsed_ + dt, 2.0f);
         else
@@ -313,6 +418,11 @@ private:
             return false;
         }
 
+        const EdgeContextPlan edge_plan =
+            current_edge_release_plan(input, before);
+        if (edge_plan.active)
+            return true;
+
         const Vec2 pointer_output = cursor_output_position(
             input.cursor, before.center, before.zoom);
         const float context_margin = settled_context_margin(before.zoom);
@@ -338,8 +448,6 @@ private:
         const float required_output_travel =
             length(sub(target_center, before.center)) * before.zoom;
 
-        /* At physical scene edges the requested inner margin may be impossible.
-         * Once the best reachable frame is already achieved, do not oscillate. */
         return required_output_travel > 0.009f;
     }
 
@@ -347,18 +455,30 @@ private:
                                const CameraProfile &profile)
     {
         const float zoom = std::max(public_output_.zoom, 1.0f);
-        const Vec2 pointer_output = cursor_output_position(
+        const EdgeContextPlan edge_plan =
+            current_edge_release_plan(input, public_output_);
+
+        Vec2 target_center = public_output_.center;
+        Vec2 target_pointer_output = cursor_output_position(
             input.cursor, public_output_.center, zoom);
-        const bool outside_visible =
-            !inside_output_margin(pointer_output, 0.055f);
-        const float context_margin = settled_context_margin(zoom);
-        const float target_margin = outside_visible
-            ? std::max(0.15f, context_margin - 0.025f)
-            : context_margin;
-        const Vec2 target_center = minimum_visibility_center(
-            input.cursor, public_output_.center, zoom, target_margin);
-        const Vec2 target_pointer_output = cursor_output_position(
-            input.cursor, target_center, zoom);
+
+        if (edge_plan.active) {
+            target_center = edge_plan.target_center;
+            target_pointer_output = edge_plan.target_pointer_output;
+        } else {
+            const Vec2 pointer_output = target_pointer_output;
+            const bool outside_visible =
+                !inside_output_margin(pointer_output, 0.055f);
+            const float context_margin = settled_context_margin(zoom);
+            const float target_margin = outside_visible
+                ? std::max(0.15f, context_margin - 0.025f)
+                : context_margin;
+            target_center = minimum_visibility_center(
+                input.cursor, public_output_.center, zoom, target_margin);
+            target_pointer_output = cursor_output_position(
+                input.cursor, target_center, zoom);
+        }
+
         const float travel_output =
             length(sub(target_center, public_output_.center)) * zoom;
 
@@ -402,11 +522,6 @@ private:
         if (moved_output <= 0.050f)
             return;
 
-        /* During hidden synchronization, a materially moved pointer should not
-         * keep the internal camera chasing the old focus. Re-express the current
-         * public viewport as the new target using the latest pointer position.
-         * The visible frame therefore stays still until normal final-context
-         * logic decides a reframe is actually needed. */
         sync_focus_ = input.cursor;
         sync_target_zoom_ = zoom;
         sync_anchor_ = cursor_output_position(
