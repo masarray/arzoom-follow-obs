@@ -11,23 +11,22 @@ namespace arzoom {
  * Deterministic Scene Viewport Planner
  * ====================================
  *
- * Managed Scene Camera has one exclusive authority. Normal operation remains:
+ * Managed Scene Camera has exactly one authority. The normal contract remains:
  *
- *   OBSERVE pointer -> SETTLE -> PLAN ONCE -> COMMIT -> MINIMUM-JERK -> HOLD
+ *   OBSERVE -> SETTLE -> PLAN ONCE -> COMMIT -> MINIMUM-JERK -> EXACT HOLD
  *
- * High zoom adds one safety phase inside this same planner, not a second camera:
- * when the viewport is >= ~3x, the pointer is still moving, and it approaches
- * the visible edge, the planner temporarily performs bounded O(1) guard follow.
- * The guard continuously recomputes only the closed-form center needed to keep
- * the moving pointer on track. As soon as the pointer settles, guard follow ends
- * and the normal one-shot planner commits one optimal final frame and HOLDs.
+ * Trial 7 adds distance-adaptive tracking inside that same planner. Small/local
+ * pointer work remains calm. A materially far-moving pointer gets a bounded,
+ * predictive O(1) tracking phase before it can leave the useful frame. Once the
+ * pointer settles, tracking stops and one final closed-form target is committed.
  *
- * This is intentionally asymmetric by zoom: Trial-5/default behavior is kept
- * unchanged through ordinary zoom, while the much smaller >=3x viewport becomes
- * progressively faster, tighter, and more pointer-aware.
+ * Two envelopes drive the behavior:
+ * - optimal context envelope: pointer should finish comfortably near the anchor;
+ * - hard visibility envelope: a moving pointer approaching the frame boundary
+ *   raises urgency immediately.
  *
- * There are no parallel Coast/edge/visibility controllers, no hidden camera
- * synchronization, no frame history and no image analysis. State remains O(1).
+ * There is no second camera engine, no frame history, no image analysis, no
+ * hidden synchronization and no scene mutation. State and work stay O(1).
  */
 
 struct SceneViewportPlan {
@@ -78,10 +77,9 @@ inline float scene_context_landing_half(float wake_half, float zoom)
     return std::clamp(wake_half * ratio, 0.040f, 0.105f);
 }
 
+/* Kept as a compatibility/profile helper for Trial-6 regression tests. */
 inline float scene_high_zoom_guard_margin(float zoom)
 {
-    /* Start following earlier as the visible viewport shrinks. At 4x the outer
-     * 20% is safety territory; this still leaves a large stable inner region. */
     const float pressure = scene_zoom_pressure(zoom);
     return 0.055f + 0.145f * pressure;
 }
@@ -120,6 +118,179 @@ inline float scene_guard_follow_max_output_speed(float zoom)
     return 2.45f + 1.35f * pressure;
 }
 
+inline Vec2 scene_context_anchor(const CameraInput &input)
+{
+    return {
+        std::clamp(input.anchor.x, 0.20f, 0.80f),
+        std::clamp(input.anchor.y, 0.20f, 0.80f),
+    };
+}
+
+inline float scene_hard_visibility_margin(float zoom)
+{
+    /* At normal zoom the outer ~6% is emergency territory. At 4x the viewport
+     * is tiny, so we protect roughly the outer 14% before the pointer can vanish. */
+    return 0.060f + 0.080f * scene_zoom_pressure(zoom);
+}
+
+inline float scene_axis_context_pressure(float value, float anchor,
+                                         float wake_half)
+{
+    const float excess = std::max(0.0f, std::fabs(value - anchor) - wake_half);
+    const float available = std::max(0.5f - wake_half, 0.05f);
+    return std::clamp(excess / available, 0.0f, 1.0f);
+}
+
+inline float scene_visibility_pressure(Vec2 pointer_output, float zoom)
+{
+    const float margin = scene_hard_visibility_margin(zoom);
+    const float low = margin;
+    const float high = 1.0f - margin;
+
+    float outside = 0.0f;
+    if (pointer_output.x < low)
+        outside = std::max(outside, (low - pointer_output.x) / std::max(low, 0.01f));
+    else if (pointer_output.x > high)
+        outside = std::max(outside, (pointer_output.x - high) / std::max(margin, 0.01f));
+
+    if (pointer_output.y < low)
+        outside = std::max(outside, (low - pointer_output.y) / std::max(low, 0.01f));
+    else if (pointer_output.y > high)
+        outside = std::max(outside, (pointer_output.y - high) / std::max(margin, 0.01f));
+
+    if (pointer_output.x < 0.0f || pointer_output.x > 1.0f ||
+        pointer_output.y < 0.0f || pointer_output.y > 1.0f)
+        return 1.0f;
+
+    return std::clamp(0.70f + 0.30f * outside, 0.0f, 1.0f);
+}
+
+inline float scene_follow_pressure(const CameraInput &input,
+                                   Vec2 current_center, float zoom)
+{
+    if (!input.cursor_valid || input.follow_policy == CameraFollowPolicy::Fixed)
+        return 0.0f;
+
+    const float safe_zoom = std::max(zoom, 1.0f);
+    const Vec2 pointer_output = cursor_output_position(
+        input.cursor, current_center, safe_zoom);
+    const Vec2 anchor = scene_context_anchor(input);
+    const float wake_half = scene_context_wake_half(input.safe_zone, safe_zoom);
+
+    const float context = std::max(
+        scene_axis_context_pressure(pointer_output.x, anchor.x, wake_half),
+        scene_axis_context_pressure(pointer_output.y, anchor.y, wake_half));
+
+    const float margin = scene_hard_visibility_margin(safe_zoom);
+    const bool near_hard_edge =
+        pointer_output.x < margin || pointer_output.x > 1.0f - margin ||
+        pointer_output.y < margin || pointer_output.y > 1.0f - margin;
+    const float visibility = near_hard_edge
+        ? scene_visibility_pressure(pointer_output, safe_zoom)
+        : 0.0f;
+
+    return std::clamp(std::max(context, visibility), 0.0f, 1.0f);
+}
+
+inline bool scene_adaptive_guard_needed(const CameraInput &input,
+                                        Vec2 current_center, float zoom,
+                                        float pointer_motion_output)
+{
+    if (!input.cursor_valid ||
+        input.follow_policy == CameraFollowPolicy::Fixed ||
+        pointer_motion_output <= 0.0012f)
+        return false;
+
+    const float pressure = scene_follow_pressure(input, current_center, zoom);
+    const float threshold = 0.40f - 0.16f * scene_zoom_pressure(zoom);
+    return pressure >= threshold;
+}
+
+inline float scene_adaptive_follow_time(float zoom, float pressure)
+{
+    const float z = scene_zoom_pressure(zoom);
+    return std::clamp(0.205f - 0.080f * pressure - 0.050f * z,
+                      0.075f, 0.205f);
+}
+
+inline float scene_adaptive_follow_max_output_speed(float zoom, float pressure)
+{
+    const float z = scene_zoom_pressure(zoom);
+    return 2.70f + 2.00f * pressure + 1.10f * z;
+}
+
+inline float scene_pointer_lead_seconds(float zoom, float pressure)
+{
+    const float z = scene_zoom_pressure(zoom);
+    return std::clamp(0.025f + 0.040f * pressure + 0.025f * z,
+                      0.025f, 0.090f);
+}
+
+inline float scene_tracking_landing_half(float zoom, float pressure)
+{
+    const float z = scene_zoom_pressure(zoom);
+    const float base = 0.135f - 0.055f * z;
+    return std::clamp(base * (1.0f - 0.28f * pressure),
+                      0.048f, 0.135f);
+}
+
+inline SceneViewportPlan scene_tracking_plan(const CameraInput &input,
+                                             Vec2 tracking_cursor,
+                                             Vec2 current_center,
+                                             float zoom,
+                                             float pressure)
+{
+    SceneViewportPlan plan;
+    if (!input.cursor_valid || input.follow_policy == CameraFollowPolicy::Fixed)
+        return plan;
+
+    const float safe_zoom = std::max(zoom, 1.0f);
+    const Vec2 pointer_output = cursor_output_position(
+        tracking_cursor, current_center, safe_zoom);
+    const Vec2 anchor = scene_context_anchor(input);
+    const float landing = scene_tracking_landing_half(safe_zoom, pressure);
+
+    Vec2 desired_output = pointer_output;
+    bool needs_move = false;
+
+    if (pointer_output.x < anchor.x - landing) {
+        desired_output.x = anchor.x - landing;
+        needs_move = true;
+    } else if (pointer_output.x > anchor.x + landing) {
+        desired_output.x = anchor.x + landing;
+        needs_move = true;
+    }
+
+    if (pointer_output.y < anchor.y - landing) {
+        desired_output.y = anchor.y - landing;
+        needs_move = true;
+    } else if (pointer_output.y > anchor.y + landing) {
+        desired_output.y = anchor.y + landing;
+        needs_move = true;
+    }
+
+    if (!needs_move)
+        return plan;
+
+    Vec2 target_center{
+        current_center.x + (pointer_output.x - desired_output.x) / safe_zoom,
+        current_center.y + (pointer_output.y - desired_output.y) / safe_zoom,
+    };
+    target_center = clamp_center(target_center, safe_zoom);
+
+    const float travel_output =
+        length(sub(target_center, current_center)) * safe_zoom;
+    if (travel_output <= 0.0025f)
+        return plan;
+
+    plan.active = true;
+    plan.target_center = target_center;
+    plan.target_pointer_output = cursor_output_position(
+        tracking_cursor, target_center, safe_zoom);
+    plan.travel_output = travel_output;
+    return plan;
+}
+
 inline SceneViewportPlan scene_context_plan(const CameraInput &input,
                                             Vec2 current_center,
                                             float zoom)
@@ -151,10 +322,7 @@ inline SceneViewportPlan scene_context_plan(const CameraInput &input,
             input.safe_zone, safe_zoom);
         const float landing_half = scene_context_landing_half(
             wake_half, safe_zoom);
-        const Vec2 anchor{
-            std::clamp(input.anchor.x, 0.20f, 0.80f),
-            std::clamp(input.anchor.y, 0.20f, 0.80f),
-        };
+        const Vec2 anchor = scene_context_anchor(input);
 
         const float wake_left = anchor.x - wake_half;
         const float wake_right = anchor.x + wake_half;
@@ -202,6 +370,19 @@ inline SceneViewportPlan scene_context_plan(const CameraInput &input,
     return plan;
 }
 
+inline float scene_context_shot_seconds(const CameraProfile &profile,
+                                        float zoom, float travel_output)
+{
+    const float base = std::clamp(
+        profile.camera_filter_seconds + 0.055f, 0.26f, 0.44f);
+    const float z = scene_zoom_pressure(zoom);
+    const float distance = std::clamp((travel_output - 0.035f) / 0.42f,
+                                      0.0f, 1.0f);
+    /* Far movement should be more decisive, not slower. */
+    return std::clamp(base * (1.0f - 0.24f * z - 0.34f * distance),
+                      0.18f, 0.44f);
+}
+
 enum class SceneShotReason {
     None,
     Activation,
@@ -227,6 +408,7 @@ public:
         tracked_cursor_ = {0.5f, 0.5f};
         pointer_still_elapsed_ = 0.0f;
         pointer_motion_output_ = 0.0f;
+        pointer_velocity_scene_ = {0.0f, 0.0f};
         shot_active_ = false;
         shot_reason_ = SceneShotReason::None;
         shot_elapsed_ = 0.0f;
@@ -300,33 +482,30 @@ public:
         const bool settled =
             input.follow_policy != CameraFollowPolicy::Fixed &&
             input.cursor_valid && pointer_has_settled(input.motion_style);
-        const bool high_zoom_guard = scene_high_zoom_guard_needed(
-            input, output_.center, output_.zoom);
+        const bool adaptive_guard = scene_adaptive_guard_needed(
+            input, output_.center, output_.zoom, pointer_motion_output_);
 
         if (shot_active_) {
-            /* Context shots are allowed to yield to guard follow while the
-             * pointer is still moving. Explicit zoom trajectories remain atomic
-             * so scale never jitters or stalls during presenter Zoom +/-. */
+            /* Context shots may yield to a materially far moving pointer.
+             * Explicit zoom trajectories stay atomic so scale remains clean. */
             if (shot_reason_ == SceneShotReason::PointerContext &&
-                high_zoom_guard && !settled) {
+                adaptive_guard && !settled) {
                 shot_active_ = false;
                 shot_reason_ = SceneShotReason::None;
                 committed_cursor_valid_ = false;
                 guard_follow_active_ = true;
-                return step_high_zoom_guard_follow(input, dt);
+                return step_adaptive_guard_follow(input, dt);
             }
 
             maybe_supersede_stale_pointer_target(input, profile);
             return step_committed_shot(dt);
         }
 
-        if (high_zoom_guard && !settled) {
+        if (adaptive_guard && !settled) {
             guard_follow_active_ = true;
-            return step_high_zoom_guard_follow(input, dt);
+            return step_adaptive_guard_follow(input, dt);
         }
 
-        /* Pointer has settled or no longer needs the moving safety guard. The
-         * next decision is again a single immutable target. */
         guard_follow_active_ = false;
         if (settled) {
             const SceneViewportPlan plan = scene_context_plan(
@@ -355,6 +534,7 @@ private:
             pointer_tracker_valid_ = false;
             pointer_still_elapsed_ = 0.0f;
             pointer_motion_output_ = 0.0f;
+            pointer_velocity_scene_ = {0.0f, 0.0f};
             return;
         }
 
@@ -363,19 +543,41 @@ private:
             tracked_cursor_ = input.cursor;
             pointer_still_elapsed_ = 0.0f;
             pointer_motion_output_ = 0.0f;
+            pointer_velocity_scene_ = {0.0f, 0.0f};
             return;
         }
 
         const float zoom = std::max(output_.zoom, 1.0f);
-        pointer_motion_output_ =
-            length(sub(input.cursor, tracked_cursor_)) * zoom;
+        const Vec2 delta = sub(input.cursor, tracked_cursor_);
+        pointer_motion_output_ = length(delta) * zoom;
 
-        if (pointer_motion_output_ <= 0.0012f)
+        if (dt > 1.0e-6f) {
+            const Vec2 instant_velocity = mul(delta, 1.0f / dt);
+            const float alpha = exponential_alpha(dt, 0.080f);
+            pointer_velocity_scene_ = add(
+                mul(pointer_velocity_scene_, 1.0f - alpha),
+                mul(instant_velocity, alpha));
+        }
+
+        if (pointer_motion_output_ <= 0.0012f) {
             pointer_still_elapsed_ = std::min(pointer_still_elapsed_ + dt, 2.0f);
-        else
+            if (pointer_still_elapsed_ > 0.10f)
+                pointer_velocity_scene_ = mul(pointer_velocity_scene_, 0.65f);
+        } else {
             pointer_still_elapsed_ = 0.0f;
+        }
 
         tracked_cursor_ = input.cursor;
+    }
+
+    Vec2 predicted_tracking_cursor(const CameraInput &input,
+                                   float pressure) const
+    {
+        const float lead = scene_pointer_lead_seconds(output_.zoom, pressure);
+        Vec2 predicted = add(input.cursor, mul(pointer_velocity_scene_, lead));
+        predicted.x = std::clamp(predicted.x, 0.0f, 1.0f);
+        predicted.y = std::clamp(predicted.y, 0.0f, 1.0f);
+        return predicted;
     }
 
     Vec2 zoom_target_center(const CameraInput &input, float target_zoom) const
@@ -389,17 +591,6 @@ private:
             std::clamp(input.anchor.y, 0.18f, 0.82f),
         };
         return centered_target(input.cursor, anchor, target_zoom);
-    }
-
-    float context_duration(const CameraProfile &profile,
-                           float travel_output) const
-    {
-        const float base = std::clamp(
-            profile.camera_filter_seconds + 0.055f, 0.26f, 0.44f);
-        const float pressure = scene_zoom_pressure(output_.zoom);
-        const float adaptive_base = base * (1.0f - 0.28f * pressure);
-        return std::clamp(adaptive_base + 0.105f * travel_output,
-                          0.20f, 0.50f);
     }
 
     void commit_shot(Vec2 target_center, float target_zoom,
@@ -440,7 +631,8 @@ private:
                              const CameraProfile &profile)
     {
         commit_shot(plan.target_center, output_.zoom,
-                    context_duration(profile, plan.travel_output),
+                    scene_context_shot_seconds(profile, output_.zoom,
+                                               plan.travel_output),
                     SceneShotReason::PointerContext, &input);
     }
 
@@ -451,10 +643,14 @@ private:
                     SceneShotReason::Return, nullptr);
     }
 
-    CameraOutput step_high_zoom_guard_follow(const CameraInput &input, float dt)
+    CameraOutput step_adaptive_guard_follow(const CameraInput &input, float dt)
     {
-        const SceneViewportPlan plan = scene_context_plan(
+        const float pressure = scene_follow_pressure(
             input, output_.center, output_.zoom);
+        const Vec2 predicted = predicted_tracking_cursor(input, pressure);
+        const SceneViewportPlan plan = scene_tracking_plan(
+            input, predicted, output_.center, output_.zoom, pressure);
+
         if (!plan.active) {
             guard_follow_active_ = false;
             exact_hold();
@@ -464,12 +660,12 @@ private:
         const CameraOutput previous = output_;
         output_.center = smooth_center(
             output_.center, plan.target_center, dt,
-            scene_guard_follow_time(output_.zoom),
-            scene_guard_follow_max_output_speed(output_.zoom),
+            scene_adaptive_follow_time(output_.zoom, pressure),
+            scene_adaptive_follow_max_output_speed(output_.zoom, pressure),
             output_.zoom);
         output_.state = CameraState::CatchUp;
-        output_.intent_confidence = 0.90f;
-        output_.urgency = scene_zoom_pressure(output_.zoom);
+        output_.intent_confidence = 0.92f;
+        output_.urgency = pressure;
 
         if (dt > 1.0e-6f) {
             const Vec2 next_velocity =
@@ -618,6 +814,7 @@ private:
     Vec2 tracked_cursor_{0.5f, 0.5f};
     float pointer_still_elapsed_ = 0.0f;
     float pointer_motion_output_ = 0.0f;
+    Vec2 pointer_velocity_scene_{0.0f, 0.0f};
 
     bool shot_active_ = false;
     SceneShotReason shot_reason_ = SceneShotReason::None;
