@@ -82,8 +82,8 @@ jobs:
 
           Scene Camera now separates semantic framing from physical motion:
 
-          - `SceneViewportPlanner` decides **WHERE** the viewport should frame.
-          - `SceneKinematicMotion` decides **HOW** the viewport moves there.
+          - SceneViewportPlanner decides **WHERE** the viewport should frame.
+          - SceneKinematicMotion decides **HOW** the viewport moves there.
           - explicit position + velocity + acceleration state;
           - bounded jerk-limited acceleration changes;
           - live tracking → final settle preserves meaningful motion state instead of stop/restart;
@@ -103,8 +103,8 @@ jobs:
 
           ### Scene Camera architecture remains safe
 
-          - managed `arzoom_filter` attached to the current OBS scene source after normal OBS composition;
-          - no persistent `obs_sceneitem_set_*` mutation;
+          - managed arzoom_filter attached to the current OBS scene source after normal OBS composition;
+          - no persistent obs_sceneitem_set_* mutation;
           - no custom scene-wide Camera input source;
           - no duplicate/off-screen scene render graph;
           - no CPU frame readback;
