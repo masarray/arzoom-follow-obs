@@ -26,6 +26,8 @@ ArZoom is a native OBS presentation-camera plugin for tutorials, engineering tra
 **v0.6.0 is the P4.1 stable release:** generalized read-only scale/inset/crop scene mapping plus the accepted **Kinematic Smart Viewport** that keeps pointer context acquired while moving smoothly and settling exactly.
 
 > **Current status:** v0.6.0 public Windows stable. Phase 0 through Phase 4.1 are complete. The Scene Camera architecture, P4.1 mapping scope, and direct-OBS accepted motion behavior are regression-locked in [`docs/P4_1_STABLE_BASELINE.md`](docs/P4_1_STABLE_BASELINE.md).
+>
+> **Planned, not shipped:** P5 **Smart Focus Spotlight + Beginner-First GUI** is specified in [`docs/P5_SMART_FOCUS_SPOTLIGHT_UX.md`](docs/P5_SMART_FOCUS_SPOTLIGHT_UX.md).
 
 <p align="center">
   <img alt="ArZoom Scene Camera running in OBS Studio" src="docs/assets/product-screenshot.png" width="920">
@@ -258,8 +260,9 @@ Before proposing or implementing architectural work, read:
 
 1. **[Current Project Direction](docs/PROJECT_DIRECTION.md)**
 2. **[P4.1 Stable Baseline](docs/P4_1_STABLE_BASELINE.md)**
+3. **[P5 Smart Focus Spotlight + Beginner-First GUI](docs/P5_SMART_FOCUS_SPOTLIGHT_UX.md)** when working on planned Spotlight or properties-UX changes.
 
-These are the source of truth for accepted v0.6.0 behavior and approaches that are explicitly rejected.
+These are the source of truth for accepted v0.6.0 behavior, planned P5 boundaries, and approaches that are explicitly rejected.
 
 Do not revive the superseded custom scene-camera input-source/off-screen-render experiment or persistent scene-item transform mutation. Do not weaken P4.1 motion-quality gates merely to make a new implementation pass.
 
@@ -267,6 +270,7 @@ Do not revive the superseded custom scene-camera input-source/off-screen-render 
 
 - **[Current Project Direction — start here](docs/PROJECT_DIRECTION.md)**
 - **[P4.1 Stable Baseline — regression lock](docs/P4_1_STABLE_BASELINE.md)**
+- **[P5 Smart Focus Spotlight + Beginner-First GUI — planned](docs/P5_SMART_FOCUS_SPOTLIGHT_UX.md)**
 - [Runtime architecture](docs/ARCHITECTURE.md)
 - [Phase 4 Zoominator / architecture decision](docs/PHASE4_ZOOMINATOR_AUDIT.md)
 - [Smart Camera architecture contract](docs/SMART_CAMERA_ARCHITECTURE.md)
