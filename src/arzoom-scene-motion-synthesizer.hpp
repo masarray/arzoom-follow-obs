@@ -15,10 +15,10 @@ namespace arzoom {
  * pointer semantics, scene mapping or presentation-zone decisions.
  *
  * Motion state is explicitly position + velocity + acceleration. A far target
- * may request a decisive cruise velocity, but that request is always limited by
- * a conservative braking envelope. Near the target, proportional speed takes
- * over. Acceleration toward desired velocity is jerk-limited, so extra chase
- * authority never becomes a one-frame speed or direction jump.
+ * may request decisive cruise velocity. The request is capped by both
+ * acceleration-aware and jerk-aware stopping envelopes, so the camera can run
+ * fast while there is runway yet starts braking early enough to arrive without
+ * repeated overshoot. Acceleration itself is jerk-limited every substep.
  *
  * The same state survives TRACK -> SETTLE. No velocity reset occurs at handoff.
  * Limits are output-space values and are integrated with bounded fixed substeps
@@ -26,7 +26,7 @@ namespace arzoom {
  */
 
 struct SceneMotionLimits {
-    float position_gain = 3.6f;
+    float position_gain = 4.2f;
     float velocity_response_seconds = 0.10f;
     float max_speed_output = 3.0f;
     float max_acceleration_output = 18.0f;
@@ -67,23 +67,23 @@ inline SceneMotionLimits scene_motion_limits(CameraMotionStyle style,
     SceneMotionLimits limits;
     switch (style) {
     case CameraMotionStyle::Responsive:
-        limits.position_gain = 4.0f;
-        limits.velocity_response_seconds = 0.092f - 0.020f * urgency;
+        limits.position_gain = 4.7f;
+        limits.velocity_response_seconds = 0.090f - 0.018f * urgency;
         limits.max_speed_output = 3.15f + 2.25f * urgency;
         limits.max_acceleration_output = 19.0f + 13.0f * urgency;
         limits.max_jerk_output = 125.0f + 95.0f * urgency;
         break;
     case CameraMotionStyle::Cinematic:
-        limits.position_gain = 3.0f;
-        limits.velocity_response_seconds = 0.135f - 0.023f * urgency;
+        limits.position_gain = 3.5f;
+        limits.velocity_response_seconds = 0.132f - 0.021f * urgency;
         limits.max_speed_output = 2.15f + 1.75f * urgency;
         limits.max_acceleration_output = 12.5f + 9.5f * urgency;
         limits.max_jerk_output = 78.0f + 70.0f * urgency;
         break;
     case CameraMotionStyle::Balanced:
     default:
-        limits.position_gain = 3.6f;
-        limits.velocity_response_seconds = 0.108f - 0.024f * urgency;
+        limits.position_gain = 4.2f;
+        limits.velocity_response_seconds = 0.105f - 0.022f * urgency;
         limits.max_speed_output = 2.65f + 2.05f * urgency;
         limits.max_acceleration_output = 15.5f + 11.0f * urgency;
         limits.max_jerk_output = 95.0f + 82.0f * urgency;
@@ -93,6 +93,25 @@ inline SceneMotionLimits scene_motion_limits(CameraMotionStyle style,
     limits.max_speed_output *= 1.0f + 0.08f * z;
     limits.max_acceleration_output *= 1.0f + 0.06f * z;
     return limits;
+}
+
+inline float scene_jerk_stopping_speed(float distance_output,
+                                       float max_acceleration_output,
+                                       float max_jerk_output)
+{
+    const float distance = std::max(distance_output, 0.0f);
+    const float acceleration = std::max(max_acceleration_output, 0.1f);
+    const float jerk = std::max(max_jerk_output, 1.0f);
+
+    /* For a symmetric jerk-only stop (0 -> -a -> 0), stopping distance scales
+     * as v^(3/2)/sqrt(jerk). Solving for v gives the 2/3-power envelope below.
+     * The constant-acceleration envelope is also enforced. The safety factors
+     * leave runway for non-zero current acceleration and discrete integration. */
+    const float jerk_speed = std::pow(
+        std::max(distance * std::sqrt(jerk) * 0.78f, 0.0f), 2.0f / 3.0f);
+    const float acceleration_speed =
+        0.82f * std::sqrt(std::max(0.0f, 2.0f * acceleration * distance));
+    return std::min(jerk_speed, acceleration_speed);
 }
 
 struct SceneMotionSample {
@@ -165,26 +184,21 @@ private:
             ? mul(error_output, 1.0f / distance_output)
             : Vec2{0.0f, 0.0f};
 
-        /* Close work is calm and proportional. Far work gets a smooth cruise
-         * floor so the camera can actually keep pace with a rapidly moving
-         * pointer. The floor fades completely before the precision-settle zone. */
         const float proportional_speed =
             std::max(limits.position_gain, 0.1f) * distance_output;
         const float cruise_mix = scene_smoothstep01(
             std::clamp((distance_output - 0.045f) / 0.20f, 0.0f, 1.0f));
         const float cruise_speed =
-            limits.max_speed_output * (0.68f * cruise_mix);
+            limits.max_speed_output * (0.70f * cruise_mix);
         const float requested_speed = std::max(
             proportional_speed, cruise_speed);
 
-        /* The braking envelope remains authoritative. Even if the far cruise
-         * wants more speed, it starts yielding early enough for bounded
-         * acceleration/jerk to produce a calm monotonic arrival. */
-        const float braking_speed = 0.78f * std::sqrt(std::max(
-            0.0f, 2.0f * limits.max_acceleration_output * distance_output));
+        const float stopping_speed = scene_jerk_stopping_speed(
+            distance_output, limits.max_acceleration_output,
+            limits.max_jerk_output);
         const float desired_speed = std::min(
             limits.max_speed_output,
-            std::min(requested_speed, braking_speed));
+            std::min(requested_speed, stopping_speed));
         const Vec2 desired_velocity = mul(direction, desired_speed);
 
         const float response =
