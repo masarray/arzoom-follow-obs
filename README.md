@@ -1,6 +1,10 @@
 # ArZoom for OBS
 
 <p align="center">
+  <img alt="ArZoom logo" src="docs/assets/favicon-192.png" width="156">
+</p>
+
+<p align="center">
   <strong>Scene-wide Smart Camera + Presenter Controls + GPU presentation feedback for OBS.</strong><br>
   Zoom where you are explaining, stay steady while you teach, and keep the OBS scene intact.
 </p>
@@ -11,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.5.0" src="https://img.shields.io/badge/version-0.5.0-0f766e">
+  <img alt="Version 0.5.1" src="https://img.shields.io/badge/version-0.5.1-0f766e">
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?logo=windows11&logoColor=white">
   <img alt="OBS Studio plugin" src="https://img.shields.io/badge/OBS%20Studio-native%20plugin-302e31?logo=obsstudio&logoColor=white">
   <a href="LICENSE"><img alt="GPL 2.0 or later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue"></a>
@@ -19,9 +23,13 @@
 
 ArZoom is a native OBS presentation-camera plugin for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming.
 
-**v0.5.0 introduces ArZoom Scene Camera:** a managed ArZoom filter attached directly to the current OBS scene. OBS composes Display Capture, webcam, browser, logo, and nested scenes first; ArZoom then applies the accepted Smart Zone camera to the completed scene.
+**v0.5.1 introduces ArZoom's complete visual identity across the website, Windows installer, plugin binary, favicons, screenshots, and social previews.** ArZoom Scene Camera remains the managed filter attached directly to the current OBS scene.
 
-> **Current status:** v0.5.0 public Windows release. The core Scene Camera workflow, Smart Zone camera, Presenter Controls, Overview Peek, GPU click visualization, Presentation Cursor, installer, and deterministic regression gates are implemented. Wider OBS/GPU/mixed-DPI validation continues on the road to v1.0.
+> **Current status:** v0.5.1 public Windows release. The core Scene Camera workflow, Smart Zone camera, Presenter Controls, Overview Peek, GPU click visualization, Presentation Cursor, installer, and deterministic regression gates are implemented. Wider OBS/GPU/mixed-DPI validation continues on the road to v1.0.
+
+<p align="center">
+  <img alt="ArZoom Scene Camera running in OBS Studio" src="docs/assets/product-screenshot.png" width="920">
+</p>
 
 ## Why Scene Camera
 
@@ -70,13 +78,13 @@ The installer supports:
 - **Standard OBS Studio** — auto-detected when possible;
 - **OBS Portable / custom OBS folder** — browse to the OBS root containing `bin\64bit\obs64.exe`.
 
-The v0.5.0 installer includes ArZoom branding/icon metadata and validates the destination before copying files.
+The v0.5.1 installer includes the canonical ArZoom icon and version metadata, and validates the destination before copying files.
 
 ### Manual ZIP
 
 A manual ZIP remains available in Releases. Merge its `obs-plugins` and `data` folders into the OBS root folder.
 
-## Recommended v0.5.0 workflow
+## Recommended v0.5.1 workflow
 
 1. Put one fullscreen **Display Capture** in the scene you want to present.
 2. In OBS choose **Tools → ArZoom — Toggle Scene Camera**.
@@ -178,7 +186,7 @@ The hot path is designed around:
 
 ## Compatibility
 
-| Item | v0.5.0 support |
+| Item | v0.5.1 support |
 |---|---|
 | Operating system | Windows 10/11 x64 |
 | Build baseline | OBS Studio 31.1.1 |

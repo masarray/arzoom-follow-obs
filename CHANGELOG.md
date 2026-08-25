@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.1 — Brand identity and release media
+
+- Adopted the supplied ArZoom artwork as the canonical product logo without AI regeneration or visual drift.
+- Added PNG favicons, an Apple touch icon, a root favicon, and a six-resolution Windows ICO.
+- Embedded the ArZoom icon into the Windows plugin binary and retained it across installer/uninstaller surfaces.
+- Added a real OBS product screenshot and a 1200×630 Open Graph image for social sharing.
+- Updated the landing page, repository presentation, structured metadata, and release validation gates.
+
 ## v0.5.0 — ArZoom Scene Camera public release
 
 - Added **ArZoom Scene Camera**, a managed instance of the existing `arzoom_filter` attached directly to the current OBS scene source.

@@ -47,6 +47,7 @@ jobs:
           if ($iss -notmatch 'SetupIconFile=arzoom\.ico') {
             throw "Inno Setup is not configured to use the ArZoom installer icon."
           }
+          ./scripts/validate-brand-assets.ps1
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
@@ -73,7 +74,15 @@ jobs:
 
           A manual ZIP and SHA-256 checksums are also provided.
 
-          ### New in v0.5.0 — Scene Camera
+          ### New in v$env:VERSION — ArZoom identity and release media
+
+          - Canonical ArZoom logo across the repository and landing page.
+          - Multi-resolution favicons and Apple touch icon.
+          - Six-resolution Windows installer/uninstaller icon and embedded plugin DLL icon.
+          - Real OBS product screenshot and a 1200×630 social preview image.
+          - Release gates verify asset identity, dimensions, metadata, and icon wiring before packaging.
+
+          ### Scene Camera
 
           - **Tools → ArZoom — Toggle Scene Camera** creates or enables a managed `ArZoom Camera` filter on the current OBS scene.
           - **Tools → ArZoom — Configure Scene Camera** opens the scene's normal Filters dialog.

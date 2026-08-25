@@ -70,7 +70,7 @@ if (-not (Test-Path -LiteralPath $TemplateDir -PathType Container)) {
 }
 
 Write-Host 'Overlaying ArZoom source into template workspace...'
-$OverlayItems = @('src', 'data', 'CMakeLists.txt', 'CMakePresets.json', 'buildspec.json')
+$OverlayItems = @('src', 'data', 'packaging', 'CMakeLists.txt', 'CMakePresets.json', 'buildspec.json')
 foreach ($item in $OverlayItems) {
     $src = Join-Path $RepoRoot $item
     $dst = Join-Path $TemplateDir $item

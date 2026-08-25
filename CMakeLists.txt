@@ -14,7 +14,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake")
   include(defaults)
   include(helpers)
 else()
-  project(arzoom VERSION 0.5.0 LANGUAGES C CXX)
+  project(arzoom VERSION 0.5.1 LANGUAGES C CXX)
   option(ENABLE_FRONTEND_API "Use obs-frontend-api" ON)
   option(ENABLE_QT "Use Qt" ON)
 endif()
@@ -44,6 +44,10 @@ target_sources(
     src/arzoom-cursor-presets.hpp
     src/arzoom-math.hpp
 )
+
+if(WIN32)
+  target_sources(${CMAKE_PROJECT_NAME} PRIVATE packaging/windows/arzoom-icon.rc)
+endif()
 
 target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17)
 

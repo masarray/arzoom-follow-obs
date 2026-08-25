@@ -9,14 +9,22 @@
   <meta name="author" content="Mas Ari">
   <meta name="theme-color" content="#07111f">
   <link rel="canonical" href="https://masarray.github.io/arzoom-follow-obs/">
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="assets/favicon-192.png" type="image/png" sizes="192x192">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" sizes="180x180">
   <link rel="stylesheet" href="styles.css">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ArZoom for OBS — Scene-wide Smart Camera">
   <meta property="og:description" content="Zoom the composed OBS scene with Smart Zone camera motion, presenter controls, GPU click feedback, and Presentation Cursor.">
   <meta property="og:url" content="https://masarray.github.io/arzoom-follow-obs/">
   <meta property="og:site_name" content="ArZoom for OBS">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:image" content="https://masarray.github.io/arzoom-follow-obs/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="ArZoom for OBS product preview">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://masarray.github.io/arzoom-follow-obs/assets/og-image.png">
   <meta name="twitter:title" content="ArZoom for OBS">
   <meta name="twitter:description" content="A native OBS presentation camera with scene-wide Smart Zone zoom and presenter controls.">
   <script type="application/ld+json">
@@ -27,7 +35,8 @@
     "applicationCategory": "MultimediaApplication",
     "applicationSubCategory": "OBS Studio plugin",
     "operatingSystem": "Windows 10, Windows 11",
-    "softwareVersion": "0.5.0",
+    "softwareVersion": "0.5.1",
+    "image": "https://masarray.github.io/arzoom-follow-obs/assets/og-image.png",
     "description": "A native OBS presentation-camera plugin with scene-wide Smart Camera zoom, presenter controls, GPU click feedback, and Presentation Cursor.",
     "downloadUrl": "https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe",
     "softwareHelp": "https://masarray.github.io/arzoom-follow-obs/guide.html",
@@ -42,7 +51,7 @@
 
   <header class="site-header">
     <div class="container nav">
-      <a class="brand" href="index.html" aria-label="ArZoom home">Ar<span>Zoom</span></a>
+      <a class="brand" href="index.html" aria-label="ArZoom home"><img src="assets/arzoom-logo-96.png" alt="" width="38" height="38"><span>ArZoom</span></a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#features">Features</a>
         <a href="guide.html">Setup guide</a>
@@ -56,7 +65,7 @@
   <main id="main">
     <section class="container hero">
       <div>
-        <span class="eyebrow">ArZoom v0.5.0 · Native OBS presentation camera</span>
+        <span class="eyebrow">ArZoom v0.5.1 · Native OBS presentation camera</span>
         <h1>Zoom the scene, not just one source.</h1>
         <p class="lead">ArZoom Scene Camera processes the composed OBS scene after Display Capture, webcam, browser, logo, and nested scenes are combined—then applies a steady Smart Zone camera without rewriting your scene-item transforms.</p>
         <div class="hero-actions">
@@ -66,17 +75,10 @@
         <p class="hero-note">Windows 10/11 x64 · OBS 31.1.1 build baseline · Installer + manual ZIP · GPL-2.0-or-later</p>
       </div>
 
-      <div class="demo-shell" aria-label="Illustration of ArZoom Smart Zone scene camera">
-        <div class="demo-screen">
-          <div class="demo-toolbar"><i></i><i></i><i></i></div>
-          <div class="demo-panel"><div class="demo-safe"></div></div>
-          <div class="cursor" aria-hidden="true"></div>
-        </div>
-        <div class="demo-caption">
-          <span><kbd>Tools</kbd> Toggle Scene Camera</span>
-          <span>Display + overlays move together</span>
-        </div>
-      </div>
+      <figure class="product-shot">
+        <img src="assets/product-screenshot.png" alt="ArZoom Scene Camera controls running in OBS Studio" width="1600" height="900">
+        <figcaption><span><kbd>Tools</kbd> Toggle Scene Camera</span><span>Real OBS product capture</span></figcaption>
+      </figure>
     </section>
 
     <section class="section alt" aria-labelledby="made-for">
@@ -114,7 +116,7 @@
     <section class="section alt" aria-labelledby="setup-title">
       <div class="container">
         <div class="section-heading">
-          <span class="eyebrow">Recommended v0.5.0 setup</span>
+          <span class="eyebrow">Recommended v0.5.1 setup</span>
           <h2 id="setup-title">Scene Camera in a few steps.</h2>
         </div>
         <div class="steps">
@@ -160,7 +162,7 @@
         <details><summary>Can I still use ArZoom directly on Display Capture?</summary><p>Yes. The existing per-source ArZoom Filter remains available as the lightest Display Capture-only workflow.</p></details>
         <details><summary>Does Scene Camera modify my scene layout?</summary><p>No. Scene-wide presentation transforms are applied in the filter output. ArZoom does not persistently rewrite scene-item position, scale, rotation, bounds, or crop.</p></details>
         <details><summary>Why can Smart Follow be unavailable in some scenes?</summary><p>v0.5.0 only enables scene-wide pointer mapping when ArZoom can prove one fullscreen Display Capture mapping. Ambiguous transformed or multi-capture layouts fail safe instead of guessing.</p></details>
-        <details><summary>Is v0.5.0 production-ready?</summary><p>It is a public Windows release with deterministic gates and direct OBS trial work behind it. Wider OBS-version, GPU, mixed-DPI, and long-duration validation continues before v1.0.</p></details>
+        <details><summary>Is v0.5.1 production-ready?</summary><p>It is a public Windows release with deterministic gates and direct OBS trial work behind it. Wider OBS-version, GPU, mixed-DPI, and long-duration validation continues before v1.0.</p></details>
         <details><summary>Does ArZoom collect telemetry?</summary><p>No. ArZoom has no analytics service and does not transmit screen or cursor data.</p></details>
       </div>
     </section>

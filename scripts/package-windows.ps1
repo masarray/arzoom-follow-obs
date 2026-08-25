@@ -111,7 +111,7 @@ Manual ZIP installation:
 3. Copy the obs-plugins and data folders from this ZIP into that OBS root.
 4. Restart OBS.
 
-Recommended v0.5.0 Scene Camera workflow:
+Recommended v$Version Scene Camera workflow:
 1. Put one fullscreen Display Capture in the scene you want to present.
 2. In OBS choose Tools > ArZoom - Toggle Scene Camera.
 3. Use Tools > ArZoom - Configure Scene Camera to open its filter settings.
@@ -125,7 +125,7 @@ Pointer-driven Smart Follow is intentionally enabled only when ArZoom can prove 
 
 The existing per-source ArZoom Filter remains available for the lightest Display Capture-only workflow.
 
-v0.5.0 also includes Smart Zone gimbal motion, Presenter Controls, Overview Peek, premium GPU click visualization, tactile Presentation Cursor presets, and the first-click render-safety fix for fresh/untouched cursor state.
+v$Version includes Smart Zone gimbal motion, Presenter Controls, Overview Peek, premium GPU click visualization, tactile Presentation Cursor presets, and the first-click render-safety fix for fresh/untouched cursor state.
 
 Do not copy the package into bin\64bit or obs-plugins directly; merge it at the OBS root.
 "@ | Set-Content -LiteralPath (Join-Path $PackageRoot 'README-INSTALL.txt') -Encoding UTF8

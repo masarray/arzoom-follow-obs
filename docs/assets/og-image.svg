@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">ArZoom for OBS</title>
+  <desc id="desc">Scene-wide Smart Camera, presenter controls, and polished visual feedback for OBS Studio.</desc>
+  <defs>
+    <radialGradient id="blueGlow" cx="0" cy="0" r="1" gradientTransform="translate(160 42) rotate(34) scale(520 410)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2a6fdb" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#07111f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="650" y1="118" x2="1120" y2="535" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#162944"/>
+      <stop offset="1" stop-color="#0b1627"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#000814" flood-opacity=".6"/>
+    </filter>
+    <clipPath id="shotClip"><rect x="638" y="144" width="502" height="282" rx="16"/></clipPath>
+  </defs>
+
+  <rect width="1200" height="630" fill="#07111f"/>
+  <rect width="1200" height="630" fill="url(#blueGlow)"/>
+  <circle cx="1110" cy="42" r="235" fill="#20c9b2" opacity=".08"/>
+
+  <image href="arzoom-logo.png" x="66" y="54" width="126" height="126"/>
+  <text x="214" y="104" fill="#f6f9ff" font-family="Segoe UI, sans-serif" font-size="30" font-weight="650" letter-spacing="-1">ArZoom for OBS</text>
+  <text x="215" y="139" fill="#7dd9cc" font-family="Segoe UI, sans-serif" font-size="18" font-weight="600">NATIVE PRESENTATION CAMERA · v0.5.1</text>
+
+  <text x="68" y="252" fill="#f6f9ff" font-family="Segoe UI, sans-serif" font-size="32" font-weight="650" letter-spacing="-1">Zoom the scene,</text>
+  <text x="68" y="294" fill="#f6f9ff" font-family="Segoe UI, sans-serif" font-size="32" font-weight="650" letter-spacing="-1">not just one source.</text>
+  <text x="70" y="373" fill="#b8c6da" font-family="Segoe UI, sans-serif" font-size="22">Smart Zone motion · Presenter controls</text>
+  <text x="70" y="407" fill="#b8c6da" font-family="Segoe UI, sans-serif" font-size="22">GPU clicks · Presentation Cursor</text>
+
+  <g filter="url(#shadow)">
+    <rect x="618" y="124" width="542" height="322" rx="24" fill="url(#panel)" stroke="#ffffff" stroke-opacity=".16"/>
+    <image href="product-screenshot.png" x="638" y="144" width="502" height="282" preserveAspectRatio="xMidYMid slice" clip-path="url(#shotClip)"/>
+  </g>
+
+  <rect x="68" y="492" width="242" height="54" rx="14" fill="#6ea8ff"/>
+  <text x="189" y="527" fill="#04111d" font-family="Segoe UI, sans-serif" font-size="20" font-weight="700" text-anchor="middle">Windows 10/11 x64</text>
+  <rect x="326" y="492" width="224" height="54" rx="14" fill="#ffffff" fill-opacity=".065" stroke="#ffffff" stroke-opacity=".15"/>
+  <text x="438" y="527" fill="#f6f9ff" font-family="Segoe UI, sans-serif" font-size="20" font-weight="600" text-anchor="middle">OBS Studio plugin</text>
+
+  <text x="1138" y="554" fill="#8fa1b9" font-family="Segoe UI, sans-serif" font-size="17" text-anchor="end">github.com/masarray/arzoom-follow-obs</text>
+</svg>

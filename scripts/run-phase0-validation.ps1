@@ -38,6 +38,8 @@ function Resolve-BenchmarkExecutable {
 
 Push-Location $RepoRoot
 try {
+    & (Join-Path $PSScriptRoot 'validate-brand-assets.ps1')
+
     $sceneCamera = Join-Path $RepoRoot 'src/arzoom-scene-camera.cpp'
     if (-not (Test-Path -LiteralPath $sceneCamera -PathType Leaf)) {
         throw 'Phase 4 Scene Camera manager is missing.'
