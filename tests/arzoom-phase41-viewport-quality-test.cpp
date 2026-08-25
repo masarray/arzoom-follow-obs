@@ -220,7 +220,7 @@ void high_zoom_final_pointer_context_is_recovered()
      * remain calm during motion; the contract is about the final context. */
     for (int frame = 1; frame <= 45; ++frame) {
         const float t = static_cast<float>(frame) / 45.0f;
-        cursor = lerp(start, final_cursor, t);
+        cursor = add(start, mul(sub(final_cursor, start), t));
         const CameraOutput out = camera.step(input(dt, cursor, true, zoom));
         max_step_output = std::max(
             max_step_output,
