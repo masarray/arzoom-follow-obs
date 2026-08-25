@@ -65,6 +65,10 @@ add_executable(arzoom-phase41-motion-quality-test arzoom-phase41-motion-quality-
 arzoom_configure_test_target(arzoom-phase41-motion-quality-test)
 add_test(NAME arzoom-phase41-motion-quality COMMAND arzoom-phase41-motion-quality-test)
 
+add_executable(arzoom-p5-spotlight-test arzoom-p5-spotlight-test.cpp)
+arzoom_configure_test_target(arzoom-p5-spotlight-test)
+add_test(NAME arzoom-p5-spotlight-primitive COMMAND arzoom-p5-spotlight-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 
