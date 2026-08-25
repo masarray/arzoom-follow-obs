@@ -12,21 +12,26 @@ namespace arzoom {
  * ----------------------------------------
  *
  * The accepted SmartCamera remains the one semantic follow engine. Scene Camera
- * P4.1 can opt into three presentation contracts:
+ * P4.1 opts into presenter-specific coordination around that engine:
  *
  * 1. Active Zoom +/- is a joint affine viewport shot. Scale and center move
  *    together with one minimum-jerk trajectory toward the current pointer, so
  *    zoom-out never has to freeze merely to preserve an old off-centre frame.
- * 2. A pointer that is actually leaving the visible viewport gets a short
- *    minimum-displacement visibility shot. It moves only enough to recover the
- *    pointer into a safe margin instead of over-panning toward screen centre.
- * 3. Near-edge pointer context has semantic priority over stale COAST intent.
- *    The same SmartCamera keeps its proven gimbal semantics and receives only
- *    an emphasis event when old coast momentum is demonstrably counter-useful.
+ * 2. Pointer movement is not chased continuously. The coordinator measures
+ *    pointer settling in output-space; when motion stops, the final pointer
+ *    location becomes a context constraint and is recovered into a useful
+ *    viewport region when necessary.
+ * 3. A pointer that is genuinely leaving the viewport gets a minimum-
+ *    displacement visibility shot. If the pointer moves materially while that
+ *    shot is running, the shot is rebased from the current frame toward the new
+ *    pointer instead of completing an obsolete corner target.
+ * 4. Near-edge pointer context has priority over stale COAST intent. The same
+ *    SmartCamera keeps its proven gimbal semantics and receives an emphasis
+ *    event only when old coast momentum is demonstrably counter-useful.
  *
  * Per-source ArZoom does not opt in and therefore delegates bit-for-bit to the
- * accepted P1 SmartCamera. There is no second follow engine, scene mutation,
- * frame readback, or alternate scene render graph.
+ * accepted P1 SmartCamera. There is no second semantic follow engine, scene
+ * mutation, frame readback, or alternate scene render graph.
  */
 class PresenterAwareSmartCamera {
 public:
@@ -50,6 +55,8 @@ public:
             sync_active_ = false;
             zoom_lock_active_ = false;
             visibility_reframe_active_ = false;
+            pointer_tracker_valid_ = false;
+            pointer_still_elapsed_ = 0.0f;
             initialized_ = false;
             public_output_ = camera_.output();
         }
@@ -75,6 +82,10 @@ public:
         sync_focus_ = {0.5f, 0.5f};
         sync_anchor_ = {0.5f, 0.45f};
         sync_target_zoom_ = 2.0f;
+        pointer_tracker_valid_ = false;
+        tracked_cursor_ = {0.5f, 0.5f};
+        pointer_still_elapsed_ = 0.0f;
+        pointer_motion_output_ = 0.0f;
     }
 
     CameraOutput step(const CameraInput &source_input)
@@ -89,6 +100,8 @@ public:
         const float desired_zoom =
             std::clamp(input.configured_zoom, 1.10f, 4.00f);
         const CameraProfile profile = camera_profile(input.motion_style);
+
+        update_pointer_tracker(input, dt);
 
         if (!initialized_) {
             initialized_ = true;
@@ -119,10 +132,14 @@ public:
         if (zoom_shot_active_)
             return step_pointer_zoom_shot(input, dt);
 
-        if (visibility_shot_active_)
+        if (visibility_shot_active_) {
+            if (visibility_target_is_stale(input))
+                begin_visibility_shot(input, profile);
             return step_visibility_shot(input, dt);
+        }
 
         if (sync_active_) {
+            retarget_sync_to_public_if_pointer_changed(input);
             synchronize_camera(input);
             if (!camera_close_to_public())
                 return public_output_;
@@ -164,12 +181,40 @@ private:
                std::fabs(output.y - anchor.y) <= half;
     }
 
+    static bool severely_outside_output(Vec2 output)
+    {
+        return output.x < -0.10f || output.x > 1.10f ||
+               output.y < -0.10f || output.y > 1.10f;
+    }
+
     static Vec2 presentation_anchor(Vec2 anchor)
     {
         return {
             std::clamp(anchor.x, 0.18f, 0.82f),
             std::clamp(anchor.y, 0.18f, 0.82f),
         };
+    }
+
+    static float settled_context_margin(float zoom)
+    {
+        /* The visible viewport shrinks as zoom rises, so high magnification
+         * needs slightly more breathing room around the final pointer. */
+        return std::clamp(
+            0.16f + 0.025f * (std::max(zoom, 1.0f) - 2.0f),
+            0.16f, 0.22f);
+    }
+
+    static float pointer_settle_seconds(CameraMotionStyle style)
+    {
+        switch (style) {
+        case CameraMotionStyle::Responsive:
+            return 0.10f;
+        case CameraMotionStyle::Balanced:
+            return 0.13f;
+        case CameraMotionStyle::Cinematic:
+        default:
+            return 0.16f;
+        }
     }
 
     static Vec2 minimum_visibility_center(Vec2 cursor, Vec2 current_center,
@@ -190,6 +235,38 @@ private:
         return clamp_center(target, safe_zoom);
     }
 
+    void update_pointer_tracker(const CameraInput &input, float dt)
+    {
+        if (!input.cursor_valid) {
+            pointer_tracker_valid_ = false;
+            pointer_still_elapsed_ = 0.0f;
+            pointer_motion_output_ = 0.0f;
+            return;
+        }
+
+        if (!pointer_tracker_valid_) {
+            pointer_tracker_valid_ = true;
+            tracked_cursor_ = input.cursor;
+            pointer_still_elapsed_ = 0.0f;
+            pointer_motion_output_ = 0.0f;
+            return;
+        }
+
+        const float zoom = std::max(public_output_.zoom, 1.0f);
+        pointer_motion_output_ =
+            length(sub(input.cursor, tracked_cursor_)) * zoom;
+
+        /* Roughly 1-3 physical pixels at common desktop resolutions should not
+         * keep resetting the settle timer. Larger intentional cursor motion
+         * postpones final-context reframing instead of making the camera chase. */
+        if (pointer_motion_output_ <= 0.0060f)
+            pointer_still_elapsed_ = std::min(pointer_still_elapsed_ + dt, 2.0f);
+        else
+            pointer_still_elapsed_ = 0.0f;
+
+        tracked_cursor_ = input.cursor;
+    }
+
     void begin_pointer_zoom_shot(const CameraInput &input,
                                  float target_zoom,
                                  const CameraProfile &profile)
@@ -208,8 +285,6 @@ private:
         if (input.follow_policy == CameraFollowPolicy::Fixed) {
             target_center = clamp_center({0.5f, 0.5f}, target_zoom);
         } else if (sync_focus_valid_) {
-            /* Zoom +/- is a deliberate presenter command: the pointer becomes
-             * the semantic anchor for this temporary affine shot. */
             target_center = centered_target(
                 sync_focus_, sync_anchor_, target_zoom);
         }
@@ -240,15 +315,48 @@ private:
 
         const Vec2 pointer_output = cursor_output_position(
             input.cursor, before.center, before.zoom);
-        return !inside_output_margin(pointer_output, 0.055f);
+        const float context_margin = settled_context_margin(before.zoom);
+        const bool outside_visible =
+            !inside_output_margin(pointer_output, 0.055f);
+        const bool outside_context =
+            !inside_output_margin(pointer_output, context_margin);
+        const bool hard_loss = severely_outside_output(pointer_output);
+        const bool settled_for_visibility = pointer_still_elapsed_ >= 0.050f;
+        const bool settled_for_context =
+            pointer_still_elapsed_ >= pointer_settle_seconds(input.motion_style);
+
+        if (!hard_loss && !(outside_visible && settled_for_visibility) &&
+            !(outside_context && settled_for_context)) {
+            return false;
+        }
+
+        const float target_margin = outside_visible
+            ? std::max(0.15f, context_margin - 0.025f)
+            : context_margin;
+        const Vec2 target_center = minimum_visibility_center(
+            input.cursor, before.center, before.zoom, target_margin);
+        const float required_output_travel =
+            length(sub(target_center, before.center)) * before.zoom;
+
+        /* At physical scene edges the requested inner margin may be impossible.
+         * Once the best reachable frame is already achieved, do not oscillate. */
+        return required_output_travel > 0.009f;
     }
 
     void begin_visibility_shot(const CameraInput &input,
                                const CameraProfile &profile)
     {
         const float zoom = std::max(public_output_.zoom, 1.0f);
+        const Vec2 pointer_output = cursor_output_position(
+            input.cursor, public_output_.center, zoom);
+        const bool outside_visible =
+            !inside_output_margin(pointer_output, 0.055f);
+        const float context_margin = settled_context_margin(zoom);
+        const float target_margin = outside_visible
+            ? std::max(0.15f, context_margin - 0.025f)
+            : context_margin;
         const Vec2 target_center = minimum_visibility_center(
-            input.cursor, public_output_.center, zoom, 0.20f);
+            input.cursor, public_output_.center, zoom, target_margin);
         const Vec2 target_pointer_output = cursor_output_position(
             input.cursor, target_center, zoom);
         const float travel_output =
@@ -258,8 +366,8 @@ private:
         shot_target_ = screen_transform(target_center, zoom);
         shot_elapsed_ = 0.0f;
         shot_duration_ = std::clamp(
-            0.32f + 0.15f * travel_output,
-            std::max(0.34f, profile.camera_filter_seconds * 0.95f), 0.46f);
+            0.30f + 0.14f * travel_output,
+            std::max(0.32f, profile.camera_filter_seconds * 0.90f), 0.46f);
 
         sync_focus_valid_ = true;
         sync_focus_ = input.cursor;
@@ -271,6 +379,38 @@ private:
         return_shot_active_ = false;
         sync_active_ = true;
         visibility_reframe_active_ = true;
+    }
+
+    bool visibility_target_is_stale(const CameraInput &input) const
+    {
+        if (!input.cursor_valid || !sync_focus_valid_)
+            return false;
+        const float zoom = std::max(public_output_.zoom, 1.0f);
+        const float moved_output =
+            length(sub(input.cursor, sync_focus_)) * zoom;
+        return moved_output > 0.055f;
+    }
+
+    void retarget_sync_to_public_if_pointer_changed(const CameraInput &input)
+    {
+        if (!input.cursor_valid || !sync_focus_valid_)
+            return;
+
+        const float zoom = std::max(public_output_.zoom, 1.0f);
+        const float moved_output =
+            length(sub(input.cursor, sync_focus_)) * zoom;
+        if (moved_output <= 0.050f)
+            return;
+
+        /* During hidden synchronization, a materially moved pointer should not
+         * keep the internal camera chasing the old focus. Re-express the current
+         * public viewport as the new target using the latest pointer position.
+         * The visible frame therefore stays still until normal final-context
+         * logic decides a reframe is actually needed. */
+        sync_focus_ = input.cursor;
+        sync_target_zoom_ = zoom;
+        sync_anchor_ = cursor_output_position(
+            input.cursor, public_output_.center, zoom);
     }
 
     CameraInput make_sync_input(const CameraInput &input) const
@@ -427,6 +567,8 @@ private:
             camera_.reset();
             public_output_ = camera_.output();
             return_shot_active_ = false;
+            pointer_tracker_valid_ = false;
+            pointer_still_elapsed_ = 0.0f;
         }
         return public_output_;
     }
@@ -488,6 +630,11 @@ private:
     Vec2 sync_focus_{0.5f, 0.5f};
     Vec2 sync_anchor_{0.5f, 0.45f};
     float sync_target_zoom_ = 2.0f;
+
+    bool pointer_tracker_valid_ = false;
+    Vec2 tracked_cursor_{0.5f, 0.5f};
+    float pointer_still_elapsed_ = 0.0f;
+    float pointer_motion_output_ = 0.0f;
 };
 
 } // namespace arzoom
