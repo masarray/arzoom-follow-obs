@@ -12,6 +12,19 @@ uniform texture2d cursor_atlas;
 uniform float zoom_amount;
 uniform float2 zoom_center;
 
+/* P5 Spotlight ABI.
+ * Center is already expressed in final output UV space. Size/feather/corner
+ * are final-output pixels so Spotlight never grows with camera zoom.
+ * shape: 0=ellipse, 1=rounded rectangle. The CPU presentation layer owns
+ * mode semantics; the shader owns appearance only. */
+uniform float spotlight_enabled;
+uniform float2 spotlight_center;
+uniform float2 spotlight_half_size_px;
+uniform float spotlight_feather_px;
+uniform float spotlight_dim_strength;
+uniform float spotlight_shape;
+uniform float spotlight_corner_radius_px;
+
 /* Click ABI: xy=content position, z=age seconds, w=click type.
  * type: 0=inactive, 1=left, 2=right, 3=middle. */
 uniform float2 viewport_size;
@@ -106,6 +119,55 @@ float2 project_content(float2 content_position, float safe_zoom)
 {
     return float2(0.5, 0.5) +
            (content_position - zoom_center) * safe_zoom;
+}
+
+float spotlight_ellipse_distance_px(float2 delta_px, float2 half_size_px)
+{
+    const float2 safe_half = max(half_size_px, float2(1.0, 1.0));
+    const float2 normalized = delta_px / safe_half;
+    return (length(normalized) - 1.0) * min(safe_half.x, safe_half.y);
+}
+
+float spotlight_rounded_rect_distance_px(float2 delta_px,
+                                         float2 half_size_px,
+                                         float corner_radius_px)
+{
+    const float2 safe_half = max(half_size_px, float2(1.0, 1.0));
+    const float radius = clamp(corner_radius_px, 0.0,
+                               min(safe_half.x, safe_half.y));
+    const float2 q = abs(delta_px) - (safe_half - float2(radius, radius));
+    return length(max(q, float2(0.0, 0.0))) +
+           min(max(q.x, q.y), 0.0) - radius;
+}
+
+/* Premium Spotlight is intentionally just a soft multiplicative attention
+ * mask. It does not blur, glow, sample a second texture, or alter camera
+ * semantics. Click feedback and Presentation Cursor are composited later so
+ * they remain legible even over the dimmed context. */
+float3 apply_spotlight(float3 base, float2 output_uv,
+                       float2 safe_viewport)
+{
+    if (spotlight_enabled < 0.5)
+        return base;
+
+    const float2 safe_half = max(spotlight_half_size_px,
+                                 float2(1.0, 1.0));
+    const float2 delta_px =
+        (output_uv - saturate(spotlight_center)) * safe_viewport;
+
+    float signed_distance_px = spotlight_ellipse_distance_px(
+        delta_px, safe_half);
+    if (spotlight_shape >= 0.5) {
+        signed_distance_px = spotlight_rounded_rect_distance_px(
+            delta_px, safe_half, spotlight_corner_radius_px);
+    }
+
+    const float feather = max(spotlight_feather_px, 1.0);
+    const float focus = 1.0 - smoothstep(0.0, feather,
+                                        signed_distance_px);
+    const float dim = clamp(spotlight_dim_strength, 0.0, 0.75);
+    const float multiplier = 1.0 - dim * (1.0 - focus);
+    return base * multiplier;
 }
 
 float2 event_center(float4 event_data, float safe_zoom)
@@ -340,6 +402,10 @@ float4 PSZoom(FragData f_in) : TARGET
     /* No click-time texture distortion. The presentation remains optically
      * clean and the analytic vector circles are the only click overlay. */
     float4 color = image.Sample(textureSampler, saturate(sample_uv));
+
+    /* Spotlight guides attention on the scene content. Presentation feedback
+     * remains composited above it for maximum readability. */
+    color.rgb = apply_spotlight(color.rgb, f_in.uv, safe_viewport);
 
     color.rgb = apply_click(
         color.rgb, f_in.uv, click_event0, safe_zoom, safe_viewport);
