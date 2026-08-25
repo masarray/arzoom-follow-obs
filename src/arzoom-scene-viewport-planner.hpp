@@ -15,10 +15,18 @@ namespace arzoom {
  *
  *   OBSERVE pointer -> SETTLE -> PLAN ONCE -> COMMIT -> MINIMUM-JERK -> HOLD
  *
+ * At high zoom the visible viewport is physically smaller, so the same spatial
+ * and temporal thresholds used at 2x are not sufficient. The planner therefore
+ * becomes progressively more attentive above ~2.6x without adding a second
+ * controller: shorter settle time, tighter contextual envelope, a landing point
+ * closer to the presentation anchor, and a bounded high-zoom guard when the
+ * pointer is approaching the visible edge.
+ *
  * There are no parallel Coast/edge/visibility controllers and no hidden camera
- * synchronization. A committed target is immutable until either it completes,
- * the presenter explicitly changes zoom, or a materially different pointer has
- * itself settled and supersedes the old intent.
+ * synchronization. There is always at most one committed target. A high-zoom
+ * guard may supersede that target only after a short cooldown and only when the
+ * current pointer itself is near the visible edge; final settled intent still
+ * converges to one exact target and HOLD.
  *
  * The planner is intentionally tiny and O(1): one pointer sample, a few scalar
  * comparisons, closed-form viewport geometry, and one quintic trajectory.
@@ -31,32 +39,93 @@ struct SceneViewportPlan {
     float travel_output = 0.0f;
 };
 
-inline float scene_pointer_settle_seconds(CameraMotionStyle style)
+inline float scene_zoom_pressure(float zoom)
 {
+    /* Preserve Trial-5/default behavior through ordinary zoom. Pressure ramps
+     * only as the viewport becomes materially smaller. */
+    return std::clamp((std::max(zoom, 1.0f) - 2.60f) / 1.40f,
+                      0.0f, 1.0f);
+}
+
+inline float scene_pointer_settle_seconds(CameraMotionStyle style, float zoom)
+{
+    float base = 0.15f;
     switch (style) {
     case CameraMotionStyle::Responsive:
-        return 0.09f;
+        base = 0.09f;
+        break;
     case CameraMotionStyle::Balanced:
-        return 0.12f;
+        base = 0.12f;
+        break;
     case CameraMotionStyle::Cinematic:
     default:
-        return 0.15f;
+        base = 0.15f;
+        break;
     }
+
+    /* At 4x use roughly 55% of the default wait. This makes final-location
+     * decisions noticeably more active without evaluating every cursor frame. */
+    const float pressure = scene_zoom_pressure(zoom);
+    return std::max(0.055f, base * (1.0f - 0.45f * pressure));
 }
 
-inline float scene_context_wake_half(float safe_zone)
+inline float scene_context_wake_half(float safe_zone, float zoom)
 {
-    /* Default safe_zone=0.28 -> ~0.115 output half-width. Around the default
-     * anchor this wakes near the inner rule-of-thirds rather than waiting for
-     * the pointer to reach the viewport centre. */
-    return std::clamp(safe_zone * 0.41f, 0.105f, 0.165f);
+    /* Default safe_zone=0.28 -> ~0.115 output half-width at normal zoom.
+     * Above 3x tighten the acceptable contextual envelope so the pointer is
+     * kept nearer the visual centre of the small viewport. */
+    const float base = std::clamp(safe_zone * 0.41f, 0.105f, 0.165f);
+    const float pressure = scene_zoom_pressure(zoom);
+    return std::clamp(base * (1.0f - 0.28f * pressure),
+                      0.078f, 0.165f);
 }
 
-inline float scene_context_landing_half(float wake_half)
+inline float scene_context_landing_half(float wake_half, float zoom)
 {
-    /* Land clearly inside the wake envelope so exact HOLD cannot immediately
-     * request a second correction. */
-    return std::clamp(wake_half * 0.66f, 0.065f, 0.105f);
+    /* Land farther inside than the wake envelope. High zoom deliberately lands
+     * closer to the anchor, increasing useful context around the pointer while
+     * leaving enough hysteresis for exact HOLD. */
+    const float pressure = scene_zoom_pressure(zoom);
+    const float ratio = 0.66f - 0.16f * pressure;
+    return std::clamp(wake_half * ratio, 0.040f, 0.105f);
+}
+
+inline float scene_high_zoom_guard_margin(float zoom)
+{
+    /* Margin from the physical viewport edge. At low zoom this is effectively
+     * disabled; by 4x the outer ~14% becomes a safety guard. */
+    const float pressure = scene_zoom_pressure(zoom);
+    return 0.055f + 0.085f * pressure;
+}
+
+inline bool scene_high_zoom_guard_needed(const CameraInput &input,
+                                         Vec2 current_center,
+                                         float zoom)
+{
+    if (!input.cursor_valid ||
+        input.follow_policy == CameraFollowPolicy::Fixed ||
+        scene_zoom_pressure(zoom) < 0.18f)
+        return false;
+
+    const Vec2 pointer_output = cursor_output_position(
+        input.cursor, current_center, std::max(zoom, 1.0f));
+    const float margin = scene_high_zoom_guard_margin(zoom);
+    return pointer_output.x < margin || pointer_output.x > 1.0f - margin ||
+           pointer_output.y < margin || pointer_output.y > 1.0f - margin;
+}
+
+inline float scene_high_zoom_retarget_threshold(float zoom)
+{
+    /* A new pointer does not need to move as far in output-space before it can
+     * supersede stale high-zoom intent. */
+    const float pressure = scene_zoom_pressure(zoom);
+    return 0.070f - 0.025f * pressure;
+}
+
+inline float scene_high_zoom_guard_cooldown(float zoom)
+{
+    const float pressure = scene_zoom_pressure(zoom);
+    return 0.085f - 0.025f * pressure;
 }
 
 inline SceneViewportPlan scene_context_plan(const CameraInput &input,
@@ -86,8 +155,10 @@ inline SceneViewportPlan scene_context_plan(const CameraInput &input,
         desired_output = anchor;
         needs_move = true;
     } else {
-        const float wake_half = scene_context_wake_half(input.safe_zone);
-        const float landing_half = scene_context_landing_half(wake_half);
+        const float wake_half = scene_context_wake_half(
+            input.safe_zone, safe_zoom);
+        const float landing_half = scene_context_landing_half(
+            wake_half, safe_zoom);
         const Vec2 anchor{
             std::clamp(input.anchor.x, 0.20f, 0.80f),
             std::clamp(input.anchor.y, 0.20f, 0.80f),
@@ -233,8 +304,13 @@ public:
             return step_committed_shot(dt);
         }
 
-        if (input.follow_policy != CameraFollowPolicy::Fixed &&
-            input.cursor_valid && pointer_has_settled(input.motion_style)) {
+        const bool settled =
+            input.follow_policy != CameraFollowPolicy::Fixed &&
+            input.cursor_valid && pointer_has_settled(input.motion_style);
+        const bool high_zoom_guard = scene_high_zoom_guard_needed(
+            input, output_.center, output_.zoom);
+
+        if (settled || high_zoom_guard) {
             const SceneViewportPlan plan = scene_context_plan(
                 input, output_.center, output_.zoom);
             if (plan.active) {
@@ -251,7 +327,8 @@ private:
     bool pointer_has_settled(CameraMotionStyle style) const
     {
         return pointer_tracker_valid_ &&
-               pointer_still_elapsed_ >= scene_pointer_settle_seconds(style);
+               pointer_still_elapsed_ >=
+                   scene_pointer_settle_seconds(style, output_.zoom);
     }
 
     void update_pointer_tracker(const CameraInput &input, float dt)
@@ -304,8 +381,10 @@ private:
     {
         const float base = std::clamp(
             profile.camera_filter_seconds + 0.055f, 0.26f, 0.44f);
-        return std::clamp(base + 0.12f * travel_output,
-                          0.26f, 0.50f);
+        const float pressure = scene_zoom_pressure(output_.zoom);
+        const float adaptive_base = base * (1.0f - 0.28f * pressure);
+        return std::clamp(adaptive_base + 0.105f * travel_output,
+                          0.20f, 0.50f);
     }
 
     void commit_shot(Vec2 target_center, float target_zoom,
@@ -351,8 +430,6 @@ private:
 
     void commit_return(const CameraProfile &profile)
     {
-        CameraInput no_pointer;
-        no_pointer.cursor_valid = false;
         commit_shot({0.5f, 0.5f}, 1.0f,
                     std::clamp(profile.zoom_out_seconds, 0.34f, 0.70f),
                     SceneShotReason::Return, nullptr);
@@ -362,19 +439,27 @@ private:
                                                const CameraProfile &profile)
     {
         if (!shot_active_ || shot_reason_ == SceneShotReason::Return ||
-            !input.cursor_valid || !committed_cursor_valid_ ||
-            !pointer_has_settled(input.motion_style))
+            !input.cursor_valid || !committed_cursor_valid_)
+            return;
+
+        const float zoom = std::max(output_.zoom, 1.0f);
+        const bool settled = pointer_has_settled(input.motion_style);
+        const bool high_zoom_guard = scene_high_zoom_guard_needed(
+            input, output_.center, zoom);
+
+        /* High-zoom safety can supersede a stale target before full settle, but
+         * never on every frame: one small cooldown preserves a confident camera
+         * trajectory while preventing a small viewport from losing the pointer. */
+        if (!settled &&
+            !(high_zoom_guard &&
+              shot_elapsed_ >= scene_high_zoom_guard_cooldown(zoom)))
             return;
 
         const float moved_output =
-            length(sub(input.cursor, committed_cursor_)) *
-            std::max(output_.zoom, 1.0f);
-        if (moved_output <= 0.070f)
+            length(sub(input.cursor, committed_cursor_)) * zoom;
+        if (moved_output <= scene_high_zoom_retarget_threshold(zoom))
             return;
 
-        /* A new settled pointer is a new presenter intent. Supersede the old
-         * generation exactly once from the currently visible transform. There
-         * is never more than one active target. */
         if (shot_reason_ == SceneShotReason::Activation ||
             shot_reason_ == SceneShotReason::ZoomStep) {
             commit_zoom_shot(input, requested_zoom_target_, profile,
@@ -386,9 +471,10 @@ private:
             input, output_.center, output_.zoom);
         if (plan.active) {
             commit_context_shot(input, plan, profile);
-        } else {
-            /* Latest final pointer is already well framed in the current
-             * viewport. Cancel the obsolete shot and HOLD exactly here. */
+        } else if (settled) {
+            /* Latest final pointer is already well framed. A settled intent may
+             * cancel the obsolete shot and HOLD exactly at the visible frame.
+             * Moving high-zoom guard intent never cancels a useful shot. */
             shot_active_ = false;
             shot_reason_ = SceneShotReason::None;
             committed_cursor_ = input.cursor;
