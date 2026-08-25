@@ -12,15 +12,17 @@ namespace arzoom {
  * ----------------------------------------
  *
  * The accepted SmartCamera remains the one semantic follow engine. Scene Camera
- * P4.1 can opt into two additional presentation contracts:
+ * P4.1 can opt into three presentation contracts:
  *
  * 1. Active Zoom +/- is a joint affine viewport shot. Scale and center move
  *    together with one minimum-jerk trajectory toward the current pointer, so
  *    zoom-out never has to freeze merely to preserve an old off-centre frame.
- * 2. Pointer visibility is a semantic priority over stale COAST intent. When
- *    the pointer approaches the output edge, the same SmartCamera keeps its
- *    proven gimbal semantics but gets an emphasis event. Once the best reachable
- *    pointer position is recovered, ordinary Smart Zone semantics resume.
+ * 2. A pointer that is actually leaving the visible viewport gets a short
+ *    minimum-displacement visibility shot. It moves only enough to recover the
+ *    pointer into a safe margin instead of over-panning toward screen centre.
+ * 3. Near-edge pointer context has semantic priority over stale COAST intent.
+ *    The same SmartCamera keeps its proven gimbal semantics and receives only
+ *    an emphasis event when old coast momentum is demonstrably counter-useful.
  *
  * Per-source ArZoom does not opt in and therefore delegates bit-for-bit to the
  * accepted P1 SmartCamera. There is no second follow engine, scene mutation,
@@ -43,6 +45,7 @@ public:
         scene_context_enabled_ = enabled;
         if (!enabled) {
             zoom_shot_active_ = false;
+            visibility_shot_active_ = false;
             return_shot_active_ = false;
             sync_active_ = false;
             zoom_lock_active_ = false;
@@ -61,6 +64,7 @@ public:
         previous_zoom_requested_ = false;
         requested_zoom_target_ = 2.0f;
         zoom_shot_active_ = false;
+        visibility_shot_active_ = false;
         return_shot_active_ = false;
         sync_active_ = false;
         zoom_lock_active_ = false;
@@ -100,7 +104,7 @@ public:
 
         if (falling) {
             zoom_lock_active_ = false;
-            if (zoom_shot_active_ || sync_active_)
+            if (zoom_shot_active_ || visibility_shot_active_ || sync_active_)
                 begin_return_override(profile);
         } else if (active_zoom_step) {
             begin_pointer_zoom_shot(input, desired_zoom, profile);
@@ -115,11 +119,19 @@ public:
         if (zoom_shot_active_)
             return step_pointer_zoom_shot(input, dt);
 
+        if (visibility_shot_active_)
+            return step_visibility_shot(input, dt);
+
         if (sync_active_) {
             synchronize_camera(input);
             if (!camera_close_to_public())
                 return public_output_;
             sync_active_ = false;
+        }
+
+        if (should_begin_visibility_shot(input, camera_.output())) {
+            begin_visibility_shot(input, profile);
+            return step_visibility_shot(input, dt);
         }
 
         CameraInput guarded = apply_context_guard(input, camera_.output());
@@ -160,6 +172,24 @@ private:
         };
     }
 
+    static Vec2 minimum_visibility_center(Vec2 cursor, Vec2 current_center,
+                                          float zoom, float margin)
+    {
+        const float safe_zoom = std::max(zoom, 1.0f);
+        const float safe_margin = std::clamp(margin, 0.06f, 0.30f);
+        const Vec2 output = cursor_output_position(
+            cursor, current_center, safe_zoom);
+        const Vec2 desired_output{
+            std::clamp(output.x, safe_margin, 1.0f - safe_margin),
+            std::clamp(output.y, safe_margin, 1.0f - safe_margin),
+        };
+        Vec2 target{
+            current_center.x + (output.x - desired_output.x) / safe_zoom,
+            current_center.y + (output.y - desired_output.y) / safe_zoom,
+        };
+        return clamp_center(target, safe_zoom);
+    }
+
     void begin_pointer_zoom_shot(const CameraInput &input,
                                  float target_zoom,
                                  const CameraProfile &profile)
@@ -190,10 +220,57 @@ private:
             ? std::clamp(profile.zoom_in_seconds * 1.05f, 0.36f, 0.62f)
             : std::clamp(profile.zoom_out_seconds * 0.95f, 0.36f, 0.68f);
         zoom_shot_active_ = true;
+        visibility_shot_active_ = false;
         return_shot_active_ = false;
         sync_active_ = true;
         zoom_lock_active_ = true;
         visibility_reframe_active_ = false;
+    }
+
+    bool should_begin_visibility_shot(const CameraInput &input,
+                                      const CameraOutput &before) const
+    {
+        if (!input.zoom_requested || !input.cursor_valid ||
+            input.follow_policy == CameraFollowPolicy::Fixed ||
+            before.zoom <= 1.0005f ||
+            before.state == CameraState::Activating ||
+            before.state == CameraState::Returning) {
+            return false;
+        }
+
+        const Vec2 pointer_output = cursor_output_position(
+            input.cursor, before.center, before.zoom);
+        return !inside_output_margin(pointer_output, 0.055f);
+    }
+
+    void begin_visibility_shot(const CameraInput &input,
+                               const CameraProfile &profile)
+    {
+        const float zoom = std::max(public_output_.zoom, 1.0f);
+        const Vec2 target_center = minimum_visibility_center(
+            input.cursor, public_output_.center, zoom, 0.20f);
+        const Vec2 target_pointer_output = cursor_output_position(
+            input.cursor, target_center, zoom);
+        const float travel_output =
+            length(sub(target_center, public_output_.center)) * zoom;
+
+        shot_start_ = screen_transform(public_output_.center, zoom);
+        shot_target_ = screen_transform(target_center, zoom);
+        shot_elapsed_ = 0.0f;
+        shot_duration_ = std::clamp(
+            0.32f + 0.15f * travel_output,
+            std::max(0.34f, profile.camera_filter_seconds * 0.95f), 0.46f);
+
+        sync_focus_valid_ = true;
+        sync_focus_ = input.cursor;
+        sync_anchor_ = target_pointer_output;
+        sync_target_zoom_ = zoom;
+
+        visibility_shot_active_ = true;
+        zoom_shot_active_ = false;
+        return_shot_active_ = false;
+        sync_active_ = true;
+        visibility_reframe_active_ = true;
     }
 
     CameraInput make_sync_input(const CameraInput &input) const
@@ -238,6 +315,20 @@ private:
         return zoom_error <= 0.0008f && center_error_output <= 0.006f;
     }
 
+    void update_public_motion(CameraOutput previous, float dt)
+    {
+        if (dt > 1.0e-6f) {
+            const Vec2 next_velocity =
+                mul(sub(public_output_.center, previous.center), 1.0f / dt);
+            public_output_.acceleration =
+                mul(sub(next_velocity, previous.velocity), 1.0f / dt);
+            public_output_.velocity = next_velocity;
+        } else {
+            public_output_.velocity = {0.0f, 0.0f};
+            public_output_.acceleration = {0.0f, 0.0f};
+        }
+    }
+
     CameraOutput step_pointer_zoom_shot(const CameraInput &input, float dt)
     {
         synchronize_camera(input);
@@ -256,16 +347,7 @@ private:
         public_output_.state = CameraState::Settle;
         public_output_.intent_confidence = 1.0f;
         public_output_.urgency = 0.0f;
-
-        if (dt > 1.0e-6f) {
-            public_output_.velocity =
-                mul(sub(public_output_.center, previous.center), 1.0f / dt);
-            public_output_.acceleration =
-                mul(sub(public_output_.velocity, previous.velocity), 1.0f / dt);
-        } else {
-            public_output_.velocity = {0.0f, 0.0f};
-            public_output_.acceleration = {0.0f, 0.0f};
-        }
+        update_public_motion(previous, dt);
 
         if (normalized >= 1.0f) {
             public_output_.zoom = shot_target_.scale;
@@ -278,6 +360,36 @@ private:
         return public_output_;
     }
 
+    CameraOutput step_visibility_shot(const CameraInput &input, float dt)
+    {
+        synchronize_camera(input);
+
+        const CameraOutput previous = public_output_;
+        shot_elapsed_ += dt;
+        const float normalized = std::clamp(
+            shot_elapsed_ / std::max(shot_duration_, 0.05f), 0.0f, 1.0f);
+        const ScreenTransform transform = lerp_transform(
+            shot_start_, shot_target_, minimum_jerk01(normalized));
+
+        public_output_.zoom = shot_target_.scale;
+        public_output_.center = clamp_center(
+            transform_center(transform), public_output_.zoom);
+        public_output_.state = CameraState::CatchUp;
+        public_output_.intent_confidence = 1.0f;
+        public_output_.urgency = 1.0f;
+        update_public_motion(previous, dt);
+
+        if (normalized >= 1.0f) {
+            public_output_.center = clamp_center(
+                transform_center(shot_target_), public_output_.zoom);
+            public_output_.velocity = {0.0f, 0.0f};
+            public_output_.acceleration = {0.0f, 0.0f};
+            visibility_shot_active_ = false;
+            visibility_reframe_active_ = false;
+        }
+        return public_output_;
+    }
+
     void begin_return_override(const CameraProfile &profile)
     {
         shot_start_ = screen_transform(
@@ -286,6 +398,7 @@ private:
         shot_elapsed_ = 0.0f;
         shot_duration_ = std::max(profile.zoom_out_seconds, 0.10f);
         zoom_shot_active_ = false;
+        visibility_shot_active_ = false;
         return_shot_active_ = true;
         sync_active_ = false;
         zoom_lock_active_ = false;
@@ -308,13 +421,7 @@ private:
         public_output_.center = clamp_center(
             transform_center(transform), public_output_.zoom);
         public_output_.state = CameraState::Returning;
-
-        if (dt > 1.0e-6f) {
-            public_output_.velocity =
-                mul(sub(public_output_.center, previous.center), 1.0f / dt);
-            public_output_.acceleration =
-                mul(sub(public_output_.velocity, previous.velocity), 1.0f / dt);
-        }
+        update_public_motion(previous, dt);
 
         if (normalized >= 1.0f) {
             camera_.reset();
@@ -344,22 +451,6 @@ private:
             input.cursor, before.center, before.zoom);
         const Vec2 preferred_center = centered_target(
             input.cursor, presentation_anchor(input.anchor), before.zoom);
-        const Vec2 best_reachable_output = cursor_output_position(
-            input.cursor, preferred_center, before.zoom);
-
-        if (!visibility_reframe_active_ &&
-            !inside_output_margin(pointer_output, 0.075f)) {
-            visibility_reframe_active_ = true;
-        } else if (visibility_reframe_active_) {
-            const bool comfortably_visible =
-                inside_output_margin(pointer_output, 0.145f);
-            const bool reached_best_possible =
-                inside_output_margin(pointer_output, 0.012f) &&
-                length(sub(pointer_output, best_reachable_output)) <= 0.020f;
-            if (comfortably_visible || reached_best_possible)
-                visibility_reframe_active_ = false;
-        }
-
         const Vec2 toward_preferred = sub(preferred_center, before.center);
         const bool coast_pulling_away =
             before.state == CameraState::Coast &&
@@ -368,7 +459,7 @@ private:
             length(toward_preferred) * before.zoom > 0.018f &&
             dot(before.velocity, toward_preferred) < -0.00015f;
 
-        if (visibility_reframe_active_ || coast_pulling_away)
+        if (coast_pulling_away)
             guarded.emphasis_event = true;
         return guarded;
     }
@@ -382,6 +473,7 @@ private:
     float requested_zoom_target_ = 2.0f;
 
     bool zoom_shot_active_ = false;
+    bool visibility_shot_active_ = false;
     bool return_shot_active_ = false;
     bool sync_active_ = false;
     bool zoom_lock_active_ = false;
