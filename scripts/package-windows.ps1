@@ -151,6 +151,12 @@ try {
 
 Write-Host "[OK] ZIP package: $ZipPath"
 
+$PrepareIcon = Join-Path $PSScriptRoot 'prepare-windows-icon.ps1'
+if (-not (Test-Path -LiteralPath $PrepareIcon -PathType Leaf)) {
+    throw "ArZoom Windows icon preparation script is missing: $PrepareIcon"
+}
+& $PrepareIcon
+
 $isccCandidates = @(
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
     "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
