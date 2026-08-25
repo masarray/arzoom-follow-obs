@@ -45,9 +45,19 @@ try {
         throw 'Phase 4 Scene Camera manager is missing.'
     }
 
-    $forbiddenMutation = Select-String -LiteralPath $sceneCamera -Pattern 'obs_sceneitem_set_' -SimpleMatch
-    if ($forbiddenMutation) {
-        throw 'Phase 4 scene-safety contract violated: Scene Camera must not mutate scene-item transforms.'
+    $readOnlyRuntimeFiles = @(
+        $sceneCamera,
+        (Join-Path $RepoRoot 'src/arzoom-filter-v12.cpp'),
+        (Join-Path $RepoRoot 'src/arzoom-filter-v13.cpp')
+    )
+    foreach ($runtimeFile in $readOnlyRuntimeFiles) {
+        if (-not (Test-Path -LiteralPath $runtimeFile -PathType Leaf)) {
+            throw "P4.1 runtime file is missing: $runtimeFile"
+        }
+        $forbiddenMutation = Select-String -LiteralPath $runtimeFile -Pattern 'obs_sceneitem_set_' -SimpleMatch
+        if ($forbiddenMutation) {
+            throw "P4/P4.1 scene-safety contract violated: $runtimeFile must not mutate scene-item transforms."
+        }
     }
 
     $legacyCameraSource = Join-Path $RepoRoot 'src/arzoom-camera-source.cpp'
@@ -93,7 +103,7 @@ try {
         Write-Host "Benchmark report: $BenchmarkOutput"
     }
 
-    Write-Host 'ArZoom deterministic Phase 0/1/2/3/3.5/4 validation: PASS'
+    Write-Host 'ArZoom deterministic Phase 0/1/2/3/3.5/4/4.1 validation: PASS'
 }
 finally {
     Pop-Location
