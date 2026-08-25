@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.6.0 — P4.1 generalized mapping + Kinematic Smart Viewport
+
+- Promoted P4.1 Trial 8 to the accepted stable Scene Camera baseline after direct OBS validation.
+- Extended safe scene-wide pointer mapping beyond fullscreen-only layouts to one visible top-level Display Capture with deterministically proven positive axis-aligned scale/inset placement and crop-aware mapping.
+- Kept unsupported/ambiguous ownership fail-safe for multiple candidate Display Captures, unproven rotation/skew/flips, unsupported bounds modes, unresolved nested ownership, or invalid monitor/source geometry.
+- Unified Smart Follow, click anchoring, and Presentation Cursor on the same read-only mapped coordinate path.
+- Kept Presentation Cursor size tied to the exact live camera zoom.
+- Split Scene Camera responsibility cleanly: `SceneViewportPlanner` decides **WHERE** to frame; `SceneKinematicMotion` decides **HOW** to move there.
+- Added explicit position, velocity, and acceleration state with bounded jerk-limited integration.
+- Preserved motion state through live tracking → final settle so the camera no longer performs artificial stop/restart handoffs.
+- Added latched tracking, continuous follow pressure, conservative confidence-gated prediction, earlier high-zoom tracking, and bounded far-distance cruise authority.
+- Added automatic moving-target cruise → immutable-target jerk-aware precision braking without resetting motion state.
+- Preserved exact drift-free HOLD after final framing.
+- Added deterministic P4.1 motion-quality gates for bounded jerk, no zero-speed stall, retarget velocity continuity, bounded direction reversal, tracking chatter, pointer-loss bounds, final framing, and exact HOLD.
+- Locked the accepted behavior in `docs/P4_1_STABLE_BASELINE.md`; future camera work must preserve both pointer acquisition and smooth motion quality instead of trading one for the other.
+- Preserved scene-safety architecture: no persistent `obs_sceneitem_set_*` mutation, no custom scene-camera input source, no duplicate/off-screen scene render graph, no CPU frame readback, and no second semantic camera planner.
+
 ## v0.5.1 — Brand identity and release media
 
 - Adopted the supplied ArZoom artwork as the canonical product logo without AI regeneration or visual drift.
