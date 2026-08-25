@@ -35,6 +35,7 @@ arzoom::CameraInput input(float dt, arzoom::Vec2 cursor,
 void warm(arzoom::PresenterAwareSmartCamera &camera,
           arzoom::Vec2 cursor, float zoom)
 {
+    camera.set_scene_context(true);
     camera.step(input(1.0f / 60.0f, cursor, false, zoom));
     for (int i = 0; i < 120; ++i)
         camera.step(input(1.0f / 60.0f, cursor, true, zoom));
