@@ -135,7 +135,10 @@ inline float scene_follow_pressure(const CameraInput &input,
 
 inline float scene_tracking_enter_pressure(float zoom)
 {
-    return 0.27f - 0.08f * scene_zoom_pressure(zoom);
+    /* Start earlier instead of driving the camera harder. At high zoom the
+     * visible viewport is tiny, so smooth tracking needs more runway before the
+     * pointer reaches the physical edge. */
+    return 0.16f - 0.08f * scene_zoom_pressure(zoom);
 }
 
 inline float scene_tracking_exit_pressure(float zoom)
@@ -154,7 +157,6 @@ inline bool scene_adaptive_guard_needed(const CameraInput &input,
            scene_tracking_enter_pressure(zoom);
 }
 
-/* Trial-6 compatibility helpers retained for regression contracts. */
 inline float scene_high_zoom_guard_margin(float zoom)
 {
     return 0.055f + 0.145f * scene_zoom_pressure(zoom);
@@ -210,8 +212,6 @@ inline float scene_pointer_lead_seconds(float zoom, float pressure)
 
 inline float scene_tracking_landing_half(float zoom, float /*pressure*/)
 {
-    /* Framing is intentionally independent of urgency. Pressure controls HOW
-     * fast the camera gets here, never WHERE the pointer should land. */
     const float z = scene_zoom_pressure(zoom);
     return std::clamp(0.125f - 0.050f * z, 0.070f, 0.125f);
 }
@@ -470,8 +470,6 @@ public:
 
         if (settling_active_) {
             if (moving) {
-                /* New pointer intent cancels only the immutable target. Motion
-                 * velocity/acceleration are preserved and naturally brake. */
                 settling_active_ = false;
                 settling_target_ = output_.center;
             } else {
@@ -492,8 +490,6 @@ public:
             }
         }
 
-        /* Never hard-zero a camera that still has momentum. Let the same
-         * kinematic state brake smoothly toward its current frame. */
         if (length(output_.velocity) * output_.zoom > 0.0008f ||
             length(output_.acceleration) * output_.zoom > 0.02f) {
             settling_target_ = output_.center;
