@@ -1,5 +1,7 @@
 # Phase 4 — Zoominator audit and ArZoom scene-camera decision
 
+> **Decision status: ACCEPTED AND SHIPPED.** This document records the architecture that became ArZoom Scene Camera in v0.5.0 and remains the baseline in v0.5.1. The earlier custom `ArZoom Camera` input-source / off-screen re-render experiment described below is historical context only and must not be revived as a current implementation plan. See [`PROJECT_DIRECTION.md`](PROJECT_DIRECTION.md) for current priorities.
+
 ## Why this audit exists
 
 The first Phase 4 experiment registered a second OBS input type (`ArZoom Camera`) and manually re-rendered a selected scene/source into `gs_texrender_t`. Windows CI proved the code compiled, but direct OBS trial exposed unnecessary frontend/source-registration uncertainty before we had even reached the accepted ArZoom motion engine.
@@ -120,7 +122,7 @@ Initial supported case:
 
 If the Display Capture is arbitrarily cropped/scaled/rotated, or multiple display captures make mapping ambiguous, ArZoom must not guess. Presenter controls / fixed framing remain available while Smart Follow reports mapping unavailable.
 
-A later P4 mapping increment can use `obs_sceneitem_get_box_transform()` / `obs_sceneitem_get_draw_transform()` to support more complex layouts without writing transforms.
+The next mapping increment should use read-only scene geometry such as `obs_sceneitem_get_box_transform()` / `obs_sceneitem_get_draw_transform()` to support more complex layouts without writing transforms. This is now tracked as generalized read-only scene mapping, not as a replacement camera/render architecture.
 
 ## Why this is better than both previous approaches
 
@@ -141,8 +143,23 @@ Compared with the first ArZoom P4-A source experiment:
 - substantially smaller lifecycle surface;
 - directly reuses the already accepted filter pipeline.
 
-## New Phase 4 engineering rule
+## Phase 4 engineering rule
 
 > Prefer OBS-native composition/filter semantics over reconstructing an OBS scene graph inside ArZoom.
 
 The scene is already a video source. Process it as one.
+
+## Current follow-on direction
+
+Phase 4 itself is complete. Future work must extend the accepted architecture rather than replacing it casually.
+
+The immediate technical gap is **read-only coordinate mapping for more complex scene layouts**:
+
+1. scaled/inset Display Capture mapping;
+2. crop-aware mapping;
+3. deterministic multi-capture target selection;
+4. nested transform-chain support where it can be proven;
+5. rotation support only with deterministic math and tests;
+6. explicit diagnostic reasons whenever pointer mapping is unavailable.
+
+Scene-item mutation, custom camera-source registration, and private scene re-rendering remain rejected unless a future architecture decision explicitly supersedes this document.
