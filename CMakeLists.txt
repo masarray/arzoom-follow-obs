@@ -14,7 +14,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake")
   include(defaults)
   include(helpers)
 else()
-  project(arzoom VERSION 0.4.1 LANGUAGES C CXX)
+  project(arzoom VERSION 0.5.0 LANGUAGES C CXX)
   option(ENABLE_FRONTEND_API "Use obs-frontend-api" ON)
   option(ENABLE_QT "Use Qt" ON)
 endif()
@@ -34,7 +34,9 @@ target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
     src/plugin-main.cpp
-    src/arzoom-filter-v10.cpp
+    src/arzoom-filter-v11.cpp
+    src/arzoom-scene-camera.cpp
+    src/arzoom-scene-camera-core.hpp
     src/arzoom-camera.hpp
     src/arzoom-click-visual.hpp
     src/arzoom-presenter-controls.hpp

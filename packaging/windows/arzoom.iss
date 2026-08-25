@@ -1,9 +1,9 @@
 #define AppName "ArZoom - Smart Camera Zoom & Follow for OBS"
 #ifndef AppVersion
-  #define AppVersion "0.4.1"
+  #define AppVersion "0.5.0"
 #endif
 #ifndef SourceDir
-  #define SourceDir "..\..\release\arzoom-obs-v0.4.1-windows-x64"
+  #define SourceDir "..\..\release\arzoom-obs-v0.5.0-windows-x64"
 #endif
 #ifndef OutputDir
   #define OutputDir "..\..\release"
@@ -14,6 +14,10 @@ AppId={{9E1D217E-EA7D-4AF9-A86D-5BCEB0F03BC6}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=Mas Ari
+AppPublisherURL=https://github.com/masarray/arzoom-follow-obs
+AppSupportURL=https://github.com/masarray/arzoom-follow-obs/issues
+AppUpdatesURL=https://github.com/masarray/arzoom-follow-obs/releases/latest
+VersionInfoVersion={#AppVersion}
 DefaultDirName={autopf}\obs-studio
 DisableDirPage=yes
 DirExistsWarning=no
@@ -23,6 +27,8 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
 OutputBaseFilename=ArZoom-OBS-Setup-v{#AppVersion}-windows-x64
+SetupIconFile=arzoom.ico
+UninstallDisplayIcon={app}\data\obs-plugins\arzoom\arzoom.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -33,6 +39,7 @@ RestartApplications=no
 [Files]
 Source: "{#SourceDir}\obs-plugins\64bit\arzoom.dll"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
 Source: "{#SourceDir}\data\obs-plugins\arzoom\*"; DestDir: "{app}\data\obs-plugins\arzoom"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "arzoom.ico"; DestDir: "{app}\data\obs-plugins\arzoom"; Flags: ignoreversion
 
 [Run]
 Filename: "{app}\bin\64bit\obs64.exe"; Description: "Launch OBS Studio"; Flags: nowait postinstall skipifsilent; Check: FileExists(ExpandConstant('{app}\bin\64bit\obs64.exe'))

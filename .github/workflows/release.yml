@@ -31,7 +31,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Read release version
+      - name: Read release version and validate branding
         id: version
         shell: pwsh
         run: |
@@ -40,10 +40,17 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($version)) {
             throw "buildspec.json does not contain a valid version."
           }
+          if (-not (Test-Path -LiteralPath "packaging/windows/arzoom.ico" -PathType Leaf)) {
+            throw "Windows installer icon is missing: packaging/windows/arzoom.ico"
+          }
+          $iss = Get-Content -LiteralPath "packaging/windows/arzoom.iss" -Raw
+          if ($iss -notmatch 'SetupIconFile=arzoom\.ico') {
+            throw "Inno Setup is not configured to use the ArZoom installer icon."
+          }
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
-      - name: Prepare stable release notes
+      - name: Prepare release notes
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -51,58 +58,65 @@ jobs:
           @"
           ## ArZoom for OBS v$env:VERSION
 
-          **Stable release** of the Smart Zone Gimbal Camera + Premium GPU Click Visualization + Presenter Controls + tactile Presentation Cursor for OBS Display Capture.
+          **Public release of ArZoom Scene Camera for Windows.**
+
+          ArZoom can now zoom and follow the **composed OBS scene** instead of requiring presentation effects to live only on one Display Capture source. Display Capture, webcam, browser, logo, and nested-scene content can move together through the same accepted Smart Zone camera runtime.
 
           ### Recommended download
 
           Download **`ArZoom-OBS-Setup-windows-x64.exe`**. Close OBS completely and run the installer.
 
-          The same installer supports:
+          The installer supports:
           - **Standard OBS Studio** — auto-detected when possible.
-          - **OBS Portable / custom OBS folder** — browse to the OBS root that contains `bin\\64bit\\obs64.exe`.
+          - **OBS Portable / custom OBS folder** — browse to the OBS root containing `bin\\64bit\\obs64.exe`.
+          - branded ArZoom installer/uninstall icon and version metadata.
 
           A manual ZIP and SHA-256 checksums are also provided.
 
-          ### Presenter Controls
+          ### New in v0.5.0 — Scene Camera
 
-          - **Toggle Zoom** — existing profile-compatible latched zoom control;
-          - **Hold Zoom** — momentary zoom that composes correctly with Toggle Zoom;
-          - **Freeze Camera** — locks the exact current framing while the pointer can move elsewhere;
-          - **Toggle Smart Follow** — keeps zoom active while independently suspending/re-enabling pointer-driven framing;
-          - **Zoom In / Zoom Out** — live 0.25x presenter steps within the supported 1.10x–4.00x range;
-          - **Reset / Full Frame** — one safe recovery command that clears temporary presenter states and returns through the existing minimum-jerk 1x path;
-          - **Overview Peek** — hold for a smooth temporary 1x overview, release to return to the exact previous zoom + focus transform.
+          - **Tools → ArZoom — Toggle Scene Camera** creates or enables a managed `ArZoom Camera` filter on the current OBS scene.
+          - **Tools → ArZoom — Configure Scene Camera** opens the scene's normal Filters dialog.
+          - Scene Camera runs after OBS has composed Display Capture, webcam, browser, logo, and nested scenes, so they zoom together.
+          - ArZoom does **not** rewrite scene-item position, scale, rotation, bounds, or crop.
+          - No hidden helper scene item, CPU frame readback, second camera engine, or duplicated scene-render graph.
+          - Existing per-source **ArZoom Filter** remains available for the lightest Display Capture-only workflow.
 
-          ### Presentation Cursor
+          ### Mapping safety
 
-          - preset-first GUI: choose a built-in style and it works immediately;
-          - seven original ArZoom cursor styles: **Prism, Outline, Azure, Orchid, Parakeet, Classic Hand, Sticker Hand**;
-          - built-in clicks use a short tactile micro-interaction: fast press → elastic release → tiny rebound → exact settle;
-          - arrow-tip and fingertip hotspots remain aligned through camera zoom/pan;
-          - cursor magnifies with the camera at 1x/2x/3x/4x;
-          - built-ins are rendered to a transparent GPU atlas only when the preset/settings change — no image decoding on click or per video frame;
-          - **Custom…** remains available as an Advanced GIF/WebP/PNG path;
-          - ArZoom warns when native Display Capture cursor capture is still enabled to avoid double cursors;
-          - third-party prototype artwork is not redistributed; shipped built-ins are original ArZoom geometry.
+          Pointer-driven Smart Follow, click anchoring, and Presentation Cursor are enabled only when ArZoom can prove a deterministic Display Capture → scene mapping. The initial supported scene-wide case is exactly one visible fullscreen Display Capture whose monitor can be resolved safely.
 
-          ### Camera + click highlights
+          Cropped/scaled/rotated or multiple Display Capture layouts are treated as ambiguous: ArZoom does not guess pointer coordinates. Presenter controls and safe fixed framing remain available.
 
-          - **Smart Zone → Follow → Coast → SmoothIdle** follows real presentation-area changes instead of ordinary pointer jitter;
-          - straight, focus-preserving quintic minimum-jerk zoom-in and wobble-free zoom-out;
-          - local circles, pointing, and explanation gestures stay steady inside the current presentation area;
-          - **Premium GPU Click Visualization** uses clean analytic dual-vector rings with restrained polish and clean dissolve;
-          - left click: **Azure + Aqua**; right click: **Violet + Orchid**; middle click: compact **Amber + Gold**;
-          - luminance-aware compositing keeps click feedback readable on white/Explorer and dark content;
-          - click positions remain anchored to content while Smart Camera zoom/pan moves;
-          - click feedback cannot wake, retarget, or accelerate Smart Zone camera motion;
-          - one GPU presentation pass for active presentation effects;
+          ### Presentation system included
+
+          - Smart Zone → Follow / Catch-Up → Coast → SmoothIdle gimbal behavior;
+          - focus-preserving quintic minimum-jerk zoom trajectories;
           - Cinematic, Balanced, and Responsive camera characters;
-          - presenter hotkeys persist per OBS profile;
-          - deterministic showing-filter target semantics with safe release behavior across scene changes;
-          - fool-proof Standard OBS + OBS Portable/custom installer;
-          - Windows 10/11 x64 and OBS Display Capture.
+          - Toggle Zoom, Hold Zoom, Freeze Camera, Smart Follow On/Off, Zoom +/−, Reset / Full Frame;
+          - Overview Peek with exact shot restoration;
+          - premium one-pass GPU click visualization;
+          - seven built-in tactile Presentation Cursor presets plus Advanced custom assets;
+          - cursor magnification with camera zoom and deterministic hotspot mapping;
+          - fresh-install first-click render safety: the shared GPU pass now always has a valid transparent cursor sampler before any cursor style is selected.
 
-          Phase 3.5 is complete in this release. v0.4.1 is the frozen baseline for **Phase 4 — ArZoom Camera**, the upcoming scene-wide GPU presentation camera mode.
+          ### Recommended Scene Camera setup
+
+          1. Use one fullscreen Display Capture as the presentation area.
+          2. Disable old per-source ArZoom filters while Scene Camera is active to avoid double zoom.
+          3. Choose **Tools → ArZoom — Toggle Scene Camera**.
+          4. Configure it through **Tools → ArZoom — Configure Scene Camera**.
+          5. If using ArZoom Presentation Cursor, disable the native Display Capture cursor to avoid a double cursor.
+          6. Assign presenter controls in **OBS Settings → Hotkeys**.
+
+          ### Platform / scope
+
+          - Windows 10/11 x64.
+          - Current build baseline: OBS Studio 31.1.1.
+          - Scene-wide Smart Follow currently requires the deterministic fullscreen Display Capture mapping described above.
+          - macOS/Linux are not included in this release.
+
+          ArZoom remains scene-safe by design: presentation transforms occur in the filter output and do not persistently modify the user's scene-item transforms.
           "@ | Set-Content -LiteralPath ".github-release-notes.md" -Encoding utf8
 
       - name: Check whether release already exists
@@ -121,7 +135,7 @@ jobs:
           }
           exit 0
 
-      - name: Refresh existing stable release metadata
+      - name: Refresh existing release metadata
         if: steps.existing.outputs.exists == 'true'
         shell: pwsh
         env:
@@ -135,7 +149,7 @@ jobs:
             --notes-file ".github-release-notes.md" `
             --latest
           if ($LASTEXITCODE -ne 0) {
-            throw "Failed to refresh stable release metadata for $env:RELEASE_TAG"
+            throw "Failed to refresh release metadata for $env:RELEASE_TAG"
           }
 
       - name: Deterministic motion validation

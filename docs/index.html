@@ -3,22 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ArZoom for OBS — Smooth Mouse Follow Zoom Plugin</title>
-  <meta name="description" content="ArZoom is a native OBS zoom plugin for Windows that smoothly zooms Display Capture, follows the mouse, protects screen edges, and returns to normal with one hotkey.">
-  <meta name="keywords" content="OBS zoom plugin, OBS mouse follow zoom, screen capture zoom, OBS tutorial plugin, OBS presentation zoom, live streaming zoom, OBS Display Capture filter">
+  <title>ArZoom for OBS — Scene-wide Smart Camera</title>
+  <meta name="description" content="ArZoom is a native OBS presentation-camera plugin for Windows with scene-wide Smart Camera zoom, presenter controls, GPU click feedback, and Presentation Cursor.">
+  <meta name="keywords" content="OBS zoom plugin, OBS scene zoom, OBS mouse follow zoom, screen capture zoom, OBS tutorial plugin, OBS presentation camera">
   <meta name="author" content="Mas Ari">
   <meta name="theme-color" content="#07111f">
   <link rel="canonical" href="https://masarray.github.io/arzoom-follow-obs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="ArZoom for OBS — Smooth Mouse Follow Zoom">
-  <meta property="og:description" content="Zoom your OBS screen capture with one hotkey. Smooth mouse follow, edge protection, and viewer-friendly motion.">
+  <meta property="og:title" content="ArZoom for OBS — Scene-wide Smart Camera">
+  <meta property="og:description" content="Zoom the composed OBS scene with Smart Zone camera motion, presenter controls, GPU click feedback, and Presentation Cursor.">
   <meta property="og:url" content="https://masarray.github.io/arzoom-follow-obs/">
   <meta property="og:site_name" content="ArZoom for OBS">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="ArZoom for OBS">
-  <meta name="twitter:description" content="A native OBS zoom plugin with smooth mouse follow and edge-safe screen capture zoom.">
+  <meta name="twitter:description" content="A native OBS presentation camera with scene-wide Smart Zone zoom and presenter controls.">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -27,17 +27,13 @@
     "applicationCategory": "MultimediaApplication",
     "applicationSubCategory": "OBS Studio plugin",
     "operatingSystem": "Windows 10, Windows 11",
-    "softwareVersion": "0.1.4",
-    "description": "A native OBS zoom plugin that smoothly zooms Display Capture, follows the mouse, protects screen edges, and returns to normal with one hotkey.",
+    "softwareVersion": "0.5.0",
+    "description": "A native OBS presentation-camera plugin with scene-wide Smart Camera zoom, presenter controls, GPU click feedback, and Presentation Cursor.",
     "downloadUrl": "https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe",
     "softwareHelp": "https://masarray.github.io/arzoom-follow-obs/guide.html",
     "codeRepository": "https://github.com/masarray/arzoom-follow-obs",
     "license": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
-    "author": {
-      "@type": "Person",
-      "name": "Mas Ari",
-      "url": "https://github.com/masarray"
-    }
+    "author": {"@type": "Person", "name": "Mas Ari", "url": "https://github.com/masarray"}
   }
   </script>
 </head>
@@ -60,27 +56,25 @@
   <main id="main">
     <section class="container hero">
       <div>
-        <span class="eyebrow">Native OBS screen zoom plugin</span>
-        <h1>Zoom where your audience is looking.</h1>
-        <p class="lead">ArZoom enlarges your OBS Display Capture in real time, follows the mouse smoothly, protects every screen edge, and returns to the full view with the same hotkey.</p>
+        <span class="eyebrow">ArZoom v0.5.0 · Native OBS presentation camera</span>
+        <h1>Zoom the scene, not just one source.</h1>
+        <p class="lead">ArZoom Scene Camera processes the composed OBS scene after Display Capture, webcam, browser, logo, and nested scenes are combined—then applies a steady Smart Zone camera without rewriting your scene-item transforms.</p>
         <div class="hero-actions">
           <a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe">Download Windows installer</a>
-          <a class="button secondary" href="guide.html">Beginner setup guide</a>
+          <a class="button secondary" href="guide.html">Setup Scene Camera</a>
         </div>
-        <p class="hero-note">Direct installer download · Windows 10/11 x64 · OBS Studio Display Capture · Preview v0.1.4</p>
+        <p class="hero-note">Windows 10/11 x64 · OBS 31.1.1 build baseline · Installer + manual ZIP · GPL-2.0-or-later</p>
       </div>
 
-      <div class="demo-shell" aria-label="Illustration of ArZoom Smart Follow">
+      <div class="demo-shell" aria-label="Illustration of ArZoom Smart Zone scene camera">
         <div class="demo-screen">
           <div class="demo-toolbar"><i></i><i></i><i></i></div>
-          <div class="demo-panel">
-            <div class="demo-safe"></div>
-          </div>
+          <div class="demo-panel"><div class="demo-safe"></div></div>
           <div class="cursor" aria-hidden="true"></div>
         </div>
         <div class="demo-caption">
-          <span><kbd>Hotkey</kbd> once: zoom and follow</span>
-          <span><kbd>Hotkey</kbd> again: return to normal</span>
+          <span><kbd>Tools</kbd> Toggle Scene Camera</span>
+          <span>Display + overlays move together</span>
         </div>
       </div>
     </section>
@@ -88,14 +82,14 @@
     <section class="section alt" aria-labelledby="made-for">
       <div class="container">
         <div class="section-heading">
-          <span class="eyebrow">Built for real explanations</span>
-          <h2 id="made-for">Small interface details become easy to follow.</h2>
-          <p>Use ArZoom for OBS tutorials, live classes, software demonstrations, engineering training, coding sessions, dashboards, spreadsheets, CAD, HMI, SCADA, and product walkthroughs.</p>
+          <span class="eyebrow">Presenter-first</span>
+          <h2 id="made-for">A stabilized camera operator inside OBS.</h2>
+          <p>ArZoom treats mouse position as presentation intent. Small pointing and explanation gestures can stay steady; real relocation starts a smooth camera move.</p>
         </div>
         <div class="grid three">
-          <article class="card"><div class="icon">01</div><h3>One-key control</h3><p>Use the same OBS hotkey to zoom in and return smoothly to the complete screen.</p></article>
-          <article class="card"><div class="icon">02</div><h3>Smart Mouse Follow</h3><p>A stable safe zone prevents constant camera movement while keeping the cursor comfortably visible.</p></article>
-          <article class="card"><div class="icon">03</div><h3>Edge-safe framing</h3><p>The viewport is clamped inside the captured monitor so corners and sides never reveal black borders.</p></article>
+          <article class="card"><div class="icon">01</div><h3>Scene-wide camera</h3><p>Display Capture, webcam, browser, logo, and nested-scene content can zoom together after normal OBS composition.</p></article>
+          <article class="card"><div class="icon">02</div><h3>Smart Zone gimbal</h3><p>Follow → Coast → SmoothIdle rejects ordinary pointer jitter and avoids robotic mouse chasing.</p></article>
+          <article class="card"><div class="icon">03</div><h3>Scene-safe by design</h3><p>ArZoom does not persistently rewrite scene-item position, scale, rotation, bounds, or crop.</p></article>
         </div>
       </div>
     </section>
@@ -103,17 +97,16 @@
     <section id="features" class="section" aria-labelledby="feature-title">
       <div class="container">
         <div class="section-heading">
-          <span class="eyebrow">Viewer-first motion</span>
-          <h2 id="feature-title">Smooth enough for recording. Reliable enough for live streaming.</h2>
-          <p>ArZoom is intentionally focused. It does not add unnecessary tracking systems, OCR, AI processing, or CPU frame copies to your OBS workflow.</p>
+          <span class="eyebrow">Complete presentation system</span>
+          <h2 id="feature-title">Camera, controls, clicks, and cursor in one native plugin.</h2>
         </div>
         <div class="grid three">
-          <article class="card"><div class="icon">S</div><h3>Smooth animation</h3><p>Frame-rate-independent zoom and pan remain consistent across common OBS frame rates.</p></article>
-          <article class="card"><div class="icon">G</div><h3>GPU video effect</h3><p>Active zoom uses one GPU pass with no video-frame readback through the CPU.</p></article>
-          <article class="card"><div class="icon">0</div><h3>Idle bypass</h3><p>When zoom is inactive and settled, the original source passes through without the transform effect.</p></article>
-          <article class="card"><div class="icon">M</div><h3>Multi-monitor aware</h3><p>Handles secondary monitors and desktop layouts that use negative screen coordinates.</p></article>
-          <article class="card"><div class="icon">H</div><h3>Persistent hotkey</h3><p>The global ArZoom shortcut is restored after OBS restarts and when the active OBS profile changes.</p></article>
-          <article class="card"><div class="icon">✓</div><h3>Fail-safe output</h3><p>Graphics or monitor-mapping problems keep the original source visible instead of producing a black frame.</p></article>
+          <article class="card"><div class="icon">S</div><h3>Smart Zone motion</h3><p>Focus-preserving minimum-jerk zoom, soft wake-up, continuous retargeting, Coast handoff, and exact settle.</p></article>
+          <article class="card"><div class="icon">H</div><h3>Presenter Controls</h3><p>Toggle/Hold Zoom, Freeze, Smart Follow On/Off, Zoom +/−, Reset, and Overview Peek through OBS hotkeys.</p></article>
+          <article class="card"><div class="icon">C</div><h3>Presentation Cursor</h3><p>Seven built-in tactile cursor styles with hotspot ownership, camera-zoom scaling, and Advanced custom assets.</p></article>
+          <article class="card"><div class="icon">G</div><h3>GPU click feedback</h3><p>Clean analytic dual-vector click rings share the presentation pass and stay anchored to the clicked content.</p></article>
+          <article class="card"><div class="icon">✓</div><h3>Fail-safe mapping</h3><p>Pointer-driven scene mapping is used only when ArZoom can prove it; ambiguous layouts are rejected instead of guessed.</p></article>
+          <article class="card"><div class="icon">0</div><h3>Lightweight architecture</h3><p>No AI, OCR, CPU frame readback, particle history, hidden scene item, or duplicated scene composition graph.</p></article>
         </div>
       </div>
     </section>
@@ -121,38 +114,30 @@
     <section class="section alt" aria-labelledby="setup-title">
       <div class="container">
         <div class="section-heading">
-          <span class="eyebrow">Five-minute setup</span>
-          <h2 id="setup-title">Made for OBS beginners.</h2>
-          <p>No Python, no scripts panel, no external tracking application, and no manual crop-filter automation.</p>
+          <span class="eyebrow">Recommended v0.5.0 setup</span>
+          <h2 id="setup-title">Scene Camera in a few steps.</h2>
         </div>
         <div class="steps">
-          <article class="step"><div><h3>Download and install</h3><p>Click Download to receive the latest Windows installer directly. Close OBS, run it, then restart OBS.</p></div></article>
-          <article class="step"><div><h3>Add it to Display Capture</h3><p>Open <strong>Display Capture → Filters → Effect Filters → +</strong> and select <strong>ArZoom - Smart Mouse Zoom</strong>.</p></div></article>
-          <article class="step"><div><h3>Open Hotkeys from the filter</h3><p>Click <strong>Open OBS Hotkeys Settings</strong>, then assign a shortcut to <strong>ArZoom — Toggle Zoom & Mouse Follow</strong>.</p></div></article>
-          <article class="step"><div><h3>Use the recommended defaults</h3><p>Start with 2.00× zoom, Smart follow, Smooth movement, and a 28% stable safe zone.</p></div></article>
-          <article class="step"><div><h3>Press once, then press again</h3><p>The first press zooms and follows. The second press recenters and returns to the normal full-screen view.</p></div></article>
+          <article class="step"><div><h3>Install ArZoom</h3><p>Close OBS and run the branded Windows installer. Standard and portable/custom OBS roots are supported.</p></div></article>
+          <article class="step"><div><h3>Use one fullscreen Display Capture</h3><p>This is the initial deterministic mapping supported for scene-wide pointer-driven Smart Follow.</p></div></article>
+          <article class="step"><div><h3>Toggle Scene Camera</h3><p>Choose <strong>Tools → ArZoom — Toggle Scene Camera</strong>. ArZoom creates a managed scene filter automatically.</p></div></article>
+          <article class="step"><div><h3>Configure and assign hotkeys</h3><p>Use <strong>Tools → ArZoom — Configure Scene Camera</strong>, then assign presenter controls in OBS Settings → Hotkeys.</p></div></article>
+          <article class="step"><div><h3>Avoid double zoom / cursor</h3><p>Disable old per-source ArZoom filters while Scene Camera is active; disable the native Display Capture cursor when using ArZoom Presentation Cursor.</p></div></article>
         </div>
-        <p style="margin-top:1.3rem"><a class="button secondary" href="guide.html">Open the complete beginner guide</a></p>
+        <p style="margin-top:1.3rem"><a class="button secondary" href="guide.html">Open complete setup guide</a></p>
       </div>
     </section>
 
-    <section class="section" aria-labelledby="settings-title">
-      <div class="container">
-        <div class="section-heading">
-          <span class="eyebrow">Recommended starting point</span>
-          <h2 id="settings-title">Good results without tuning everything.</h2>
+    <section class="section" aria-labelledby="safety-title">
+      <div class="container grid two">
+        <div>
+          <span class="eyebrow">Mapping contract</span>
+          <h2 id="safety-title">ArZoom prefers no follow over wrong follow.</h2>
+          <p class="lead">If multiple captures or transformed layouts make cursor-to-scene coordinates ambiguous, ArZoom keeps safe presenter controls available but does not guess pointer positions.</p>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Setting</th><th>Recommended</th><th>What it changes</th></tr></thead>
-            <tbody>
-              <tr><td>Zoom amount</td><td><code>2.00×</code></td><td>How much of the captured screen is enlarged.</td></tr>
-              <tr><td>Mouse follow</td><td><code>Smart</code></td><td>Keeps the frame stable until the cursor leaves the safe zone.</td></tr>
-              <tr><td>Movement</td><td><code>Smooth</code></td><td>Controls how gently the viewport approaches its target.</td></tr>
-              <tr><td>Stable safe zone</td><td><code>28%</code></td><td>Reduces small, unnecessary viewport movements.</td></tr>
-              <tr><td>Target monitor</td><td><code>Auto</code></td><td>Uses the monitor selected by the Display Capture source.</td></tr>
-            </tbody>
-          </table>
+        <div class="card">
+          <h3>Initial supported scene-wide mapping</h3>
+          <p>Exactly one visible top-level Display Capture, filling the full scene canvas, with a monitor that resolves deterministically.</p>
         </div>
       </div>
     </section>
@@ -161,34 +146,28 @@
       <div class="container grid two">
         <div>
           <span class="eyebrow">Local by design</span>
-          <h2 id="privacy-title">Your screen and cursor stay on your computer.</h2>
-          <p class="lead">ArZoom does not upload captured frames, cursor coordinates, hotkeys, settings, or analytics. The plugin performs its work locally inside OBS.</p>
+          <h2 id="privacy-title">Your presentation stays on your computer.</h2>
+          <p class="lead">ArZoom does not upload captured frames, cursor coordinates, click data, hotkeys, settings, or analytics. Rendering and control stay local inside OBS.</p>
           <p><a href="privacy.html">Read the privacy and security overview</a></p>
         </div>
-        <div class="card">
-          <h3>What ArZoom does not use</h3>
-          <p>Cloud processing, telemetry, user accounts, advertising SDKs, OCR, AI inference, browser tracking, or external network services.</p>
-        </div>
+        <div class="card"><h3>No cloud dependency</h3><p>No AI inference, OCR, telemetry, user account, advertising SDK, or external processing service is required.</p></div>
       </div>
     </section>
 
     <section class="section faq" aria-labelledby="faq-title">
       <div class="container">
-        <div class="section-heading">
-          <span class="eyebrow">FAQ</span>
-          <h2 id="faq-title">Before you install</h2>
-        </div>
-        <details><summary>Does ArZoom work with Window Capture or Game Capture?</summary><p>The current preview focuses on Display Capture. Window Capture and Game Capture are outside the v0.x MVP so the first release can remain predictable and lightweight.</p></details>
-        <details><summary>Will it reveal black areas near the edge of the monitor?</summary><p>No by design. The viewport center is constrained by the current zoom level, so the visible area remains within the source texture even at corners.</p></details>
-        <details><summary>Why does the frame stop before the mouse reaches the center near an edge?</summary><p>That is the correct edge-safe behavior. The viewport cannot keep the cursor centered and remain inside the monitor at the same time, so ArZoom prioritizes valid video output.</p></details>
-        <details><summary>Is the current release production-stable?</summary><p>v0.1.4 is a public Windows preview. The core design is implemented, but wider OBS 32.x, GPU, mixed-DPI, 4K, and long-duration streaming validation is still underway before v1.0.</p></details>
+        <div class="section-heading"><span class="eyebrow">FAQ</span><h2 id="faq-title">Before you install</h2></div>
+        <details><summary>Can I still use ArZoom directly on Display Capture?</summary><p>Yes. The existing per-source ArZoom Filter remains available as the lightest Display Capture-only workflow.</p></details>
+        <details><summary>Does Scene Camera modify my scene layout?</summary><p>No. Scene-wide presentation transforms are applied in the filter output. ArZoom does not persistently rewrite scene-item position, scale, rotation, bounds, or crop.</p></details>
+        <details><summary>Why can Smart Follow be unavailable in some scenes?</summary><p>v0.5.0 only enables scene-wide pointer mapping when ArZoom can prove one fullscreen Display Capture mapping. Ambiguous transformed or multi-capture layouts fail safe instead of guessing.</p></details>
+        <details><summary>Is v0.5.0 production-ready?</summary><p>It is a public Windows release with deterministic gates and direct OBS trial work behind it. Wider OBS-version, GPU, mixed-DPI, and long-duration validation continues before v1.0.</p></details>
         <details><summary>Does ArZoom collect telemetry?</summary><p>No. ArZoom has no analytics service and does not transmit screen or cursor data.</p></details>
       </div>
     </section>
 
     <section class="section">
       <div class="container cta">
-        <div><h2>Make your next screen explanation easier to watch.</h2><p>Install ArZoom, add one filter, assign one hotkey, and keep your audience focused on the detail that matters.</p></div>
+        <div><h2>Make the whole OBS scene follow the explanation.</h2><p>Install ArZoom, toggle Scene Camera, assign presenter controls, and keep the audience focused without rewriting your composition.</p></div>
         <div class="hero-actions">
           <a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe">Download installer</a>
           <a class="button secondary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest">Release notes</a>
@@ -199,7 +178,7 @@
 
   <footer class="site-footer">
     <div class="container footer-row">
-      <div>ArZoom for OBS · Open source under GPL-2.0-or-later · Independent community project</div>
+      <div>ArZoom for OBS · GPL-2.0-or-later · Independent community project</div>
       <div class="footer-links"><a href="guide.html">Guide</a><a href="troubleshooting.html">Troubleshooting</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Issues</a></div>
     </div>
   </footer>

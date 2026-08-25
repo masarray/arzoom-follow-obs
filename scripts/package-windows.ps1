@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $StageRoot,
 
-    [string] $Version = '0.3.1',
+    [string] $Version = '0.5.0',
     [string] $Configuration = 'RelWithDebInfo'
 )
 
@@ -93,7 +93,7 @@ foreach ($relative in $Required) {
 }
 
 @"
-ArZoom v$Version - Smart Zone Camera + GPU Click Visualization for OBS
+ArZoom v$Version - Scene-wide Smart Camera for OBS
 
 RECOMMENDED: use the EXE installer.
 The installer supports two modes:
@@ -110,13 +110,22 @@ Manual ZIP installation:
    Portable example: D:\PortableApps\OBS\
 3. Copy the obs-plugins and data folders from this ZIP into that OBS root.
 4. Restart OBS.
-5. Add "ArZoom - Smart Camera Zoom & Follow" to a Display Capture source.
-6. Set "ArZoom - Toggle Smart Camera Zoom" in OBS Settings > Hotkeys.
-7. Leave "Show click visualization" enabled to display GPU-rendered left/right/middle click feedback.
 
-v0.3.1 improves liquid surface-tension deformation and keeps click colors visible on both dark and bright/white applications by using contrast-aware compositing instead of additive white clipping.
+Recommended v0.5.0 Scene Camera workflow:
+1. Put one fullscreen Display Capture in the scene you want to present.
+2. In OBS choose Tools > ArZoom - Toggle Scene Camera.
+3. Use Tools > ArZoom - Configure Scene Camera to open its filter settings.
+4. Disable any old per-source ArZoom filter while Scene Camera is active to avoid double zoom.
+5. For an ArZoom Presentation Cursor, disable the native cursor in Display Capture to avoid a double cursor.
+6. Assign presenter controls in OBS Settings > Hotkeys.
 
-Click visualization does not retarget the Smart Zone camera. It is rendered procedurally in the same presentation pass and stays anchored to clicked content while zoom/pan moves.
+Scene Camera processes the already-composed OBS scene, so Display Capture, webcam, browser, logo and nested scene content zoom together. It does not rewrite scene-item position, scale, rotation, bounds or crop.
+
+Pointer-driven Smart Follow is intentionally enabled only when ArZoom can prove a deterministic fullscreen Display Capture mapping. Ambiguous cropped/scaled/rotated or multiple-capture layouts fail safe instead of guessing cursor coordinates.
+
+The existing per-source ArZoom Filter remains available for the lightest Display Capture-only workflow.
+
+v0.5.0 also includes Smart Zone gimbal motion, Presenter Controls, Overview Peek, premium GPU click visualization, tactile Presentation Cursor presets, and the first-click render-safety fix for fresh/untouched cursor state.
 
 Do not copy the package into bin\64bit or obs-plugins directly; merge it at the OBS root.
 "@ | Set-Content -LiteralPath (Join-Path $PackageRoot 'README-INSTALL.txt') -Encoding UTF8
