@@ -12,21 +12,22 @@ namespace arzoom {
  * =========================================
  *
  * This layer owns HOW an already-selected viewport target is reached. It has no
- * pointer semantics, no scene mapping and no presentation-zone decisions.
+ * pointer semantics, scene mapping or presentation-zone decisions.
  *
- * The state is explicitly position + velocity + acceleration. A critically
- * damped target acceleration is jerk-limited before integration, so a changing
- * target cannot instantly change camera velocity or acceleration. The same
- * state survives TRACK -> SETTLE handoff; there is no zero-velocity restart.
+ * Motion state is explicitly position + velocity + acceleration. The target is
+ * converted to a braking-aware desired velocity; acceleration toward that
+ * velocity is jerk-limited. This avoids the overshoot/oscillation that a raw
+ * jerk-limited spring can produce while still preserving velocity continuity
+ * when a live tracking target changes.
  *
- * All limits are expressed in output-space units and converted to scene-space
- * by the current zoom. The integrator uses bounded fixed substeps for stable,
- * near frame-rate-independent behavior at 30/60/120/144 fps. State/work are
- * O(1); no motion history is allocated.
+ * The same state survives TRACK -> SETTLE. No velocity reset occurs at handoff.
+ * Limits are expressed in output-space units and integrated with bounded fixed
+ * substeps for stable 30/60/120/144 fps behavior. State/work remain O(1).
  */
 
 struct SceneMotionLimits {
-    float natural_frequency = 9.0f;
+    float position_gain = 6.0f;
+    float velocity_response_seconds = 0.10f;
     float max_speed_output = 3.0f;
     float max_acceleration_output = 18.0f;
     float max_jerk_output = 120.0f;
@@ -66,33 +67,31 @@ inline SceneMotionLimits scene_motion_limits(CameraMotionStyle style,
     SceneMotionLimits limits;
     switch (style) {
     case CameraMotionStyle::Responsive:
-        limits.natural_frequency = 10.5f + 2.8f * urgency;
-        limits.max_speed_output = 3.20f + 2.40f * urgency;
-        limits.max_acceleration_output = 20.0f + 14.0f * urgency;
-        limits.max_jerk_output = 135.0f + 105.0f * urgency;
+        limits.position_gain = 6.8f + 1.6f * urgency;
+        limits.velocity_response_seconds = 0.092f - 0.022f * urgency;
+        limits.max_speed_output = 3.15f + 2.25f * urgency;
+        limits.max_acceleration_output = 19.0f + 13.0f * urgency;
+        limits.max_jerk_output = 125.0f + 95.0f * urgency;
         break;
     case CameraMotionStyle::Cinematic:
-        limits.natural_frequency = 7.4f + 2.2f * urgency;
-        limits.max_speed_output = 2.25f + 1.85f * urgency;
-        limits.max_acceleration_output = 13.0f + 10.0f * urgency;
-        limits.max_jerk_output = 82.0f + 78.0f * urgency;
+        limits.position_gain = 4.8f + 1.4f * urgency;
+        limits.velocity_response_seconds = 0.135f - 0.025f * urgency;
+        limits.max_speed_output = 2.15f + 1.75f * urgency;
+        limits.max_acceleration_output = 12.5f + 9.5f * urgency;
+        limits.max_jerk_output = 78.0f + 70.0f * urgency;
         break;
     case CameraMotionStyle::Balanced:
     default:
-        limits.natural_frequency = 8.8f + 2.5f * urgency;
-        limits.max_speed_output = 2.75f + 2.15f * urgency;
-        limits.max_acceleration_output = 17.0f + 12.0f * urgency;
-        limits.max_jerk_output = 110.0f + 90.0f * urgency;
+        limits.position_gain = 5.8f + 1.5f * urgency;
+        limits.velocity_response_seconds = 0.108f - 0.026f * urgency;
+        limits.max_speed_output = 2.65f + 2.05f * urgency;
+        limits.max_acceleration_output = 15.5f + 11.0f * urgency;
+        limits.max_jerk_output = 95.0f + 82.0f * urgency;
         break;
     }
 
-    /* High zoom needs decisiveness, not discontinuity. The additional speed is
-     * modest because output-space limits already make behavior zoom invariant. */
-    limits.max_speed_output *= 1.0f + 0.10f * z;
-    limits.max_acceleration_output *= 1.0f + 0.08f * z;
-    limits.settle_position_output = 0.0018f;
-    limits.settle_velocity_output = 0.012f;
-    limits.settle_acceleration_output = 0.20f;
+    limits.max_speed_output *= 1.0f + 0.08f * z;
+    limits.max_acceleration_output *= 1.0f + 0.06f * z;
     return limits;
 }
 
@@ -133,13 +132,10 @@ public:
         if (total_dt <= 1.0e-7f)
             return current_sample(target_center, safe_zoom, limits);
 
-        /* Bounded substeps make the jerk-limited second-order controller stable
-         * and visually consistent across common OBS frame rates. */
         constexpr float max_substep = 1.0f / 120.0f;
         const int steps = std::clamp(
             static_cast<int>(std::ceil(total_dt / max_substep)), 1, 12);
         const float h = total_dt / static_cast<float>(steps);
-
         for (int i = 0; i < steps; ++i)
             integrate_substep(target_center, safe_zoom, h, limits);
 
@@ -161,36 +157,62 @@ private:
                            const SceneMotionLimits &limits)
     {
         const Vec2 error_output = mul(sub(target_center, center_), zoom);
+        const float distance_output = length(error_output);
         Vec2 velocity_output = mul(velocity_, zoom);
         Vec2 acceleration_output = mul(acceleration_, zoom);
 
-        const float omega = std::max(limits.natural_frequency, 0.1f);
-        Vec2 desired_acceleration = sub(
-            mul(error_output, omega * omega),
-            mul(velocity_output, 2.0f * omega));
+        const Vec2 direction = distance_output > 1.0e-8f
+            ? mul(error_output, 1.0f / distance_output)
+            : Vec2{0.0f, 0.0f};
+
+        /* Desired speed falls with remaining distance and also obeys a
+         * conservative braking envelope. This makes the approach monotonic even
+         * when acceleration itself cannot change instantly because of jerk. */
+        const float proportional_speed =
+            std::max(limits.position_gain, 0.1f) * distance_output;
+        const float braking_speed = 0.68f * std::sqrt(std::max(
+            0.0f, 2.0f * limits.max_acceleration_output * distance_output));
+        const float desired_speed = std::min(
+            limits.max_speed_output,
+            std::min(proportional_speed, braking_speed));
+        const Vec2 desired_velocity = mul(direction, desired_speed);
+
+        const float response =
+            std::max(limits.velocity_response_seconds, 0.025f);
+        Vec2 desired_acceleration = mul(
+            sub(desired_velocity, velocity_output), 1.0f / response);
         desired_acceleration = scene_clamp_magnitude(
             desired_acceleration, limits.max_acceleration_output);
 
         const Vec2 acceleration_delta = sub(
             desired_acceleration, acceleration_output);
-        const Vec2 limited_delta = scene_clamp_magnitude(
-            acceleration_delta,
-            std::max(limits.max_jerk_output, 1.0f) * dt);
-        acceleration_output = add(acceleration_output, limited_delta);
+        acceleration_output = add(
+            acceleration_output,
+            scene_clamp_magnitude(
+                acceleration_delta,
+                std::max(limits.max_jerk_output, 1.0f) * dt));
         acceleration_output = scene_clamp_magnitude(
             acceleration_output, limits.max_acceleration_output);
 
-        velocity_output = add(
-            velocity_output, mul(acceleration_output, dt));
+        velocity_output = add(velocity_output,
+                              mul(acceleration_output, dt));
         velocity_output = scene_clamp_magnitude(
             velocity_output, limits.max_speed_output);
 
-        const Vec2 proposed = add(
-            center_, mul(velocity_output, dt / zoom));
-        const Vec2 clamped = clamp_center(proposed, zoom);
+        const Vec2 step_output = mul(velocity_output, dt);
+        const Vec2 error_after_step = sub(error_output, step_output);
+        const bool crossing_target =
+            distance_output <= 0.035f &&
+            dot(error_output, error_after_step) <= 0.0f;
+        if (crossing_target) {
+            center_ = target_center;
+            velocity_ = {0.0f, 0.0f};
+            acceleration_ = {0.0f, 0.0f};
+            return;
+        }
 
-        /* Physical scene edges are hard constraints. Cancel only the component
-         * that attempted to travel through the wall; tangential motion survives. */
+        const Vec2 proposed = add(center_, mul(step_output, 1.0f / zoom));
+        const Vec2 clamped = clamp_center(proposed, zoom);
         if (std::fabs(clamped.x - proposed.x) > 1.0e-7f) {
             velocity_output.x = 0.0f;
             acceleration_output.x = 0.0f;
@@ -208,8 +230,7 @@ private:
     SceneMotionSample current_sample(Vec2 target_center, float zoom,
                                      const SceneMotionLimits &limits) const
     {
-        const float position_error =
-            length(sub(target_center, center_)) * zoom;
+        const float position_error = length(sub(target_center, center_)) * zoom;
         const float speed = length(velocity_) * zoom;
         const float acceleration = length(acceleration_) * zoom;
         const bool settled =
