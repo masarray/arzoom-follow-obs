@@ -610,8 +610,15 @@ void phase5_render(void *data, gs_effect_t *effect)
         gs_effect_set_vec2(phase2->viewport_size_param, &viewport);
     }
 
-    for (size_t i = 0; i < arzoom::ClickVisualState::kSlotCount; ++i)
-        set_click_uniform(phase2->click_params[i], phase2->clicks.slot(i));
+    const bool render_clicks =
+        phase2->click_visual_enabled.load(std::memory_order_acquire) &&
+        phase2->click_shader_ready;
+    const arzoom::ClickEvent no_click{};
+    for (size_t i = 0; i < arzoom::ClickVisualState::kSlotCount; ++i) {
+        set_click_uniform(
+            phase2->click_params[i],
+            render_clicks ? phase2->clicks.slot(i) : no_click);
+    }
 
     phase5_set_spotlight_uniforms(filter, width, height);
 
@@ -721,7 +728,6 @@ void *phase5_create(obs_data_t *settings, obs_source_t *context)
              "[ArZoom] P5 Spotlight shader parameters unavailable. "
              "The accepted v0.6.0 camera/click/cursor path remains active.");
     } else {
-        phase5_set_disabled_uniform(filter);
         blog(LOG_INFO,
              "[ArZoom] P5 one-pass analytic Spotlight runtime ready");
     }
