@@ -65,11 +65,11 @@ jobs:
 
           ### Recommended download
 
-          Download **`ArZoom-OBS-Setup-windows-x64.exe`**. Close OBS completely and run the installer.
+          Download **ArZoom-OBS-Setup-windows-x64.exe**. Close OBS completely and run the installer.
 
           The installer supports:
           - **Standard OBS Studio** — auto-detected when possible.
-          - **OBS Portable / custom OBS folder** — browse to the OBS root containing `bin\\64bit\\obs64.exe`.
+          - **OBS Portable / custom OBS folder** — browse to the OBS root containing **bin\64bit\obs64.exe**.
           - branded ArZoom installer/uninstall icon and version metadata.
 
           A manual ZIP and SHA-256 checksums are also provided.
@@ -84,7 +84,7 @@ jobs:
 
           ### Scene Camera
 
-          - **Tools → ArZoom — Toggle Scene Camera** creates or enables a managed `ArZoom Camera` filter on the current OBS scene.
+          - **Tools → ArZoom — Toggle Scene Camera** creates or enables a managed **ArZoom Camera** filter on the current OBS scene.
           - **Tools → ArZoom — Configure Scene Camera** opens the scene's normal Filters dialog.
           - Scene Camera runs after OBS has composed Display Capture, webcam, browser, logo, and nested scenes, so they zoom together.
           - ArZoom does **not** rewrite scene-item position, scale, rotation, bounds, or crop.
