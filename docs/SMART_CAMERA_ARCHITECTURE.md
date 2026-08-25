@@ -1,14 +1,16 @@
 # ArZoom Smart Camera Architecture Contract
 
-**Status:** current engineering contract for the accepted v0.6.0 Smart Camera, Scene Camera motion, and presentation-rendering model.
+**Status:** current engineering contract for the accepted v0.6.0 Smart Camera, Scene Camera motion, and presentation-rendering model. Planned P5 Spotlight must comply with this contract.
 
-Read [`PROJECT_DIRECTION.md`](PROJECT_DIRECTION.md) and [`P4_1_STABLE_BASELINE.md`](P4_1_STABLE_BASELINE.md) first. P4.1 stable-baseline behavior takes precedence over older phase tuning notes.
+Read [`PROJECT_DIRECTION.md`](PROJECT_DIRECTION.md) and [`P4_1_STABLE_BASELINE.md`](P4_1_STABLE_BASELINE.md) first. P4.1 stable-baseline behavior takes precedence over older phase tuning notes. Planned Spotlight/GUI behavior is specified in [`P5_SMART_FOCUS_SPOTLIGHT_UX.md`](P5_SMART_FOCUS_SPOTLIGHT_UX.md).
 
 ## Product intent
 
 ArZoom should behave like a skilled presentation camera operator, not a robotic mouse follower. Cursor movement is evidence of presenter intent, not a direct camera command.
 
 The accepted behavior keeps local explanation work calm, reacts promptly to meaningful relocation, keeps pointer context acquired, moves with continuous kinematics, and settles exactly without repeated searching.
+
+Presentation effects may guide audience attention, but they remain subordinate consumers of the camera/mapping model. They must never become a second authority over what the camera should do.
 
 ## Domain language
 
@@ -26,6 +28,9 @@ The accepted behavior keeps local explanation work calm, reacts promptly to mean
 | **Tracking Latch** | Hysteresis state that prevents follow from chattering on/off around one threshold. |
 | **Exact HOLD** | Final drift-free state with zero camera motion until new intent appears. |
 | **Presentation Cursor** | ArZoom-rendered cursor/pointer feedback in the presentation pass. |
+| **Presentation Effect** | Bounded GPU/output feedback that may consume camera/input state but cannot influence semantic camera intent. |
+| **Spotlight** | Planned P5 analytic focus mask that preserves the focus area and softly dims surrounding output. |
+| **Semantic Focus** | Read-only focus/context information selected by the accepted semantic camera authority and consumable by Smart Spotlight. |
 
 ## Architecture boundaries
 
@@ -40,9 +45,13 @@ Read-only Mapping
         ↓
 SceneViewportPlanner — semantic WHERE
         ↓
-SceneKinematicMotion — physical HOW
-        ↓
-OBS Integration + GPU Presentation Rendering
+        ├──────────── semantic focus (read-only) ────────┐
+        ↓                                                ↓
+SceneKinematicMotion — physical HOW              Presentation Effects
+        ↓                                        click / cursor / Spotlight
+        └──────────────────────┬─────────────────────────┘
+                               ↓
+                 OBS Integration + GPU Rendering
 ```
 
 ### Platform input
@@ -53,11 +62,15 @@ Platform-specific code may read cursor position, buttons, monitor topology, DPI 
 
 Mapping proves desktop/capture/scene coordinate ownership without writing scene transforms. v0.6.0 supports one visible top-level Display Capture with deterministic monitor ownership and proven positive axis-aligned fullscreen/scale/inset/crop mapping.
 
+All pointer/content-anchored presentation effects must consume this shared mapping layer. A presentation effect must not add its own heuristic source-owner resolver.
+
 ### Semantic camera planner
 
 `SceneViewportPlanner` owns presentation-context decisions: whether movement is warranted, where the pointer should land contextually, tracking latch state, follow pressure, prediction policy, and edge-safe target framing.
 
 Pressure/urgency may change **HOW** decisively motion proceeds; it must not create a feedback loop that continuously changes **WHERE** the pointer target corridor should land.
+
+The planner may expose compact **read-only semantic focus output** for presentation effects. Exposing that seam does not grant effects authority over the planner.
 
 ### Kinematic motion synthesizer
 
@@ -69,13 +82,82 @@ This synthesizer is not a second Smart Camera policy engine: it has no scene own
 
 ### GPU presentation rendering
 
-Rendering receives compact camera/effect parameters. It must not depend on CPU frame readback. Click feedback and Presentation Cursor belong in the presentation output path and use bounded state.
+Rendering receives compact camera/effect parameters. It must not depend on CPU frame readback. Click feedback, Presentation Cursor, and planned P5 Spotlight belong in the presentation output path and use bounded state.
+
+The preferred P5 Spotlight implementation is a one-pass analytic soft mask in the existing ArZoom presentation shader/pass. It should dim the surrounding output multiplicatively while keeping the focus region at original brightness.
+
+Default Spotlight rendering must not require:
+
+- a second scene render;
+- a helper OBS source;
+- CPU mask rasterization;
+- generated image files;
+- browser-source overlays;
+- Gaussian/multi-pass blur;
+- particles, bloom, or image analysis.
 
 ### OBS integration
 
 OBS lifecycle, settings, hotkeys, filter ownership, scene selection, mapping validation, and pass-through behavior stay outside semantic camera policy.
 
 The accepted scene-wide implementation is a managed instance of the existing `arzoom_filter` attached directly to the OBS scene source after normal scene composition.
+
+## Presentation-effect dependency contract
+
+Presentation effects are intentionally one-way consumers.
+
+They may read:
+
+- mapped cursor position;
+- bounded click events;
+- current camera transform/zoom;
+- presenter commands/settings;
+- read-only semantic focus output.
+
+They may maintain compact visual-only state such as opacity, one locked content anchor, a visual center, or time-based transition state.
+
+They must not write or feed back into:
+
+- planner target generation;
+- follow pressure;
+- tracking latch;
+- pointer prediction confidence;
+- camera velocity/acceleration;
+- camera target center;
+- scene-item transforms.
+
+A visual smoothing state for Spotlight is allowed only when it is clearly visual-only, bounded, frame-rate independent, and incapable of changing camera semantics.
+
+## Planned P5 Spotlight mode contract
+
+P5 exposes exactly three behavior modes. Appearance choices are not separate modes.
+
+### Smart Focus
+
+- consumes the planner's existing semantic focus/context output;
+- remains calm when semantic focus remains unchanged, even if the raw pointer moves locally;
+- may visually follow semantic focus during TRACK/SETTLE;
+- becomes still when presentation intent reaches HOLD;
+- never creates a second Smart/intent planner.
+
+### Cursor
+
+- follows the proven mapped pointer;
+- may use small O(1) visual-only smoothing;
+- invalid/ambiguous mapping fails safe rather than guessing;
+- enabling Cursor Spotlight cannot make camera follow more aggressively.
+
+### Click
+
+- captures one valid content-space focus anchor;
+- keeps that anchor attached to the same content while camera pan/zoom changes;
+- next valid click may replace the anchor;
+- uses bounded state only;
+- click feedback rings and Click Spotlight may consume the same click event independently.
+
+### Center/size semantics
+
+Spotlight **center** may be content/presentation anchored, while Spotlight **size** should remain output-space stable so perceived focus size does not scale unpredictably with camera zoom.
 
 ## Non-negotiable architecture invariants
 
@@ -90,7 +172,10 @@ The accepted scene-wide implementation is a managed instance of the existing `ar
 9. **Idle pass-through remains available.** When no presentation effect is visually active, production filtering should continue using OBS pass-through where possible.
 10. **No frame readback or per-frame file/settings writes.** These do not belong in the hot path.
 11. **Presentation math stays independent of OS APIs.** Deterministic tests must run without OBS or a live desktop.
-12. **Presentation feedback is camera-isolated.** Click effects and Presentation Cursor cannot wake, retarget, or accelerate semantic camera intent.
+12. **Presentation feedback is camera-isolated.** Click effects, Presentation Cursor, and Spotlight cannot wake, retarget, or accelerate semantic camera intent.
+13. **Presentation effects use shared mapping.** No Spotlight/cursor/click effect may create a private mapping authority to bypass ambiguous scene ownership.
+14. **Spotlight remains bounded and analytic by default.** No helper source, duplicate render, CPU mask, or default multi-pass blur.
+15. **Disabled effects remain inert.** Adding P5 must not alter existing v0.6.0 visual output when Spotlight is Off.
 
 ## P4.1 mapping contract
 
@@ -106,6 +191,8 @@ v0.6.0 supports pointer-driven scene behavior only when mapping can be proven:
 Unsupported/ambiguous cases fail safe rather than guess: multiple candidate Display Captures, unproven rotation/skew/flips, unsupported bounds modes, unresolved nested ownership, or invalid geometry.
 
 Future support must extend the read-only mapping layer, not the render architecture.
+
+Planned P5 Cursor/Click Spotlight must obey the same current mapping limits. Future P4.2 multi-capture selection should extend Spotlight automatically through this shared layer.
 
 ## Accepted P4.1 motion model
 
@@ -127,6 +214,8 @@ EXACT HOLD
 
 Explicit Zoom In/Out and Reset/Return keep their deterministic focus/edge-safe trajectories and must not reintroduce freezing or harsh stop/restart behavior.
 
+P5 Smart Spotlight may observe this semantic/physical progression for visual presentation timing, but it cannot modify it.
+
 ## Prediction contract
 
 Pointer prediction is allowed only as a bounded lag-reduction aid:
@@ -137,6 +226,8 @@ Pointer prediction is allowed only as a bounded lag-reduction aid:
 - confidence cleared on pointer direction reversal;
 - disabled/decayed when the pointer settles;
 - must not convert local explanation gestures into continuous chasing.
+
+Spotlight must not add a second independent pointer-prediction system in P5.
 
 ## Test seam
 
@@ -155,6 +246,8 @@ The phase regression suite is a product contract, not an optional example. P4.1 
 - no stop-start planner stalls;
 - exact HOLD with zero drift and no target regeneration.
 
+P5 must add presentation-effect tests without weakening any existing P4.1 gate. At minimum test that Spotlight state cannot change planner/camera output, content anchors survive camera transforms correctly, visual smoothing is frame-rate independent, and mask math remains bounded/monotonic.
+
 Do not weaken a gate merely to make a new implementation pass. Intentional product changes require documented rationale, replacement contract, deterministic evidence, and direct OBS trial when motion is user-visible.
 
 ## Hot-path performance contract
@@ -165,14 +258,17 @@ Camera/effect work should aim for:
 - no frame readback;
 - no per-frame file I/O;
 - no per-frame OBS settings writes;
-- no avoidable heap allocation inside camera update;
+- no avoidable heap allocation inside camera/effect update;
 - compact bounded input/event state;
 - true OBS pass-through while visually idle;
 - a single presentation GPU pass when the architecture permits it;
-- no private duplicate OBS scene render solely for Scene Camera.
+- no private duplicate OBS scene render solely for Scene Camera or Spotlight;
+- Spotlight mask math added to the existing sample/pass rather than a blur/render pipeline.
 
 Benchmarks are regression signals. Machine-specific timing values must not be used as universal marketing claims.
 
 ## Change control
 
-Any proposal that weakens pointer acquisition, reintroduces stutter/searching, breaks exact HOLD, requires scene-item writes, adds a second semantic camera source/runtime, duplicates scene composition, or uses CPU frame readback must first update [`PROJECT_DIRECTION.md`](PROJECT_DIRECTION.md) and [`P4_1_STABLE_BASELINE.md`](P4_1_STABLE_BASELINE.md) with reviewed rationale and migration/safety evidence.
+Any proposal that weakens pointer acquisition, reintroduces stutter/searching, breaks exact HOLD, requires scene-item writes, adds a second semantic camera source/runtime, duplicates scene composition, uses CPU frame readback, or allows a presentation effect to influence semantic camera intent must first update [`PROJECT_DIRECTION.md`](PROJECT_DIRECTION.md) and [`P4_1_STABLE_BASELINE.md`](P4_1_STABLE_BASELINE.md) with reviewed rationale and migration/safety evidence.
+
+P5-specific visual/UX changes must also remain consistent with [`P5_SMART_FOCUS_SPOTLIGHT_UX.md`](P5_SMART_FOCUS_SPOTLIGHT_UX.md) or explicitly update that contract in the same change.
