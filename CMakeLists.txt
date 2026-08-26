@@ -34,7 +34,7 @@ target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
     src/plugin-main.cpp
-    src/arzoom-filter-v19.cpp
+    src/arzoom-filter-v20.cpp
     src/arzoom-scene-camera.cpp
     src/arzoom-scene-camera-core.hpp
     src/arzoom-camera.hpp
@@ -42,6 +42,7 @@ target_sources(
     src/arzoom-presenter-controls.hpp
     src/arzoom-presentation-cursor.hpp
     src/arzoom-presentation-pass-handshake.hpp
+    src/arzoom-cursor-sampler-guard.hpp
     src/arzoom-cursor-presets.hpp
     src/arzoom-spotlight.hpp
     src/arzoom-math.hpp
