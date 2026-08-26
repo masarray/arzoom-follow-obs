@@ -68,7 +68,7 @@ else()
   install(
     TARGETS ${CMAKE_PROJECT_NAME}
     RUNTIME DESTINATION "obs-plugins/64bit"
-    LIBRARY DESTINATION "data/obs-plugins/${CMAKE_PROJECT_NAME}"
+    LIBRARY DESTINATION "obs-plugins/64bit"
   )
   install(
     DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
