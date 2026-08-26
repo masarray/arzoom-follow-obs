@@ -30,6 +30,15 @@ int main()
     assert(!spotlight_shared_pass_needs_cursor_fallback(true, true));
     assert(!spotlight_shared_pass_needs_cursor_fallback(false, false));
 
+    /* P5.2 render ownership: the minimal solo pass exists only when Spotlight
+     * is the sole visible presentation effect.  Existing camera/click/cursor
+     * activity must stay owned by the accepted P4.1 shared renderer. */
+    assert(spotlight_needs_solo_pass(true, false, false, false));
+    assert(!spotlight_needs_solo_pass(true, true, false, false));
+    assert(!spotlight_needs_solo_pass(true, false, true, false));
+    assert(!spotlight_needs_solo_pass(true, false, false, true));
+    assert(!spotlight_needs_solo_pass(false, false, false, false));
+
     const auto compact = spotlight_half_size_px(
         SpotlightSize::Compact, 1920.0f, 1080.0f);
     const auto balanced = spotlight_half_size_px(
@@ -103,6 +112,6 @@ int main()
     assert(near(at_4k.x / at_1080.x, 2.0f));
     assert(near(at_4k.y / at_1080.y, 2.0f));
 
-    std::cout << "P5.1 Spotlight activation/geometry invariants passed\n";
+    std::cout << "P5.2 Spotlight activation/geometry/render-routing invariants passed\n";
     return 0;
 }
