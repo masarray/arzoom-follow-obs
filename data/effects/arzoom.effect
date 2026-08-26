@@ -17,7 +17,10 @@ uniform float2 zoom_center;
  * are final-output pixels so Spotlight never grows with camera zoom.
  * shape: 0=ellipse, 1=rounded rectangle. The CPU presentation layer owns
  * mode semantics; the shader owns appearance only.
- * P5.1 adds an output-space area multiplier plus a true-circle coercion. */
+ * P5.1 adds an output-space area multiplier plus a true-circle coercion.
+ * P5.5 adds two scalar choreography multipliers. They never add a texture or
+ * pass: cinematic_scale expands the existing analytic aperture, while
+ * cinematic_dim_mix ramps the existing multiplicative dim. */
 uniform float spotlight_enabled;
 uniform float2 spotlight_center;
 uniform float2 spotlight_half_size_px;
@@ -27,6 +30,8 @@ uniform float spotlight_shape;
 uniform float spotlight_corner_radius_px;
 uniform float spotlight_area_scale;
 uniform float spotlight_circle;
+uniform float spotlight_cinematic_scale;
+uniform float spotlight_cinematic_dim_mix;
 
 /* Click ABI: xy=content position, z=age seconds, w=click type.
  * type: 0=inactive, 1=left, 2=right, 3=middle. */
@@ -153,7 +158,9 @@ float3 apply_spotlight(float3 base, float2 output_uv,
     if (spotlight_enabled < 0.5)
         return base;
 
-    const float area_scale = clamp(spotlight_area_scale, 0.5, 2.0);
+    const float area_scale = clamp(
+        spotlight_area_scale * max(spotlight_cinematic_scale, 1.0),
+        0.5, 64.0);
     float2 safe_half = max(spotlight_half_size_px * area_scale,
                            float2(1.0, 1.0));
     if (spotlight_circle >= 0.5) {
@@ -174,7 +181,9 @@ float3 apply_spotlight(float3 base, float2 output_uv,
     const float feather = max(spotlight_feather_px, 1.0);
     const float focus = 1.0 - smoothstep(0.0, feather,
                                         signed_distance_px);
-    const float dim = clamp(spotlight_dim_strength, 0.0, 0.75);
+    const float dim = clamp(
+        spotlight_dim_strength * saturate(spotlight_cinematic_dim_mix),
+        0.0, 0.75);
     const float multiplier = 1.0 - dim * (1.0 - focus);
     return base * multiplier;
 }
