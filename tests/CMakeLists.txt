@@ -73,6 +73,10 @@ add_executable(arzoom-presentation-pass-handshake-test arzoom-presentation-pass-
 arzoom_configure_test_target(arzoom-presentation-pass-handshake-test)
 add_test(NAME arzoom-p0-presentation-pass-handshake COMMAND arzoom-presentation-pass-handshake-test)
 
+add_executable(arzoom-cursor-sampler-guard-test arzoom-cursor-sampler-guard-test.cpp)
+arzoom_configure_test_target(arzoom-cursor-sampler-guard-test)
+add_test(NAME arzoom-p0-cursor-sampler-prebind COMMAND arzoom-cursor-sampler-guard-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 
