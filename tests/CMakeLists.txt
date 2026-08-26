@@ -77,6 +77,10 @@ add_executable(arzoom-cinematic-spotlight-test arzoom-cinematic-spotlight-test.c
 arzoom_configure_test_target(arzoom-cinematic-spotlight-test)
 add_test(NAME arzoom-p5-cinematic-spotlight COMMAND arzoom-cinematic-spotlight-test)
 
+add_executable(arzoom-spotlight-zoom-resize-test arzoom-spotlight-zoom-resize-test.cpp)
+arzoom_configure_test_target(arzoom-spotlight-zoom-resize-test)
+add_test(NAME arzoom-p5-zoom-resize-only COMMAND arzoom-spotlight-zoom-resize-test)
+
 add_executable(arzoom-presentation-pass-handshake-test arzoom-presentation-pass-handshake-test.cpp)
 arzoom_configure_test_target(arzoom-presentation-pass-handshake-test)
 add_test(NAME arzoom-p0-presentation-pass-handshake COMMAND arzoom-presentation-pass-handshake-test)
