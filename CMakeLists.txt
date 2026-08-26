@@ -34,7 +34,7 @@ target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
     src/plugin-main.cpp
-    src/arzoom-filter-v22.cpp
+    src/arzoom-filter-v23.cpp
     src/arzoom-scene-camera.cpp
     src/arzoom-scene-camera-core.hpp
     src/arzoom-camera.hpp
@@ -44,6 +44,7 @@ target_sources(
     src/arzoom-cursor-presets.hpp
     src/arzoom-spotlight.hpp
     src/arzoom-spotlight-abi.hpp
+    src/arzoom-cinematic-spotlight.hpp
     src/arzoom-math.hpp
 )
 
@@ -67,7 +68,7 @@ else()
   install(
     TARGETS ${CMAKE_PROJECT_NAME}
     RUNTIME DESTINATION "obs-plugins/64bit"
-    LIBRARY DESTINATION "obs-plugins/64bit"
+    LIBRARY DESTINATION "data/obs-plugins/${CMAKE_PROJECT_NAME}"
   )
   install(
     DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
