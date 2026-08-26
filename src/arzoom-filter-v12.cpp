@@ -1,8 +1,10 @@
 #include "arzoom-filter-v11.cpp"
+#include "arzoom-presentation-screen-discovery.hpp"
 #include "arzoom-scene-mapping-runtime.hpp"
 
 #include <limits>
 #include <string>
+#include <vector>
 
 /*
  * Phase 4.1 generalized read-only scene mapping
@@ -11,9 +13,15 @@
  * P4 coordinate owner from fullscreen-only to one visible top-level Display
  * Capture with a positive axis-aligned scale/inset transform and optional crop.
  *
+ * P4.2 Slice 3 now discovers every visible top-level Display Capture as a
+ * UUID-identified candidate with independently proven mapping metadata.  The
+ * active runtime gate deliberately remains P4.1-compatible in this slice:
+ * exactly one discovered candidate is required before pointer mapping is
+ * installed.  Multi-screen active selection is a later slice.
+ *
  * No scene-item transform is ever written.  Rotation/skew/flips, bounds modes,
- * nested ownership and multiple Display Captures remain fail-safe until their
- * coordinate contracts are independently proven.
+ * nested ownership and multiple active Display Captures remain fail-safe until
+ * their coordinate contracts are independently proven.
  */
 namespace {
 
@@ -44,34 +52,6 @@ ArZoomFilter *phase1_from_phase41(Phase41Filter *filter)
 {
     return filter && filter->phase4 ? phase1_from_phase4(filter->phase4)
                                     : nullptr;
-}
-
-bool find_single_scene_display_capture(obs_source_t *scene_source,
-                                       SceneDisplayCapture &capture,
-                                       std::string &reason)
-{
-    obs_scene_t *scene = scene_source ? obs_scene_from_source(scene_source)
-                                      : nullptr;
-    if (!scene) {
-        reason = "filter target is not an OBS scene";
-        return false;
-    }
-
-    capture = {};
-    obs_scene_enum_items(scene, find_display_capture_cb, &capture);
-    if (capture.count == 0) {
-        reason = "no visible top-level Display Capture";
-        return false;
-    }
-    if (capture.count > 1) {
-        reason = "multiple visible top-level Display Captures (P4.2 target selection required)";
-        return false;
-    }
-    if (!capture.item || !capture.source) {
-        reason = "Display Capture scene item is unavailable";
-        return false;
-    }
-    return true;
 }
 
 bool build_mapped_monitor(const MonitorDescriptor &physical,
@@ -106,36 +86,99 @@ bool build_mapped_monitor(const MonitorDescriptor &physical,
     return mapped.valid();
 }
 
-bool resolve_phase41_layout(Phase41Filter *filter,
-                            obs_source_t *scene_source)
-{
-    if (!filter || !scene_source)
-        return false;
-
-    SceneDisplayCapture capture;
+struct SceneDisplayCandidateSnapshot {
+    arzoom::PresentationScreenDiscoveredIdentity identity{};
+    arzoom::SceneAxisAlignedMapping mapping{};
+    MonitorDescriptor physical_monitor{};
+    MonitorDescriptor mapped_monitor{};
+    bool visible = false;
+    bool geometry_valid = false;
+    bool monitor_resolved = false;
+    bool native_cursor_enabled = false;
     std::string reason;
-    if (!find_single_scene_display_capture(scene_source, capture, reason)) {
-        filter->mapping_reason = std::move(reason);
-        return false;
+
+    bool ready() const
+    {
+        return visible && identity.valid() && geometry_valid &&
+               monitor_resolved && mapping.valid() &&
+               physical_monitor.valid() && mapped_monitor.valid();
+    }
+};
+
+struct SceneDisplayDiscoveryContext {
+    float canvas_width = 0.0f;
+    float canvas_height = 0.0f;
+    std::vector<SceneDisplayCandidateSnapshot> *candidates = nullptr;
+};
+
+void push_discovery_failure(SceneDisplayDiscoveryContext *context,
+                            SceneDisplayCandidateSnapshot candidate,
+                            const char *reason)
+{
+    if (!context || !context->candidates)
+        return;
+    candidate.reason = reason ? reason : "Display Capture candidate is unavailable";
+    context->candidates->push_back(std::move(candidate));
+}
+
+bool discover_scene_display_candidate_cb(obs_scene_t *,
+                                         obs_sceneitem_t *item,
+                                         void *param)
+{
+    auto *context = static_cast<SceneDisplayDiscoveryContext *>(param);
+    if (!context || !context->candidates || !item ||
+        !obs_sceneitem_visible(item)) {
+        return true;
     }
 
-    if (obs_sceneitem_get_bounds_type(capture.item) != OBS_BOUNDS_NONE) {
-        filter->mapping_reason =
-            "scene-item bounds scaling is not supported yet; use normal scale/inset transform";
-        return false;
+    obs_source_t *source = obs_sceneitem_get_source(item);
+    if (!is_display_capture(source))
+        return true;
+
+    SceneDisplayCandidateSnapshot candidate;
+    candidate.visible = true;
+
+    const char *display_name = obs_source_get_name(source);
+    candidate.identity.display_label = display_name ? display_name : "";
+
+    const char *uuid = obs_source_get_uuid(source);
+    if (!uuid || !*uuid) {
+        push_discovery_failure(context, std::move(candidate),
+                               "Display Capture source UUID is unavailable");
+        return true;
+    }
+    candidate.identity.source_uuid = uuid;
+
+    obs_source_t *resolved_source = obs_get_source_by_uuid(uuid);
+    if (!resolved_source) {
+        push_discovery_failure(context, std::move(candidate),
+                               "Display Capture source UUID could not be resolved");
+        return true;
+    }
+    const bool source_identity_matches =
+        resolved_source == source && is_display_capture(resolved_source);
+    obs_source_release(resolved_source);
+    if (!source_identity_matches) {
+        push_discovery_failure(context, std::move(candidate),
+                               "Display Capture source UUID resolved to a different source");
+        return true;
+    }
+    candidate.identity.source_resolved = true;
+
+    if (obs_sceneitem_get_bounds_type(item) != OBS_BOUNDS_NONE) {
+        push_discovery_failure(
+            context, std::move(candidate),
+            "scene-item bounds scaling is not supported yet; use normal scale/inset transform");
+        return true;
     }
 
-    const float canvas_width =
-        static_cast<float>(obs_source_get_width(scene_source));
-    const float canvas_height =
-        static_cast<float>(obs_source_get_height(scene_source));
     const float source_width =
-        static_cast<float>(obs_source_get_width(capture.source));
+        static_cast<float>(obs_source_get_width(source));
     const float source_height =
-        static_cast<float>(obs_source_get_height(capture.source));
+        static_cast<float>(obs_source_get_height(source));
 
     matrix4 transform;
-    obs_sceneitem_get_box_transform(capture.item, &transform);
+    obs_sceneitem_get_box_transform(item, &transform);
     const arzoom::SceneMappingQuad quad{
         transformed_box_corner(transform, 0.0f, 0.0f),
         transformed_box_corner(transform, 1.0f, 0.0f),
@@ -144,11 +187,11 @@ bool resolve_phase41_layout(Phase41Filter *filter,
     };
 
     obs_sceneitem_crop crop{};
-    obs_sceneitem_get_crop(capture.item, &crop);
+    obs_sceneitem_get_crop(item, &crop);
     const arzoom::SceneDisplayGeometrySnapshot geometry{
         quad,
-        canvas_width,
-        canvas_height,
+        context->canvas_width,
+        context->canvas_height,
         source_width,
         source_height,
         static_cast<float>(crop.left),
@@ -159,35 +202,109 @@ bool resolve_phase41_layout(Phase41Filter *filter,
     const auto mapping_result =
         arzoom::scene_mapping_build_display_geometry(geometry);
     if (!mapping_result.ok()) {
-        filter->mapping_reason = std::string(
+        candidate.reason = std::string(
             arzoom::scene_mapping_status_text(mapping_result.status));
+        context->candidates->push_back(std::move(candidate));
+        return true;
+    }
+    candidate.mapping = mapping_result.mapping;
+    candidate.geometry_valid = true;
+
+    if (!monitor_from_capture_source(source, candidate.physical_monitor)) {
+        push_discovery_failure(
+            context, std::move(candidate),
+            "Display Capture monitor could not be resolved deterministically");
+        return true;
+    }
+    candidate.monitor_resolved = true;
+
+    if (!build_mapped_monitor(candidate.physical_monitor,
+                              candidate.mapping,
+                              candidate.mapped_monitor)) {
+        push_discovery_failure(
+            context, std::move(candidate),
+            "scene mapping exceeded safe desktop-coordinate range");
+        return true;
+    }
+
+    candidate.native_cursor_enabled = capture_cursor_enabled(source);
+    candidate.reason.clear();
+    context->candidates->push_back(std::move(candidate));
+    return true;
+}
+
+bool discover_scene_display_candidates(
+    obs_source_t *scene_source,
+    std::vector<SceneDisplayCandidateSnapshot> &candidates,
+    std::string &reason)
+{
+    obs_scene_t *scene = scene_source ? obs_scene_from_source(scene_source)
+                                      : nullptr;
+    if (!scene) {
+        reason = "filter target is not an OBS scene";
         return false;
     }
 
-    MonitorDescriptor physical;
-    if (!monitor_from_capture_source(capture.source, physical)) {
-        filter->mapping_reason = "Display Capture monitor could not be resolved deterministically";
+    candidates.clear();
+    SceneDisplayDiscoveryContext context;
+    context.canvas_width =
+        static_cast<float>(obs_source_get_width(scene_source));
+    context.canvas_height =
+        static_cast<float>(obs_source_get_height(scene_source));
+    context.candidates = &candidates;
+    obs_scene_enum_items(scene, discover_scene_display_candidate_cb, &context);
+
+    if (candidates.empty()) {
+        reason = "no visible top-level Display Capture";
         return false;
     }
 
-    MonitorDescriptor mapped;
-    if (!build_mapped_monitor(physical, mapping_result.mapping, mapped)) {
-        filter->mapping_reason = "scene mapping exceeded safe desktop-coordinate range";
+    reason.clear();
+    return true;
+}
+
+bool resolve_phase41_layout(Phase41Filter *filter,
+                            obs_source_t *scene_source)
+{
+    if (!filter || !scene_source)
+        return false;
+
+    std::vector<SceneDisplayCandidateSnapshot> candidates;
+    std::string reason;
+    if (!discover_scene_display_candidates(scene_source, candidates, reason)) {
+        filter->mapping_reason = reason;
         return false;
     }
 
-    filter->mapping = mapping_result.mapping;
-    filter->physical_monitor = physical;
-    filter->mapped_monitor = mapped;
+    /* Slice 3 proves candidate discovery only. Preserve P4.1 runtime ownership:
+     * multiple visible Display Captures remain unavailable until the explicit
+     * Presentation Screens eligibility model and active resolver are wired. */
+    if (candidates.size() > 1) {
+        filter->mapping_reason =
+            "multiple visible top-level Display Captures (P4.2 target selection required)";
+        return false;
+    }
+
+    const SceneDisplayCandidateSnapshot &candidate = candidates.front();
+    if (!candidate.ready()) {
+        filter->mapping_reason = candidate.reason.empty()
+                                     ? "Display Capture candidate is unavailable"
+                                     : candidate.reason;
+        return false;
+    }
+
+    filter->mapping = candidate.mapping;
+    filter->physical_monitor = candidate.physical_monitor;
+    filter->mapped_monitor = candidate.mapped_monitor;
     filter->mapping_reason.clear();
 
-    if (capture_cursor_enabled(capture.source) &&
+    if (candidate.native_cursor_enabled &&
         !filter->phase4->nested_cursor_warning_logged) {
         blog(LOG_WARNING,
              "[ArZoom] Scene Camera: Display Capture native cursor is enabled. "
              "Turn it off when using an ArZoom Presentation Cursor to avoid double cursor.");
         filter->phase4->nested_cursor_warning_logged = true;
-    } else if (!capture_cursor_enabled(capture.source)) {
+    } else if (!candidate.native_cursor_enabled) {
         filter->phase4->nested_cursor_warning_logged = false;
     }
 
