@@ -1,301 +1,237 @@
 # P5 — Cinematic Spotlight Linked to Zoom
 
-**Status:** planned extension to P5. Blocked by P0 render-lifecycle issue #24. Do not implement runtime choreography until direct OBS black/flicker acceptance is green.
+**Status:** implemented as the v23 direct-OBS candidate on `feature/p5-spotlight`. P0 Issue #24 is resolved by the v21/v22 full shader-ABI fix. Do not call the cinematic behavior released until direct OBS visual acceptance is complete.
 
-## 1. User intent
+## 1. Product intent
 
-Add one beginner-facing checkbox that links Spotlight presentation intent to the existing Zoom/Follow presenter state.
+`Cinematic Spotlight with Zoom` links presentation choreography to the existing Zoom intent without creating a fourth Spotlight behavior mode.
 
-Recommended label:
+- **Smart Focus / Cursor / Click** decide **where** the Spotlight is centered.
+- **Cinematic Spotlight with Zoom** decides **how** Spotlight appears and disappears when Zoom activates/deactivates.
+- Camera/planner remains the sole camera authority.
 
-**Cinematic Spotlight with Zoom**
+Accepted beginner defaults for the current P5 candidate:
 
-Short help text:
+- Spotlight Mode: **Follow cursor**
+- Focus Shape: **Circle**
+- Spotlight Area Size: **170%**
+- Background Dim: **35%**
+- Edge Softness: **40 px**
+- Presentation Cursor: **ArZoom Classic Hand**
+- Cinematic Spotlight with Zoom: **On**
+- Cinematic Focus Speed: **Balanced**
 
-> When zoom starts, Spotlight smoothly closes from a full-screen focus into the selected focus area. When zoom ends, it smoothly opens back to full screen and turns off.
+The master `Enable Spotlight controls` remains **Off by default** so a newly added filter never places an effect on-air without presenter opt-in.
 
-This is not a fourth Spotlight behavior mode. Smart Focus / Cursor / Click still decide **where** the Spotlight is centered. Cinematic Zoom Link decides **how Spotlight appears and disappears when zoom is activated/deactivated**.
-
-## 2. Visual target
-
-The intended presentation feel is a restrained cinematic iris / detective-focus shot:
+## 2. Visual behavior
 
 ```text
-1x / full view
-no visible dimming
-focus aperture larger than the whole frame
-        ↓ Zoom starts
-camera begins accepted zoom trajectory
-        +
-Spotlight aperture smoothly contracts
-background dim gently ramps in
+full 1x view
+aperture already covers the whole frame
+background remains fully bright
+        ↓ Zoom ON
+focus target is acquired while aperture is visually invisible
         ↓
-zoom reaches working shot
-Spotlight reaches configured Circle size
-background reaches configured dim level
+aperture contracts with minimum-jerk motion
+background dim follows slightly later
         ↓
-normal Smart / Cursor / Click behavior
-        ↓ Zoom ends
-Spotlight aperture smoothly expands
-background dim ramps out
+working Zoom shot
+Circle reaches configured 170% area
+background reaches configured 35% dim
+        ↓ Zoom OFF
+animation reverses from current state
+background begins restoring immediately
+aperture expands beyond the whole frame
         ↓
-full frame is bright again
 Spotlight runtime becomes inactive
+true OBS pass-through resumes when no other presentation effect needs the pass
 ```
 
-The motion should feel deliberate and satisfying, not like an alarm, searchlight, or game effect.
+The target is a restrained cinematic iris / detective-focus shot, not a searchlight, game effect, hard wipe, or dark flash.
 
-## 3. Checkbox semantics
+## 3. Runtime implementation (v23)
 
-New persisted setting proposal:
+Production source candidate: `src/arzoom-filter-v23.cpp`.
+
+New persisted settings:
 
 ```text
-spotlight_link_to_zoom = false
+spotlight_link_to_zoom
+spotlight_cinematic_speed
 ```
 
-Beginner GUI:
+One WIP migration marker is used only to move existing P5 trial filters to the accepted current defaults:
 
 ```text
-SPOTLIGHT
-  Enable Spotlight controls
-  Cinematic Spotlight with Zoom [ ]
-  Spotlight Mode
-  Focus Shape
-  Spotlight Area Size
-  Background Dim
+p5_cinematic_defaults_v1
 ```
 
-When the checkbox is OFF, existing Toggle Spotlight / Hold Spotlight / Peek behavior remains available and unchanged.
+The migration intentionally does **not** modify the master Spotlight enable setting.
 
-When the checkbox is ON:
-
-- Zoom activation automatically requests Spotlight runtime.
-- Spotlight begins from a visually full-frame aperture, not from the configured small Circle.
-- It contracts smoothly toward the current Spotlight target while camera zoom progresses.
-- Zoom deactivation reverses the reveal and Spotlight becomes runtime-inactive only after the aperture has fully reopened and dim strength has reached zero.
-- Manual Hold Spotlight remains an explicit presenter override.
-- Manual Toggle Spotlight policy must be deterministic and documented; recommended initial rule is `manual OR auto-link`, so manual presenter intent can keep Spotlight active even after zoom ends.
-
-## 4. Geometry
-
-For a true full-screen start, do not fake this by disabling the mask on frame 0 and suddenly enabling it on frame 1.
-
-Compute a full-frame radius in output pixels that encloses every canvas corner plus feather:
+`src/arzoom-cinematic-spotlight.hpp` owns bounded time-based choreography:
 
 ```text
-full_radius = 0.5 * sqrt(width^2 + height^2) + feather + safety_margin
+CinematicSpotlightState
+├─ value 0..1
+├─ start_value
+├─ target_value
+├─ elapsed
+└─ duration
 ```
 
-For Circle mode:
+There is no history buffer, per-frame allocation, image analysis, or second semantic planner.
 
-```text
-radius(t) = lerp(full_radius, configured_radius, reveal_curve(t))
-```
+## 4. Motion curve and speed presets
 
-For the zoom-out reverse:
-
-```text
-radius(t) = lerp(configured_radius, full_radius, reveal_curve(t))
-```
-
-This guarantees the initial/final mask is visually equivalent to no Spotlight regardless of 16:9, ultrawide, portrait, 1080p, 1440p, or 4K output.
-
-## 5. Dimming choreography
-
-Radius contraction should carry most of the visual motion. Background dim should arrive slightly more gently so the viewer never sees a sudden dark flash.
-
-Recommended first trial:
-
-- reveal duration: ~360 ms;
-- close radius starts immediately;
-- dim ramp begins after ~40–70 ms;
-- dim reaches target near the final 20% of the reveal;
-- release/open duration: ~280 ms;
-- dim begins fading immediately on release;
-- aperture expands while dim fades;
-- runtime turns fully Off only after dim = 0 and aperture >= full_radius.
-
-Exact timings are trial constants, not public promises until direct OBS acceptance.
-
-## 6. Motion curve
-
-Use the same visual philosophy as ArZoom camera motion: no abrupt velocity discontinuities.
-
-Preferred normalized reveal curve:
+The reveal uses the quintic minimum-jerk curve:
 
 ```text
 minimum_jerk(t) = 10t^3 - 15t^4 + 6t^5
 ```
 
-This gives zero velocity and acceleration at both ends and should feel more cinematic than linear/smoothstep-only shrinking.
+This gives zero velocity and acceleration at both endpoints.
 
-Do not derive this animation from frame count. It must be time-based and equivalent at 30/60/120/144 fps.
+Current engineering trial durations:
 
-## 7. Relationship to camera motion
+| Speed | Close | Open |
+| --- | ---: | ---: |
+| Smooth | 480 ms | 400 ms |
+| Balanced | 360 ms | 300 ms |
+| Snappy | 260 ms | 220 ms |
 
-The dependency direction remains one-way:
+These are tuning constants, not public release promises until direct OBS acceptance.
 
-```text
-Presenter Zoom Intent
-        ├──> accepted Camera trajectory
-        └──> Spotlight reveal choreography
+## 5. Full-screen aperture geometry
 
-Shared mapped / semantic focus
-        └──> Spotlight center
-```
+The full aperture is derived from the **actual output-space focus center**, not only the canvas center. This is required because a cursor can be near any screen edge.
 
-Spotlight reveal progress must never:
-
-- alter camera target;
-- alter camera velocity/acceleration;
-- wake Smart Follow;
-- change safe-zone pressure;
-- mutate OBS scene items.
-
-The animation is synchronized presentation choreography, not another camera planner.
-
-## 8. Center behavior during reveal
-
-At reveal start, the aperture is larger than the frame, so its exact center is visually irrelevant. This gives ArZoom a clean opportunity to acquire the intended focus without a visible jump.
-
-Recommended policy:
-
-1. Capture the current valid Smart/Cursor/Click target when Zoom begins.
-2. Seed the Spotlight center immediately while aperture is still full-frame.
-3. Contract toward that already-valid center.
-4. Continue normal mode-specific target behavior after the reveal reaches the working radius.
-
-This avoids the cheap look of a small Circle appearing at screen center and then flying toward the pointer.
-
-## 9. Runtime state
-
-Conceptual bounded state:
+Conceptually:
 
 ```text
-CinematicSpotlightLinkState
-├─ enabled_setting
-├─ phase: Inactive | Closing | Active | Opening
-├─ progress 0..1
-├─ start_radius_px
-├─ target_radius_px
-├─ visual_radius_px
-├─ visual_dim_strength
-└─ last_zoom_requested
+max_dx = max(center_x_px, width - center_x_px)
+max_dy = max(center_y_px, height - center_y_px)
+full_radius = sqrt(max_dx^2 + max_dy^2) + feather + safety_margin
 ```
 
-Requirements:
+Therefore the full state covers every canvas corner at center, edge, or corner focus positions.
 
-- O(1) fixed state;
-- no animation history;
-- no allocation in video tick/render;
-- time-based progress;
-- deterministic interruption/reversal.
+During animation the shader receives a scalar cinematic aperture multiplier. The configured 170% working area remains untouched; the multiplier expands that same analytic aperture until it covers the entire frame.
 
-## 10. Mid-animation reversal
+## 6. Dimming choreography
 
-Presenter controls may reverse quickly.
+Radius motion leads; dimming follows.
 
-Required behavior:
+The current v23 dim curve delays the dim by roughly the first 12% of close progress, then applies the same minimum-jerk family to the remaining progress. On opening, because the state reverses continuously, dim begins restoring immediately.
 
-- Zoom ON during Opening: reverse smoothly from the current visual radius/dim, not restart from full screen.
-- Zoom OFF during Closing: reverse smoothly from the current visual radius/dim, not snap to configured radius first.
-- repeated rapid ON/OFF commands remain bounded and continuous.
+At the endpoints:
 
-The current visual state is always the initial condition for the next transition.
+```text
+full-frame state: cinematic_dim_mix = 0
+focused state:    cinematic_dim_mix = 1
+```
 
-## 11. Interaction with Spotlight modes
+The user-configured dim value remains 35%; choreography only multiplies it from 0 → 1.
 
-### Smart Focus
-Recommended cinematic pairing. Center uses the accepted read-only semantic/context target. The aperture contracts into the area ArZoom believes is being explained.
+## 7. Mid-animation reversal
+
+Rapid presenter input must never snap or restart.
+
+- Zoom OFF during Closing reverses from the exact current visual state.
+- Zoom ON during Opening reverses from the exact current visual state.
+- transition duration is scaled by remaining distance.
+- repeated rapid ON/OFF stays bounded and continuous.
+
+This is deterministic and time-based rather than frame-count-based.
+
+## 8. Focus acquisition
+
+The focus is seeded while the aperture is still larger than the frame, so target acquisition is visually hidden.
 
 ### Cursor
-The aperture contracts around the mapped pointer. Pointer smoothing remains visual-only.
+Uses the existing proven mapped pointer with bounded visual smoothing. This is the current default.
+
+### Smart Focus
+Uses the existing read-only camera context threshold. It does not write `requested_zoom`, camera target, velocity, acceleration, safe-zone pressure, or scene transforms.
 
 ### Click
-If a valid click anchor exists, contract around it. If no click anchor exists when auto-linked Zoom begins, fail safe: either remain full-frame until the first valid click or use a clearly documented temporary Smart target. Initial recommendation: remain visually full-frame until a valid Click anchor exists; do not guess.
+Uses one content-space click anchor. If no valid anchor exists when Zoom begins, the cinematic aperture remains full-frame rather than guessing a target.
 
-## 12. Interaction with manual Spotlight controls
+## 9. Manual Spotlight arbitration
 
-Recommended v1 arbitration:
+Manual presenter intent remains independent.
+
+Manual Toggle / Hold / Peek retain their existing immediate Spotlight behavior. Cinematic Zoom choreography is an additional activation source only when its checkbox is enabled.
+
+Manual presenter controls must never be silently cancelled by Zoom ending.
+
+## 10. Renderer and GPU contract
+
+v23 preserves the accepted v22/v18 render ownership:
 
 ```text
-runtime_requested =
-    master_enabled AND
-    (manual_latched OR manual_hold OR gui_peek OR cinematic_zoom_link_active)
+camera / click / Presentation Cursor / Spotlight
+                ↓
+       one shared presentation pass
 ```
 
-Manual Hold must always be able to keep Spotlight visible.
+Cinematic mode adds only two scalar shader uniforms:
 
-Manual Toggle should not be silently cancelled by Zoom ending. If manual latch is ON, Opening stops at the configured working aperture rather than turning Spotlight fully Off.
+```text
+spotlight_cinematic_scale
+spotlight_cinematic_dim_mix
+```
 
-## 13. GPU/performance contract
+Both are initialized to neutral `1.0` on **every processed Draw** before optional cinematic values overwrite them. This explicitly preserves the lesson from P0 Issue #24: no new shader parameter may ever be left unset on D3D11.
 
-This feature changes only Spotlight uniforms/state:
+Forbidden remains unchanged:
 
-- radius / half-size;
-- dim strength;
-- center;
-- enabled flag.
+- no second scene render;
+- no helper source;
+- no scene-item transform mutation;
+- no CPU readback;
+- no CPU raster mask;
+- no PNG/browser overlay;
+- no blur/bloom/multi-pass production path;
+- no unbounded history.
 
-No additional texture, blur pass, scene render, frame readback, helper source, PNG, or CPU raster mask is allowed.
+## 11. Deterministic validation
 
-At steady Active state, cost must be identical in class to ordinary Spotlight.
+v23 adds `arzoom-p5-cinematic-spotlight` and keeps the P0 neutral-shader-ABI gate.
 
-At Inactive state after Opening completes, existing low-cost/pass-through behavior must be restored.
+Required deterministic checks include:
 
-## 14. P0 dependency
+- minimum-jerk endpoints and monotonicity;
+- full radius covers all corners, including edge/corner focus;
+- delayed dim begins at zero and converges to one;
+- close converges monotonically;
+- mid-close reversal is continuous;
+- equivalent wall time at 30/144 fps reaches the same endpoint;
+- Smooth > Balanced > Snappy duration ordering;
+- P0/P4.1 existing regression suite stays green.
 
-Issue #24 is a hard blocker.
+Current v23 CI result: 18/18 deterministic tests green, Windows C++/shader compile green, installer/package green.
 
-The current direct OBS symptom shows that activating a processed filter frame can still expose black/stale output during first-click and cursor-style transitions. Cinematic Zoom Link intentionally introduces additional controlled transitions between inactive and active Spotlight states, so implementing it before #24 is resolved would multiply the exact lifecycle surface currently under investigation.
+## 12. Direct OBS acceptance
 
-Therefore implementation order is:
+Before release/merge, test the v23 candidate on the real OBS environment:
 
-1. fix #24 and prove zero black/flicker in OBS 32.2.2;
-2. preserve the accepted render owner;
-3. add Cinematic Zoom Link state only;
-4. add deterministic reveal/reversal tests;
-5. direct OBS visual tuning;
-6. only then expose the checkbox as normal UI.
+1. Verify migrated/default settings: Cursor / Circle / 170% / 35% / 40 px / Classic Hand.
+2. Keep master Spotlight disabled and confirm normal ArZoom remains unchanged.
+3. Enable Spotlight controls; verify `Cinematic Spotlight with Zoom` is On by default.
+4. Zoom ON: no pop/dark flash; aperture should close from outside the frame toward the cursor.
+5. Zoom OFF: aperture should open smoothly and background return to full brightness.
+6. Reverse Zoom repeatedly mid-animation; no snap/restart.
+7. Test Smooth / Balanced / Snappy.
+8. Test Smart, Cursor, and Click modes.
+9. Test manual Toggle/Hold while Zoom is active and after Zoom ends.
+10. Re-run click and Presentation Cursor style stress from P0 acceptance.
+11. Confirm zero GUI properties flicker.
+12. Upload Current Log and confirm zero `device_draw (D3D11): Not all shader parameters were set` warnings from ArZoom.
 
-## 15. Deterministic tests
+## 13. Product principle
 
-Required before direct trial:
-
-- full_radius covers all four output corners plus feather;
-- t=0 produces effectively full-screen/no-dim output;
-- t=1 produces configured working radius + dim;
-- close/open are monotonic;
-- 30/60/120/144 fps converge to equivalent state;
-- mid-close Zoom OFF reverses continuously;
-- mid-open Zoom ON reverses continuously;
-- manual Hold overrides auto-open completion;
-- manual latch survives Zoom OFF;
-- Click mode without anchor never guesses;
-- animation state cannot modify camera/planner state.
-
-## 16. Direct OBS acceptance
-
-After #24 is green:
-
-1. start at full 1x view;
-2. activate Zoom/Follow;
-3. verify there is no visible dark pop on the first frame;
-4. aperture should close smoothly from outside the frame into the focus Circle;
-5. camera and aperture should feel coordinated but not mechanically locked frame-for-frame;
-6. release Zoom and verify smooth opening + fade to full bright view;
-7. reverse repeatedly mid-animation;
-8. test 2x and 4x;
-9. test Smart, Cursor, and Click;
-10. test 30/60/120/144 fps;
-11. zero black/flicker throughout.
-
-## 17. Product principle
-
-The feature should look like a live editor intentionally directing the audience's eyes.
-
-The target feeling is:
+The intended feeling is:
 
 > **full scene → cinematic narrowing of attention → calm focused explanation → smooth return to context**
 
-It should be satisfying enough to notice, but restrained enough that users can leave it enabled for long professional tutorials.
+The effect should be noticeable enough to direct attention, but restrained enough to remain enabled throughout a professional tutorial.
