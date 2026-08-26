@@ -1,105 +1,59 @@
-# P5.3 — Safe Presentation-Pass Activation Handshake
+# P5.3 Safe Presentation-Pass Activation Handshake — Historical / Disproven as Root Cause
 
-**Status:** direct-OBS candidate. Blocks further P5 visual/cinematic runtime work until accepted on OBS Studio 32.2.2.
+**Status:** historical diagnostic experiment. Direct OBS Studio 32.2.2 trial showed no behavioral improvement. Keep this document as failure-analysis history; do not treat the handshake as the confirmed P0 fix.
 
-## Why this exists
+## Why this existed
 
-Direct OBS trials showed a second black-output failure class after the original v0.5.0 cursor-sampler fix:
+Direct OBS trials showed first-click black flicker, persistent black output after Presentation Cursor style changes, and recovery when Toggle Spotlight forced a new processed frame. That initially suggested an unsafe transition from `obs_source_skip_video_filter()` to the first resource-bearing `obs_source_process_filter_begin()/end()` frame.
 
-- first click after idle can flicker the filtered source black;
-- changing Presentation Cursor style can leave the filtered source persistently black;
-- bypassing/deleting the filter restores Display Capture immediately;
-- toggling Spotlight On/Off also restores a valid processed frame.
+P5.3 therefore added a bounded neutral warm-up handshake: at most three processed frames after create/update/reactivation/idle→active transitions, with Spotlight disabled, click uniforms cleared, Presentation Cursor hidden, and the permanent transparent sampler bound.
 
-The recovery caused by Toggle Spotlight is diagnostically important. It indicates that a fresh processed filter frame can repair the pipeline after a bad `skip/pass-through -> processed presentation frame` transition.
+## Direct-OBS result
 
-P5.2 already removed duplicate camera/click/cursor render ownership, so P5.3 does not add another renderer. It adds a bounded activation handshake in front of the accepted P5.2/P4.1 routing.
+The direct OBS 32.2.2 trial showed **the same failure pattern with no meaningful improvement**:
 
-## Invariant
+- first click still produced a temporary black frame;
+- Zoom ON could produce persistent black filtered output;
+- Presentation Cursor style changes could produce persistent black output;
+- bypassing ArZoom restored Display Capture immediately;
+- enabling/toggling Spotlight could restore a valid processed image.
 
-Normal ownership remains:
+Therefore the warm-frame-only hypothesis is rejected as the root cause.
 
-```text
-P5.3 handshake gate
-        |
-        +-- no warm frame --> P5.2 routing
-                               |
-                               +--> P4.1 presentation renderer
+## Important correction from OBS global data
 
-        +-- warm frame ----> neutral existing-effect draw
-```
+Official OBS filter documentation and current libobs source establish the intended order:
 
-The neutral warm frame does not render click, Presentation Cursor, or Spotlight content.
+1. call `obs_source_process_filter_begin()`;
+2. set effect parameters;
+3. call `obs_source_process_filter_end()` or `obs_source_process_filter_tech_end()`.
 
-## Warm-frame triggers
+`process_filter_begin()` renders/acquires the target into the filter texture when needed. The custom effect is applied at the end stage. This means later P5.4 reasoning that a custom sampler must be bound before `process_filter_begin()` was based on an incorrect model of the OBS API and must not be used as a root-cause claim.
 
-A maximum three-frame handshake is requested on:
+## Current diagnostic direction
 
-1. filter creation;
-2. settings/resource update, including Presentation Cursor style/asset changes;
-3. first transition from no presentation pass required to a pass required after idle;
-4. source/filter reactivation after deactivate.
+The strongest direct behavioral pattern is now:
 
-Requests merge by `max(current, 3)`. They never add together. Repeated UI changes therefore cannot create unbounded work.
+- pass-through/idle image is normal;
+- click-only processed frames become black temporarily;
+- Zoom ON processed frames can remain black continuously;
+- Presentation Cursor processed frames can remain black continuously;
+- Spotlight-active processed frames can render normally.
 
-## Neutral warm frame
+This shifts investigation away from activation timing and toward **shared processed-effect state / shader isolation**. P5 modified the previously accepted shared `Draw` pixel shader so camera/click/cursor processed frames execute a Spotlight-capable shader even when Spotlight is runtime-off.
 
-Each warm frame:
+The next diagnostic must be evidence-first:
 
-- uses the existing ArZoom effect;
-- keeps the live accepted camera transform so zoom motion is not reset;
-- explicitly disables Spotlight;
-- explicitly clears all click uniforms;
-- binds the permanent 1x1 transparent cursor fallback directly, independent of whether a newly swapped real atlas appears ready;
-- forces Presentation Cursor hidden;
-- never locks, reads, or renders the real cursor atlas;
-- never changes camera intent;
-- never mutates OBS scene items;
-- never performs frame readback or creates another scene render graph.
-
-After the bounded warm frames are consumed, normal P5.2/P4.1 rendering resumes.
+- preserve the accepted v0.6.0 `Draw` technique for non-Spotlight camera/click/cursor frames;
+- isolate Spotlight into a distinct technique/path without adding another render pass;
+- add transition-only P0 telemetry so OBS logs identify which render route is active when black output occurs;
+- perform a controlled A/B against the exact main/v0.6.0 renderer under the same OBS 32.2.2 installation;
+- do not add further lifecycle or sampler patches without a log- or source-backed causal finding.
 
 ## Performance contract
 
-This is not an always-render workaround.
-
-At steady idle after the handshake:
-
-```text
-no camera + no click + no cursor + no Spotlight
-        -> normal OBS filter pass-through/skip
-```
-
-The maximum extra work for one activation/update transition is three ordinary analytic effect draws. State is O(1).
-
-## Deterministic gate
-
-`arzoom-presentation-pass-handshake-test` verifies:
-
-- idle -> active edge detection;
-- fixed three-frame default;
-- warm-frame consumption to exact zero;
-- repeated requests merge rather than accumulate;
-- no negative pending state.
-
-These tests validate state bounds only. They cannot prove graphics-driver/OBS lifecycle behavior.
-
-## Direct OBS acceptance
-
-Issue #24 remains authoritative. Required on OBS Studio 32.2.2 / Windows:
-
-1. fresh filter, Spotlight Off;
-2. 100 repeated left/right/middle clicks after idle;
-3. change every built-in Presentation Cursor preset repeatedly;
-4. Presentation Cursor Off/On repeatedly;
-5. custom asset valid -> invalid -> valid;
-6. repeat cursor changes while zoom is active;
-7. repeat cursor changes while Spotlight is active;
-8. no black flicker and no persistent black frame;
-9. Toggle Spotlight must no longer be needed as a recovery action.
-
-If any persistent black output remains, P5.3 is rejected and the lifecycle investigation continues. Do not tune Cinematic Spotlight until this gate is green.
+Any retained diagnostic mechanism must remain bounded. Production P5 must still avoid scene mutation, duplicate scene rendering, CPU frame readback, helper sources, and permanent always-render idle cost.
 
 ## Cinematic Spotlight dependency
 
-`P5_CINEMATIC_ZOOM_LINK.md` remains planned and intentionally not wired into runtime yet. Its extra inactive/active choreography would increase the exact transition surface under investigation here.
+`P5_CINEMATIC_ZOOM_LINK.md` remains planned and intentionally not wired into runtime until Issue #24 is resolved with direct evidence.
