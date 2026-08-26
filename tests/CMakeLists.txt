@@ -65,6 +65,10 @@ add_executable(arzoom-phase42-uuid-discovery-test arzoom-phase42-uuid-discovery-
 arzoom_configure_test_target(arzoom-phase42-uuid-discovery-test)
 add_test(NAME arzoom-phase42-uuid-candidate-discovery COMMAND arzoom-phase42-uuid-discovery-test)
 
+add_executable(arzoom-phase42-presentation-screen-settings-test arzoom-phase42-presentation-screen-settings-test.cpp)
+arzoom_configure_test_target(arzoom-phase42-presentation-screen-settings-test)
+add_test(NAME arzoom-phase42-presentation-screen-settings COMMAND arzoom-phase42-presentation-screen-settings-test)
+
 add_executable(arzoom-phase41-viewport-quality-test arzoom-phase41-viewport-quality-test.cpp)
 arzoom_configure_test_target(arzoom-phase41-viewport-quality-test)
 add_test(NAME arzoom-phase41-viewport-quality COMMAND arzoom-phase41-viewport-quality-test)
