@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <strong>Scene-wide Smart Camera + Presenter Controls + GPU presentation feedback for OBS.</strong><br>
-  Zoom where you are explaining, stay steady while you teach, and keep the OBS scene intact.
+  <strong>Scene-wide Smart Camera + Presenter Controls + GPU Spotlight for OBS.</strong><br>
+  Zoom where you are explaining, stay steady while you teach, and guide attention without rewriting the OBS scene.
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.6.0" src="https://img.shields.io/badge/version-0.6.0-0f766e">
+  <img alt="Version 0.7.0" src="https://img.shields.io/badge/version-0.7.0-0f766e">
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?logo=windows11&logoColor=white">
   <img alt="OBS Studio plugin" src="https://img.shields.io/badge/OBS%20Studio-native%20plugin-302e31?logo=obsstudio&logoColor=white">
   <a href="LICENSE"><img alt="GPL 2.0 or later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue"></a>
@@ -23,19 +23,55 @@
 
 ArZoom is a native OBS presentation-camera plugin for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming.
 
-**v0.6.0 is the P4.1 stable release:** generalized read-only scale/inset/crop scene mapping plus the accepted **Kinematic Smart Viewport** that keeps pointer context acquired while moving smoothly and settling exactly.
+**v0.7.0 is the current Windows stable release.** It keeps the accepted v0.6.0 P4.1 generalized mapping + Kinematic Smart Viewport baseline and adds the accepted P5 Spotlight presentation layer, cinematic Zoom-linked focus animation, zero-refresh Spotlight controls, and resize-only Spotlight behavior for Zoom +/-.
 
-> **Current status:** v0.6.0 public Windows stable. Phase 0 through Phase 4.1 are complete. The Scene Camera architecture, P4.1 mapping scope, and direct-OBS accepted motion behavior are regression-locked in [`docs/P4_1_STABLE_BASELINE.md`](docs/P4_1_STABLE_BASELINE.md).
->
-> **Planned, not shipped:** P5 **Smart Focus Spotlight + Beginner-First GUI** is specified in [`docs/P5_SMART_FOCUS_SPOTLIGHT_UX.md`](docs/P5_SMART_FOCUS_SPOTLIGHT_UX.md).
+> **Current status:** Phase 0 through P5 Spotlight are shipped on Windows. The stable camera/mapping contract remains [`docs/P4_1_STABLE_BASELINE.md`](docs/P4_1_STABLE_BASELINE.md); the accepted Spotlight contract is [`docs/P5_STABLE_BASELINE.md`](docs/P5_STABLE_BASELINE.md).
 
 <p align="center">
   <img alt="ArZoom Scene Camera running in OBS Studio" src="docs/assets/product-screenshot.png" width="920">
 </p>
 
-## Why Scene Camera
+## Highlights in v0.7.0
 
-The primary workflow is scene-wide without rewriting the user's composition:
+### Cinematic Spotlight with Zoom
+
+When Spotlight controls are enabled, Toggle Zoom can automatically guide attention with a restrained cinematic iris:
+
+```text
+full scene
+   ↓ Toggle Zoom ON
+full-frame aperture → smooth Circle focus
+background dim follows gently
+   ↓
+focused presentation
+   ↓ Toggle Zoom OFF
+Circle opens → full bright context
+```
+
+The animation is time-based, minimum-jerk, reversible mid-transition, and does not create a second camera authority.
+
+Accepted default Spotlight presentation settings:
+
+- mode: **Follow cursor**;
+- shape: **Circle**;
+- area size: **170%**;
+- background dim: **35%**;
+- edge softness: **40 px**;
+- Presentation Cursor: **ArZoom Classic Hand**;
+- Cinematic Spotlight with Zoom: **On** after Spotlight controls are enabled;
+- cinematic speed: **Balanced**.
+
+The master **Enable Spotlight controls** setting remains Off by default, so adding ArZoom never places a Spotlight on-air without presenter opt-in.
+
+### Zoom +/- is resize-only
+
+Toggle Zoom ON/OFF owns the cinematic open/close choreography. While Zoom is already active, **Zoom In / Zoom Out only resize the camera, Presentation Cursor, and Spotlight smoothly**; they do not replay the cinematic focus animation.
+
+### D3D11-safe shared shader ABI
+
+Direct OBS testing found and fixed a real black-frame failure in the P5 development path. Every shared Draw parameter now receives deterministic values before processed rendering. The accepted build has zero click/Zoom/cursor black-preview regression and no Spotlight Properties rebuild flicker in direct OBS testing.
+
+## Scene Camera architecture
 
 ```text
 OBS Scene
@@ -53,101 +89,63 @@ SceneViewportPlanner (WHERE)
        ↓
 SceneKinematicMotion (HOW)
        ↓
-Presenter Controls / click / cursor
+Presenter Controls / click / cursor / Spotlight
        ↓
 final scene output
 ```
 
-ArZoom intentionally does **not** implement scene-wide zoom by calling `obs_sceneitem_set_pos`, `obs_sceneitem_set_scale`, rotation, bounds, or crop setters on the user's composition.
+ArZoom intentionally does **not** implement scene-wide zoom by persistently rewriting scene-item position, scale, rotation, bounds, or crop.
 
-That means:
+Architecture invariants:
 
 - no persistent scene-item transform mutation;
-- no transform recovery map needed;
-- no hidden helper scene item;
-- no CPU frame readback;
+- no custom scene-wide Camera input source;
 - no duplicate scene-render graph;
-- no second semantic Smart Camera/planner.
+- no CPU frame readback;
+- no helper source for Spotlight;
+- no second semantic Smart Camera/planner;
+- bounded O(1) presentation state;
+- OBS pass-through remains available when presentation effects are inactive.
 
 ## Install
 
 ### Recommended: Windows installer
 
-Download:
+**[Download ArZoom-OBS-Setup-windows-x64.exe](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe)**
 
-**[ArZoom-OBS-Setup-windows-x64.exe](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe)**
+Close OBS completely before installation. The installer supports Standard OBS Studio and OBS Portable/custom roots containing `bin\64bit\obs64.exe`.
 
-Close OBS completely before installation.
+A manual ZIP and SHA-256 checksums are also published with each stable release.
 
-The installer supports:
+## Recommended workflow
 
-- **Standard OBS Studio** — auto-detected when possible;
-- **OBS Portable / custom OBS folder** — browse to the OBS root containing `bin\64bit\obs64.exe`.
-
-### Manual ZIP
-
-A manual ZIP remains available in Releases. Merge its `obs-plugins` and `data` folders into the OBS root folder.
-
-## Recommended v0.6.0 workflow
-
-1. Put one visible top-level **Display Capture** in the scene you want to present.
-2. Fullscreen is the simplest setup, but v0.6.0 can also map deterministic positive axis-aligned **scaled/inset** and **cropped** layouts.
-3. In OBS choose **Tools → ArZoom — Toggle Scene Camera**.
-4. Choose **Tools → ArZoom — Configure Scene Camera** to open the managed scene filter.
-5. Disable old per-source ArZoom filters while Scene Camera is active to avoid double zoom.
-6. If using an ArZoom Presentation Cursor, disable the native Display Capture cursor to avoid a double cursor.
-7. Assign presenter controls in **OBS Settings → Hotkeys**.
+1. Put one visible top-level **Display Capture** in the presentation scene.
+2. In OBS choose **Tools → ArZoom — Toggle Scene Camera**.
+3. Choose **Tools → ArZoom — Configure Scene Camera**.
+4. Disable old per-source ArZoom filters while Scene Camera is active to avoid double zoom.
+5. If using ArZoom Presentation Cursor, disable the native Display Capture cursor to avoid a double cursor.
+6. Assign presenter controls in **OBS Settings → Hotkeys**.
+7. For Spotlight, enable **Spotlight controls** and leave **Cinematic Spotlight with Zoom** enabled for the recommended v0.7.0 presentation behavior.
 
 The existing per-source **ArZoom Filter** remains available for the lightest Display Capture-only workflow.
 
-## P4.1 scene-wide mapping safety
+## Mapping safety
 
-Pointer-driven Smart Follow, click anchoring, and Presentation Cursor are enabled only when ArZoom can prove a deterministic Display Capture → scene mapping.
+Scene-wide pointer-driven Smart Follow, click anchoring, Presentation Cursor, and Cursor Spotlight use the same read-only Display Capture → scene mapping.
 
-v0.6.0 supports:
+Supported stable scope:
 
-- exactly one visible top-level Display Capture as the presentation owner;
+- exactly one visible top-level Display Capture as presentation owner;
 - deterministically resolved captured monitor;
 - positive axis-aligned fullscreen, scaled, or inset placement;
-- crop-aware mapping when the transform can be proven;
-- one shared mapped coordinate path for Smart Follow, click anchoring, and Presentation Cursor;
-- Presentation Cursor size tied to the exact live camera zoom.
+- crop-aware mapping when proven;
+- shared mapping for Smart Follow, click, cursor, and Spotlight focus.
 
-ArZoom intentionally fails safe instead of guessing for unsupported or ambiguous cases such as:
-
-- multiple candidate Display Captures without deterministic ownership;
-- unproven rotation/skew/flips;
-- unsupported bounds modes;
-- unresolved nested capture ownership;
-- invalid monitor/source geometry.
-
-Presenter zoom/freeze/overview and safe fixed framing remain available when pointer-driven mapping is unavailable.
-
-## Kinematic Smart Viewport
-
-ArZoom follows presentation context rather than chasing every mouse movement.
-
-The accepted v0.6.0 design separates **WHERE** from **HOW**:
-
-- `SceneViewportPlanner` decides the useful contextual framing target;
-- `SceneKinematicMotion` moves the camera there using explicit position, velocity, and acceleration state.
-
-Key behavior:
-
-- **Calm local work:** ordinary pointing/explanation movement may produce zero camera movement.
-- **Prompt acquisition:** when pointer context leaves the useful viewport area, tracking starts early enough to avoid prolonged loss.
-- **Far-distance cruise:** meaningful far travel gets enough bounded authority to keep pace.
-- **Jerk-limited motion:** acceleration changes are bounded instead of snapping between speeds/directions.
-- **Continuous handoff:** live tracking → final settle preserves motion state; there is no artificial stop/restart.
-- **Precision braking:** when the target becomes final, the same motion state transitions into jerk-aware braking to avoid repeated overshoot/searching.
-- **Exact HOLD:** completed framing becomes completely still.
-- **High-zoom awareness:** smaller high-zoom viewports receive earlier attention without harsh one-frame jumps.
-
-The stable behavioral contract is documented in **[P4.1 Stable Baseline](docs/P4_1_STABLE_BASELINE.md)**.
+ArZoom fails safe instead of guessing when ownership or geometry is ambiguous. Deterministic multi-capture ownership remains future P4.2 work.
 
 ## Presenter Controls
 
-ArZoom includes profile-persistent OBS hotkeys for:
+Profile-persistent OBS hotkeys include:
 
 - Toggle Zoom;
 - Hold Zoom;
@@ -155,82 +153,42 @@ ArZoom includes profile-persistent OBS hotkeys for:
 - Toggle Smart Follow;
 - Zoom In / Zoom Out;
 - Reset / Full Frame;
-- Overview Peek — hold for a temporary exact 1× overview, release to restore the exact saved shot.
+- Overview Peek;
+- Toggle Spotlight;
+- Hold Spotlight.
 
-## GPU Click Visualization
+## Presentation Cursor and click feedback
 
-Click feedback is composed in the presentation GPU pass and cannot wake, retarget, or accelerate camera motion.
+Seven built-in ArZoom cursor presets are available, including **Classic Hand** and **Sticker Hand**. Cursor size follows the exact live camera zoom and keeps its hotspot aligned through camera motion.
 
-- left: Azure + Aqua dual analytic rings;
-- right: Violet + Orchid;
-- middle: compact Amber + Gold;
-- content-anchored while camera zoom/pan moves;
-- fixed four-slot allocation-free event state;
-- no PNG generation, particles, CPU rasterization, or frame readback.
-
-## Presentation Cursor
-
-Seven built-in ArZoom-native cursor presets are available:
-
-- Prism;
-- Outline;
-- Azure;
-- Orchid;
-- Parakeet;
-- Classic Hand;
-- Sticker Hand.
-
-Built-ins use short tactile click micro-interactions with exact return to the idle pose. Arrow-tip/fingertip hotspots remain aligned through camera zoom and pan. Advanced users may use custom GIF/WebP/PNG assets.
+Click feedback is GPU-native, content-anchored, bounded, and cannot wake or retarget camera intent.
 
 ## Performance principles
 
-ArZoom uses deterministic math and GPU-native presentation effects. It does not require AI, OCR, image recognition, or frame analysis.
-
-The hot path is designed around:
-
-- bounded O(1) camera/control state;
-- one cursor sample per active video tick;
-- fixed click-event slots;
-- no growing history or particle containers;
-- no frame readback;
-- no per-frame file I/O;
-- no per-frame settings writes;
-- no scene-item transform mutation;
-- OBS pass-through when presentation effects are inactive.
+ArZoom does not require AI, OCR, image recognition, cloud processing, or frame analysis. The hot path is built around deterministic math, one shared presentation pass, bounded state, no growing histories, no per-frame file/settings writes, and no frame readback.
 
 ## Compatibility
 
-| Item | v0.6.0 support |
+| Item | v0.7.0 support |
 |---|---|
 | Operating system | Windows 10/11 x64 |
 | Build baseline | OBS Studio 31.1.1 |
+| Direct accepted field environment | OBS 32.1.2 / D3D11 |
 | Scene Camera | Supported |
 | Per-source Display Capture filter | Supported |
-| Scene-wide Smart Follow | One proven top-level Display Capture; fullscreen + deterministic axis-aligned scale/inset/crop mapping |
+| Scene-wide Smart Follow | One proven top-level Display Capture; deterministic axis-aligned fullscreen/scale/inset/crop mapping |
+| Spotlight | Smart Focus / Follow cursor / Click to lock |
+| Cinematic Spotlight with Zoom | Supported |
 | Zoom range | 1.10×–4.00× |
 | Multi-monitor | Supported, including negative desktop coordinates |
-| Mixed DPI | Implemented; broader device validation continues |
 | Standard OBS installer | Supported |
 | OBS Portable/custom root | Supported |
-| Multiple Display Capture ownership | P4.2 future work; never guessed in v0.6.0 |
+| Multiple Display Capture ownership | Future P4.2; never guessed |
 | macOS / Linux | Not included in current release |
 
-## Deterministic engineering gates
+## Engineering gates
 
-Before Windows packaging, CI runs platform-neutral regression tests covering all prior P0–P4 behavior plus P4.1:
-
-- generalized read-only scene mapping and fail-safe ambiguity cases;
-- high-zoom pointer framing and 2×/4× pointer-loss bounds;
-- fixed-target convergence;
-- bounded jerk;
-- no zero-speed stall while meaningful travel remains;
-- retarget velocity continuity;
-- bounded intentional direction reversal;
-- continuous follow pressure;
-- tracking chatter / entry bounds;
-- no stop-start stalls during real planner sweeps;
-- exact final HOLD with zero center/zoom drift and no target regeneration;
-- click/cursor/presenter-control and first-click render-safety regression gates.
+The Windows pipeline runs deterministic P0–P5 tests before packaging. The v0.7.0 accepted candidate passed **19/19 deterministic tests**, Windows C++/shader compilation, installer packaging, and direct OBS acceptance.
 
 Run locally on Windows PowerShell:
 
@@ -240,15 +198,7 @@ Run locally on Windows PowerShell:
 
 ## Build from source
 
-Requirements:
-
-- Windows 10/11 x64;
-- Git;
-- CMake 3.28+;
-- Visual Studio 2022 or newer with Desktop development with C++;
-- Inno Setup 6 for EXE packaging.
-
-Run:
+Requirements: Windows 10/11 x64, Git, CMake 3.28+, Visual Studio 2022+ with Desktop development with C++, and Inno Setup 6 for EXE packaging.
 
 ```text
 build-local-windows.bat
@@ -256,29 +206,14 @@ build-local-windows.bat
 
 ## Contributor / AI development direction
 
-Before proposing or implementing architectural work, read:
+Read in this order:
 
 1. **[Current Project Direction](docs/PROJECT_DIRECTION.md)**
 2. **[P4.1 Stable Baseline](docs/P4_1_STABLE_BASELINE.md)**
-3. **[P5 Smart Focus Spotlight + Beginner-First GUI](docs/P5_SMART_FOCUS_SPOTLIGHT_UX.md)** when working on planned Spotlight or properties-UX changes.
+3. **[P5 Stable Baseline](docs/P5_STABLE_BASELINE.md)**
+4. historical phase/design documents only for context.
 
-These are the source of truth for accepted v0.6.0 behavior, planned P5 boundaries, and approaches that are explicitly rejected.
-
-Do not revive the superseded custom scene-camera input-source/off-screen-render experiment or persistent scene-item transform mutation. Do not weaken P4.1 motion-quality gates merely to make a new implementation pass.
-
-## Project documentation
-
-- **[Current Project Direction — start here](docs/PROJECT_DIRECTION.md)**
-- **[P4.1 Stable Baseline — regression lock](docs/P4_1_STABLE_BASELINE.md)**
-- **[P5 Smart Focus Spotlight + Beginner-First GUI — planned](docs/P5_SMART_FOCUS_SPOTLIGHT_UX.md)**
-- [Runtime architecture](docs/ARCHITECTURE.md)
-- [Phase 4 Zoominator / architecture decision](docs/PHASE4_ZOOMINATOR_AUDIT.md)
-- [Smart Camera architecture contract](docs/SMART_CAMERA_ARCHITECTURE.md)
-- [Presentation Cursor](docs/PRESENTATION_CURSOR_PRESETS.md)
-- [Presenter Controls](docs/PRESENTER_CONTROLS_PHASE3.md)
-- [Getting started](https://masarray.github.io/arzoom-follow-obs/guide.html)
-- [Troubleshooting](https://masarray.github.io/arzoom-follow-obs/troubleshooting.html)
-- [Latest release](https://github.com/masarray/arzoom-follow-obs/releases/latest)
+Do not revive the superseded custom scene-camera source/off-screen-render experiment, persistent scene-item mutation, or a competing semantic camera planner. Do not weaken accepted motion, shader-ABI, or presentation-safety gates merely to make new work pass.
 
 ## Privacy
 

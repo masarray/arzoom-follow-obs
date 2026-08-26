@@ -65,6 +65,30 @@ add_executable(arzoom-phase41-motion-quality-test arzoom-phase41-motion-quality-
 arzoom_configure_test_target(arzoom-phase41-motion-quality-test)
 add_test(NAME arzoom-phase41-motion-quality COMMAND arzoom-phase41-motion-quality-test)
 
+add_executable(arzoom-p5-spotlight-test arzoom-p5-spotlight-test.cpp)
+arzoom_configure_test_target(arzoom-p5-spotlight-test)
+add_test(NAME arzoom-p5-spotlight-primitive COMMAND arzoom-p5-spotlight-test)
+
+add_executable(arzoom-p5-shader-abi-test arzoom-p5-shader-abi-test.cpp)
+arzoom_configure_test_target(arzoom-p5-shader-abi-test)
+add_test(NAME arzoom-p0-p5-neutral-shader-abi COMMAND arzoom-p5-shader-abi-test)
+
+add_executable(arzoom-cinematic-spotlight-test arzoom-cinematic-spotlight-test.cpp)
+arzoom_configure_test_target(arzoom-cinematic-spotlight-test)
+add_test(NAME arzoom-p5-cinematic-spotlight COMMAND arzoom-cinematic-spotlight-test)
+
+add_executable(arzoom-spotlight-zoom-resize-test arzoom-spotlight-zoom-resize-test.cpp)
+arzoom_configure_test_target(arzoom-spotlight-zoom-resize-test)
+add_test(NAME arzoom-p5-zoom-resize-only COMMAND arzoom-spotlight-zoom-resize-test)
+
+add_executable(arzoom-presentation-pass-handshake-test arzoom-presentation-pass-handshake-test.cpp)
+arzoom_configure_test_target(arzoom-presentation-pass-handshake-test)
+add_test(NAME arzoom-p0-presentation-pass-handshake COMMAND arzoom-presentation-pass-handshake-test)
+
+add_executable(arzoom-cursor-sampler-guard-test arzoom-cursor-sampler-guard-test.cpp)
+arzoom_configure_test_target(arzoom-cursor-sampler-guard-test)
+add_test(NAME arzoom-p0-cursor-sampler-prebind COMMAND arzoom-cursor-sampler-guard-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 
