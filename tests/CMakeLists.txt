@@ -73,6 +73,10 @@ add_executable(arzoom-p5-shader-abi-test arzoom-p5-shader-abi-test.cpp)
 arzoom_configure_test_target(arzoom-p5-shader-abi-test)
 add_test(NAME arzoom-p0-p5-neutral-shader-abi COMMAND arzoom-p5-shader-abi-test)
 
+add_executable(arzoom-cinematic-spotlight-test arzoom-cinematic-spotlight-test.cpp)
+arzoom_configure_test_target(arzoom-cinematic-spotlight-test)
+add_test(NAME arzoom-p5-cinematic-spotlight COMMAND arzoom-cinematic-spotlight-test)
+
 add_executable(arzoom-presentation-pass-handshake-test arzoom-presentation-pass-handshake-test.cpp)
 arzoom_configure_test_target(arzoom-presentation-pass-handshake-test)
 add_test(NAME arzoom-p0-presentation-pass-handshake COMMAND arzoom-presentation-pass-handshake-test)
