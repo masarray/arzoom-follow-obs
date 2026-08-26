@@ -1,4 +1,5 @@
 #include "arzoom-filter-v11.cpp"
+#include "arzoom-scene-mapping-runtime.hpp"
 
 #include <limits>
 #include <string>
@@ -80,31 +81,27 @@ bool build_mapped_monitor(const MonitorDescriptor &physical,
     if (!physical.valid() || !mapping.valid())
         return false;
 
-    const double scale_x = static_cast<double>(mapping.scene_scale.x);
-    const double scale_y = static_cast<double>(mapping.scene_scale.y);
-    const double width = static_cast<double>(physical.width()) / scale_x;
-    const double height = static_cast<double>(physical.height()) / scale_y;
-    const double left = static_cast<double>(physical.left) -
-                        static_cast<double>(mapping.scene_offset.x) * width;
-    const double top = static_cast<double>(physical.top) -
-                       static_cast<double>(mapping.scene_offset.y) * height;
-    const double right = left + width;
-    const double bottom = top + height;
-
-    const double lo = static_cast<double>(std::numeric_limits<long>::lowest());
-    const double hi = static_cast<double>(std::numeric_limits<long>::max());
-    if (!std::isfinite(left) || !std::isfinite(top) ||
-        !std::isfinite(right) || !std::isfinite(bottom) ||
-        left < lo || top < lo || right > hi || bottom > hi ||
-        right - left < 2.0 || bottom - top < 2.0) {
+    const arzoom::SceneDesktopRect physical_rect{
+        static_cast<std::int64_t>(physical.left),
+        static_cast<std::int64_t>(physical.top),
+        static_cast<std::int64_t>(physical.right),
+        static_cast<std::int64_t>(physical.bottom),
+    };
+    arzoom::SceneDesktopRect mapped_rect;
+    if (!arzoom::scene_mapping_build_synthetic_desktop_rect(
+            physical_rect,
+            mapping,
+            static_cast<std::int64_t>(std::numeric_limits<long>::lowest()),
+            static_cast<std::int64_t>(std::numeric_limits<long>::max()),
+            mapped_rect)) {
         return false;
     }
 
     mapped = physical;
-    mapped.left = static_cast<long>(std::llround(left));
-    mapped.top = static_cast<long>(std::llround(top));
-    mapped.right = static_cast<long>(std::llround(right));
-    mapped.bottom = static_cast<long>(std::llround(bottom));
+    mapped.left = static_cast<long>(mapped_rect.left);
+    mapped.top = static_cast<long>(mapped_rect.top);
+    mapped.right = static_cast<long>(mapped_rect.right);
+    mapped.bottom = static_cast<long>(mapped_rect.bottom);
     mapped.label = physical.label + "  ·  ArZoom scene-mapped";
     return mapped.valid();
 }
@@ -148,10 +145,19 @@ bool resolve_phase41_layout(Phase41Filter *filter,
 
     obs_sceneitem_crop crop{};
     obs_sceneitem_get_crop(capture.item, &crop);
-    const auto mapping_result = arzoom::scene_mapping_build_axis_aligned(
-        quad, canvas_width, canvas_height, source_width, source_height,
-        static_cast<float>(crop.left), static_cast<float>(crop.top),
-        static_cast<float>(crop.right), static_cast<float>(crop.bottom));
+    const arzoom::SceneDisplayGeometrySnapshot geometry{
+        quad,
+        canvas_width,
+        canvas_height,
+        source_width,
+        source_height,
+        static_cast<float>(crop.left),
+        static_cast<float>(crop.top),
+        static_cast<float>(crop.right),
+        static_cast<float>(crop.bottom),
+    };
+    const auto mapping_result =
+        arzoom::scene_mapping_build_display_geometry(geometry);
     if (!mapping_result.ok()) {
         filter->mapping_reason = std::string(
             arzoom::scene_mapping_status_text(mapping_result.status));
