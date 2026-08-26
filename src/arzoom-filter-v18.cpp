@@ -71,6 +71,15 @@ void phase18_clear_click_uniforms(Phase2Filter *phase2)
         set_click_uniform(phase2->click_params[i], no_click);
 }
 
+bool phase18_spotlight_solo_sampler_ready(Phase51Filter *filter)
+{
+    if (!filter || !filter->phase5 || !filter->phase5->phase41 ||
+        !filter->phase5->phase41->phase4) {
+        return false;
+    }
+    return filter->phase5->phase41->phase4->cursor_fallback_texture != nullptr;
+}
+
 void phase18_spotlight_only_render(Phase51Filter *filter,
                                    ArZoomFilter *phase1,
                                    Phase2Filter *phase2,
@@ -78,7 +87,12 @@ void phase18_spotlight_only_render(Phase51Filter *filter,
 {
     if (!filter || !filter->phase5 || !phase1 || !phase2 || !cursor ||
         !phase1->effect_ready || !phase1->effect ||
-        !phase1->enabled.load(std::memory_order_acquire)) {
+        !phase1->enabled.load(std::memory_order_acquire) ||
+        !phase18_spotlight_solo_sampler_ready(filter)) {
+        /* P0 policy: a missing safety texture disables the optional Spotlight
+         * frame rather than activating an effect with an unbound sampler. */
+        if (filter && filter->phase5)
+            phase5_set_disabled_uniform(filter->phase5);
         if (phase1 && phase1->context)
             obs_source_skip_video_filter(phase1->context);
         return;
@@ -87,12 +101,12 @@ void phase18_spotlight_only_render(Phase51Filter *filter,
     /* The Spotlight-only route owns no real cursor resource.  Prime the exact
      * permanent transparent sampler accepted in v0.5.0 before activating the
      * effect, then explicitly keep the cursor hidden. */
-    if (filter->phase5->phase41 && filter->phase5->phase41->phase4)
-        prime_cursor_sampler_safety(filter->phase5->phase41->phase4);
+    prime_cursor_sampler_safety(filter->phase5->phase41->phase4);
     set_cursor_hidden(cursor);
 
     if (!obs_source_process_filter_begin(
             phase1->context, GS_RGBA, OBS_NO_DIRECT_RENDERING)) {
+        phase5_set_disabled_uniform(filter->phase5);
         obs_source_skip_video_filter(phase1->context);
         return;
     }
