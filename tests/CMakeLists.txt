@@ -73,6 +73,13 @@ add_executable(arzoom-phase42-active-mapping-test arzoom-phase42-active-mapping-
 arzoom_configure_test_target(arzoom-phase42-active-mapping-test)
 add_test(NAME arzoom-phase42-active-mapping-adapter COMMAND arzoom-phase42-active-mapping-test)
 
+add_executable(arzoom-phase42-shared-consumer-test arzoom-phase42-shared-consumer-test.cpp)
+arzoom_configure_test_target(arzoom-phase42-shared-consumer-test)
+target_compile_definitions(
+  arzoom-phase42-shared-consumer-test
+  PRIVATE ARZOOM_SOURCE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/..")
+add_test(NAME arzoom-phase42-shared-consumer-consistency COMMAND arzoom-phase42-shared-consumer-test)
+
 add_executable(arzoom-phase41-viewport-quality-test arzoom-phase41-viewport-quality-test.cpp)
 arzoom_configure_test_target(arzoom-phase41-viewport-quality-test)
 add_test(NAME arzoom-phase41-viewport-quality COMMAND arzoom-phase41-viewport-quality-test)
