@@ -60,6 +60,26 @@ inline bool spotlight_shared_pass_needs_cursor_fallback(bool spotlight_active,
     return spotlight_active && !cursor_ready;
 }
 
+/*
+ * P5.2 render-ownership rule.
+ *
+ * Spotlight must never duplicate the accepted P4.1 camera/click/cursor pass.
+ * If that pass is already needed for camera, click or a fully renderable
+ * Presentation Cursor, Spotlight only supplies uniforms and delegates to it.
+ * A minimal Spotlight-only pass is allowed solely when Spotlight is the only
+ * visible presentation effect.  This keeps pointer-atlas lifecycle ownership
+ * inside the proven P4.1 renderer and prevents the first-click/asset-change
+ * black-frame regression seen in the first P5 trials.
+ */
+inline bool spotlight_needs_solo_pass(bool spotlight_active,
+                                      bool camera_active,
+                                      bool click_active,
+                                      bool cursor_renderable)
+{
+    return spotlight_active &&
+           !camera_active && !click_active && !cursor_renderable;
+}
+
 inline SpotlightVec2 spotlight_half_size_px(SpotlightSize size,
                                              float viewport_width,
                                              float viewport_height)
