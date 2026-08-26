@@ -15,7 +15,7 @@ bool arzoom_register_scene_camera_tools();
 
 namespace {
 constexpr const char *kPhase4BuildIdentity =
-    "v0.6.0-p5.4-d3d11-shader-abi-fix";
+    "v0.6.0-p5.5-cinematic-spotlight-v23";
 }
 
 bool obs_module_load(void)
