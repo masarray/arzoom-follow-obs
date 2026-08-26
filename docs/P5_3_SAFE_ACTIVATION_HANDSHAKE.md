@@ -48,6 +48,7 @@ The next diagnostic must be evidence-first:
 - isolate Spotlight into a distinct technique/path without adding another render pass;
 - add transition-only P0 telemetry so OBS logs identify which render route is active when black output occurs;
 - perform a controlled A/B against the exact main/v0.6.0 renderer under the same OBS 32.2.2 installation;
+- capture the OBS log before using Toggle Spotlight as a recovery action;
 - do not add further lifecycle or sampler patches without a log- or source-backed causal finding.
 
 ## Performance contract
