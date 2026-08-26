@@ -69,6 +69,10 @@ add_executable(arzoom-p5-spotlight-test arzoom-p5-spotlight-test.cpp)
 arzoom_configure_test_target(arzoom-p5-spotlight-test)
 add_test(NAME arzoom-p5-spotlight-primitive COMMAND arzoom-p5-spotlight-test)
 
+add_executable(arzoom-presentation-pass-handshake-test arzoom-presentation-pass-handshake-test.cpp)
+arzoom_configure_test_target(arzoom-presentation-pass-handshake-test)
+add_test(NAME arzoom-p0-presentation-pass-handshake COMMAND arzoom-presentation-pass-handshake-test)
+
 add_executable(arzoom-motion-benchmark arzoom-benchmark.cpp)
 arzoom_configure_test_target(arzoom-motion-benchmark)
 
