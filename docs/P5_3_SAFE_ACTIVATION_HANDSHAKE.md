@@ -30,17 +30,21 @@ Official OBS filter documentation and current libobs source establish the intend
 
 `process_filter_begin()` renders/acquires the target into the filter texture when needed. The custom effect is applied at the end stage. This means later P5.4 reasoning that a custom sampler must be bound before `process_filter_begin()` was based on an incorrect model of the OBS API and must not be used as a root-cause claim.
 
+## Strongest current symptom pattern
+
+Direct OBS behavior now gives a much cleaner classifier:
+
+- **idle / pass-through:** image normal;
+- **click-only processed rendering:** image black only for the click animation interval, then normal when the filter returns to pass-through;
+- **Zoom ON processed rendering:** image can remain black continuously until Zoom is released;
+- **Presentation Cursor processed rendering:** changing/activating a cursor style can leave image black continuously;
+- **Spotlight-active processed rendering:** image can render normally while still using a processed filter frame.
+
+This means click, Zoom and cursor are likely not three independent bugs. They are three triggers for the same non-Spotlight processed `Draw` path.
+
 ## Current diagnostic direction
 
-The strongest direct behavioral pattern is now:
-
-- pass-through/idle image is normal;
-- click-only processed frames become black temporarily;
-- Zoom ON processed frames can remain black continuously;
-- Presentation Cursor processed frames can remain black continuously;
-- Spotlight-active processed frames can render normally.
-
-This shifts investigation away from activation timing and toward **shared processed-effect state / shader isolation**. P5 modified the previously accepted shared `Draw` pixel shader so camera/click/cursor processed frames execute a Spotlight-capable shader even when Spotlight is runtime-off.
+Investigation shifts away from activation timing and toward **shared processed-effect state / shader isolation**. P5 modified the previously accepted shared `Draw` pixel shader so camera/click/cursor processed frames execute a Spotlight-capable shader even when Spotlight is runtime-off.
 
 The next diagnostic must be evidence-first:
 
@@ -48,7 +52,7 @@ The next diagnostic must be evidence-first:
 - isolate Spotlight into a distinct technique/path without adding another render pass;
 - add transition-only P0 telemetry so OBS logs identify which render route is active when black output occurs;
 - perform a controlled A/B against the exact main/v0.6.0 renderer under the same OBS 32.2.2 installation;
-- capture the OBS log before using Toggle Spotlight as a recovery action;
+- capture the OBS log while the source is still black, before using Toggle Spotlight as a recovery action;
 - do not add further lifecycle or sampler patches without a log- or source-backed causal finding.
 
 ## Performance contract
