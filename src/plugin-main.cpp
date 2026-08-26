@@ -15,7 +15,7 @@ bool arzoom_register_scene_camera_tools();
 
 namespace {
 constexpr const char *kPhase4BuildIdentity =
-    "v0.6.0-p5.5-cinematic-spotlight-v23";
+    "v0.6.0-p5.6-zoom-resize-only-v24";
 }
 
 bool obs_module_load(void)
