@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>How to Install and Use ArZoom Scene Camera in OBS</title>
-  <meta name="description" content="Step-by-step guide to install ArZoom v0.6.0, enable Scene Camera, use deterministic scale/inset/crop mapping, configure presenter controls, and use Presentation Cursor safely in OBS.">
-  <meta name="keywords" content="install ArZoom OBS, ArZoom Scene Camera, OBS zoom hotkey, OBS presentation camera guide">
+  <title>How to Install and Use ArZoom v0.7.0 in OBS</title>
+  <meta name="description" content="Step-by-step guide to install ArZoom v0.7.0, enable Scene Camera, configure presenter controls, Presentation Cursor, Spotlight, and Cinematic Spotlight with Zoom safely in OBS.">
+  <meta name="keywords" content="install ArZoom OBS, ArZoom Scene Camera, OBS zoom hotkey, OBS spotlight, OBS presentation camera guide">
   <meta name="theme-color" content="#07111f">
   <link rel="canonical" href="https://masarray.github.io/arzoom-follow-obs/guide.html">
   <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
@@ -19,59 +19,42 @@
 
   <main id="main" class="container">
     <header class="page-hero">
-      <span class="eyebrow">ArZoom v0.6.0 setup guide</span>
-      <h1>Install ArZoom and enable Scene Camera.</h1>
-      <p class="lead">The recommended workflow zooms the composed OBS scene so Display Capture and overlays move together. v0.6.0 adds deterministic real-world scale/inset/crop mapping and the stable Kinematic Smart Viewport.</p>
+      <span class="eyebrow">ArZoom v0.7.0 setup guide</span>
+      <h1>Install ArZoom, enable Scene Camera, and add Cinematic Spotlight.</h1>
+      <p class="lead">The recommended workflow zooms the composed OBS scene, preserves the accepted Kinematic Smart Viewport, and optionally guides attention with a soft GPU Spotlight linked to Toggle Zoom.</p>
     </header>
 
     <article class="prose">
-      <div class="callout"><strong>Scene safety:</strong> ArZoom Scene Camera applies presentation transforms in the filter output. It does not persistently rewrite scene-item position, scale, rotation, bounds, or crop.</div>
+      <div class="callout"><strong>Scene safety:</strong> ArZoom applies presentation transforms in the filter output. It does not persistently rewrite scene-item position, scale, rotation, bounds, or crop.</div>
 
       <h2>Before you begin</h2>
       <ul>
         <li>Windows 10 or Windows 11, 64-bit.</li>
-        <li>OBS Studio; the current build baseline is OBS 31.1.1.</li>
-        <li>For scene-wide pointer-driven Smart Follow, use one visible top-level Display Capture whose monitor and transform can be resolved deterministically.</li>
-        <li>The latest ArZoom Windows installer.</li>
+        <li>OBS Studio. Build baseline: OBS 31.1.1; v0.7.0 was also directly accepted on OBS 32.1.2 / D3D11.</li>
+        <li>For scene-wide pointer-driven behavior, use one visible top-level Display Capture whose monitor and transform can be resolved deterministically.</li>
+        <li>Download the latest ArZoom Windows installer.</li>
       </ul>
 
       <h2>1. Download and install</h2>
       <p><a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe">Download the latest Windows installer</a></p>
-      <p>Close OBS completely, including any tray instance, before running the installer.</p>
-      <p>The installer supports <strong>Standard OBS Studio</strong> and <strong>OBS Portable / custom OBS folder</strong>. A valid OBS root contains:</p>
-      <pre><code>bin\64bit\obs64.exe</code></pre>
-      <p>The package installs both the plugin DLL and its data files:</p>
-      <pre><code>obs-plugins/64bit/arzoom.dll
-data/obs-plugins/arzoom/...</code></pre>
+      <p>Close OBS completely before running the installer. Standard OBS Studio and OBS Portable/custom roots are supported.</p>
 
       <h2>2. Prepare the presentation scene</h2>
-      <p>Use one visible top-level Display Capture as the presentation owner. A fullscreen capture is the simplest setup. v0.6.0 can also map deterministic positive axis-aligned <strong>scaled/inset</strong> placement and <strong>crop-aware</strong> layouts. Webcam, browser, logo, and nested-scene overlays may be composed with it and will zoom with the scene output.</p>
-      <div class="callout warning"><strong>Avoid double zoom:</strong> if this scene already has ArZoom attached directly to Display Capture or another source, disable that old per-source ArZoom filter while Scene Camera is active.</div>
+      <p>Use one visible top-level Display Capture as the presentation owner. Fullscreen is simplest, but deterministic positive axis-aligned scaled/inset and crop-aware layouts are also supported.</p>
+      <div class="callout warning"><strong>Avoid double zoom:</strong> disable old per-source ArZoom filters while Scene Camera is active.</div>
 
       <h2>3. Enable ArZoom Scene Camera</h2>
       <ol>
         <li>Open the scene you want to present.</li>
         <li>Choose <strong>Tools → ArZoom — Toggle Scene Camera</strong>.</li>
-        <li>If no managed camera exists, ArZoom creates an <strong>ArZoom Camera</strong> filter on the current scene and enables it.</li>
-        <li>Use the same Tools command again to enable or disable that managed Scene Camera.</li>
+        <li>ArZoom creates/enables a managed <strong>ArZoom Camera</strong> scene filter when needed.</li>
+        <li>Use the same command to disable it later.</li>
       </ol>
 
       <h2>4. Open Scene Camera settings</h2>
-      <p>Choose <strong>Tools → ArZoom — Configure Scene Camera</strong>. ArZoom ensures the managed filter exists and opens the current scene's normal OBS Filters dialog.</p>
+      <p>Choose <strong>Tools → ArZoom — Configure Scene Camera</strong>.</p>
 
-      <h2>5. Assign presenter controls</h2>
-      <p>Open <strong>OBS Settings → Hotkeys</strong> and assign the controls you want. ArZoom supports:</p>
-      <ul>
-        <li><strong>Toggle Zoom</strong> — latched presentation zoom.</li>
-        <li><strong>Hold Zoom</strong> — momentary zoom.</li>
-        <li><strong>Freeze Camera</strong> — hold exact framing while the pointer moves elsewhere.</li>
-        <li><strong>Toggle Smart Follow</strong> — suspend/re-enable pointer-driven framing while zoom remains active.</li>
-        <li><strong>Zoom In / Zoom Out</strong> — live zoom steps.</li>
-        <li><strong>Reset / Full Frame</strong> — safe return path.</li>
-        <li><strong>Overview Peek</strong> — hold for exact 1× overview, release to restore the exact saved shot.</li>
-      </ul>
-
-      <h2>6. Start with comfortable settings</h2>
+      <h2>5. Start with the recommended camera settings</h2>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Setting</th><th>Start with</th><th>Purpose</th></tr></thead>
@@ -79,54 +62,86 @@ data/obs-plugins/arzoom/...</code></pre>
             <tr><td>Zoom amount</td><td><code>2.00×</code></td><td>Useful detail without excessive crop.</td></tr>
             <tr><td>Camera follow</td><td><code>Smart Camera</code></td><td>Follows presentation-context changes instead of every pointer movement.</td></tr>
             <tr><td>Camera character</td><td><code>Balanced</code></td><td>Recommended stability and travel speed.</td></tr>
-            <tr><td>Stable comfort zone</td><td><code>28%</code></td><td>Allows normal pointing/explanation movement without camera shake.</td></tr>
+            <tr><td>Stable comfort zone</td><td><code>28%</code></td><td>Allows local explanation movement without camera shake.</td></tr>
             <tr><td>Target monitor</td><td><code>Auto</code></td><td>Uses deterministic monitor ownership when available.</td></tr>
           </tbody>
         </table>
       </div>
 
-      <h2>7. Understand the Kinematic Smart Viewport</h2>
-      <p>ArZoom intentionally does not keep the mouse at exact center all the time. Local gestures stay calm. When pointer context leaves the useful viewport area, the Scene Camera begins following promptly, uses smooth jerk-limited acceleration, can cruise decisively for far movement, then applies precision braking when the final target becomes clear.</p>
-      <p>The accepted v0.6.0 behavior should feel continuous: no stop → restart → stop cadence, no repeated left/right or up/down searching after final pointer intent is known, and exact drift-free HOLD after framing completes.</p>
+      <h2>6. Enable Spotlight controls</h2>
+      <p>In the ArZoom filter properties, enable <strong>Spotlight controls</strong>. The v0.7.0 recommended defaults are:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Spotlight setting</th><th>Stable default</th></tr></thead>
+          <tbody>
+            <tr><td>Mode</td><td><strong>Follow cursor</strong></td></tr>
+            <tr><td>Shape</td><td><strong>Circle</strong></td></tr>
+            <tr><td>Area size</td><td><strong>170%</strong></td></tr>
+            <tr><td>Background dim</td><td><strong>35%</strong></td></tr>
+            <tr><td>Edge softness</td><td><strong>40 px</strong></td></tr>
+            <tr><td>Cinematic Spotlight with Zoom</td><td><strong>On</strong></td></tr>
+            <tr><td>Cinematic Focus Speed</td><td><strong>Balanced</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The Spotlight master remains Off until you enable it, so adding a fresh ArZoom filter never places the effect on-air automatically.</p>
 
-      <h2>8. Presentation Cursor</h2>
-      <p>Choose one of the built-in ArZoom cursor styles if you want a larger, camera-aware presentation pointer. Built-in arrows own their arrow-tip hotspot; hand styles own their fingertip hotspot. Cursor size follows the exact live camera zoom.</p>
-      <div class="callout warning"><strong>Avoid double cursor:</strong> when ArZoom Presentation Cursor is enabled, turn off native cursor capture in the underlying Display Capture.</div>
+      <h2>7. Understand Cinematic Spotlight with Zoom</h2>
+      <p><strong>Toggle Zoom ON</strong> starts the cinematic focus choreography: the aperture begins larger than the frame, closes smoothly to the focus Circle, and brings in the configured background dim gently. <strong>Toggle Zoom OFF</strong> reverses the motion and restores full bright context.</p>
+      <p>The animation is time-based and can reverse cleanly if you toggle Zoom again before it finishes.</p>
 
-      <h2>9. Test the complete presentation path</h2>
+      <h2>8. Zoom In / Zoom Out is resize-only</h2>
+      <div class="callout"><strong>v0.7.0 behavior lock:</strong> while Zoom is already active, Zoom + and Zoom − must not replay the cinematic iris. Camera magnification, Presentation Cursor, and Spotlight only grow or shrink smoothly.</div>
+
+      <h2>9. Presentation Cursor</h2>
+      <p>v0.7.0 defaults to <strong>ArZoom Classic Hand</strong>. Seven built-in cursor styles remain available. Cursor size follows the exact live camera zoom.</p>
+      <div class="callout warning"><strong>Avoid double cursor:</strong> when ArZoom Presentation Cursor is enabled, disable native cursor capture in the underlying Display Capture.</div>
+
+      <h2>10. Assign presenter controls</h2>
+      <p>Open <strong>OBS Settings → Hotkeys</strong>. Available controls include:</p>
+      <ul>
+        <li>Toggle Zoom;</li>
+        <li>Hold Zoom;</li>
+        <li>Freeze Camera;</li>
+        <li>Toggle Smart Follow;</li>
+        <li>Zoom In / Zoom Out;</li>
+        <li>Reset / Full Frame;</li>
+        <li>Overview Peek;</li>
+        <li>Toggle Spotlight;</li>
+        <li>Hold Spotlight.</li>
+      </ul>
+
+      <h2>11. Test the complete presentation path</h2>
       <ol>
         <li>Restart OBS after installation.</li>
         <li>Enable Scene Camera.</li>
-        <li>Activate zoom and make small local pointer gestures; the viewport should remain calm.</li>
-        <li>Move the pointer across a large distance at 2×, 3×, and 4×; the viewport should begin following promptly and keep pointer-loss intervals short.</li>
-        <li>Reverse pointer direction once; the viewport should transition smoothly rather than oscillate.</li>
-        <li>Stop after a far movement; the viewport should brake smoothly, find a useful near-centre context, and become completely still.</li>
-        <li>Test Freeze, Smart Follow On/Off, Reset, Zoom +/−, and Overview Peek.</li>
-        <li>Add a webcam/logo/browser overlay and confirm all composed elements zoom together.</li>
-        <li>If using scale/inset/crop, test pointer mapping at the edges/corners of the presentation capture.</li>
-        <li>Restart OBS and verify the managed Scene Camera and hotkeys remain usable.</li>
+        <li>Toggle Zoom ON and verify smooth camera + cinematic Spotlight focus.</li>
+        <li>Press Zoom + several times; verify only smooth resize, with no iris replay.</li>
+        <li>Press Zoom − several times; verify the same resize-only behavior.</li>
+        <li>Toggle Zoom OFF and verify the normal cinematic opening back to full context.</li>
+        <li>Move the pointer locally and across large distances; Smart Camera should stay calm locally and acquire meaningful relocation promptly.</li>
+        <li>Change Presentation Cursor styles and confirm the preview remains healthy.</li>
+        <li>Test Toggle/Hold Spotlight and confirm the Properties panel does not flicker/rebuild.</li>
+        <li>Add webcam/logo/browser overlays and confirm composed content zooms together.</li>
       </ol>
 
-      <h2>When Smart Follow is intentionally unavailable</h2>
-      <p>ArZoom never guesses capture ownership or unsupported geometry. Pointer-driven Scene Camera behavior may intentionally disable itself when there are multiple candidate Display Captures, unproven rotation/skew/flips, unsupported bounds modes, unresolved nested capture ownership, or invalid monitor/source geometry.</p>
-      <p>Presenter zoom, Freeze, Overview, Reset, and safe fixed framing can still work. Simplify the presentation mapping or use the per-source ArZoom Filter when appropriate.</p>
-
-      <h2>Per-source mode is still available</h2>
-      <p>If you only need one Display Capture and want the lightest possible setup, you may still add <strong>ArZoom - Smart Camera Zoom &amp; Follow</strong> directly under <strong>Display Capture → Filters → Effect Filters</strong>.</p>
+      <h2>When pointer-driven behavior is intentionally unavailable</h2>
+      <p>ArZoom never guesses capture ownership or unsupported geometry. Multiple ambiguous Display Captures, unproven rotation/skew/flips, unsupported bounds modes, unresolved nested capture ownership, or invalid geometry may intentionally disable pointer-driven mapping.</p>
+      <p>Presenter zoom, Freeze, Overview, Reset, and safe fixed framing remain available. P4.2 deterministic multi-capture target selection is future work.</p>
 
       <h2>Before recording or going live</h2>
       <ul>
         <li>Make a short local recording and watch it at normal speed.</li>
         <li>Confirm old per-source ArZoom filters are disabled when Scene Camera is active.</li>
-        <li>Test all presenter hotkeys for conflicts.</li>
+        <li>Test presenter hotkeys for conflicts.</li>
         <li>Check OBS Stats for rendering or encoding lag.</li>
-        <li>For important live events, keep a fallback scene without presentation zoom available.</li>
+        <li>Keep a fallback scene without presentation zoom for important live events.</li>
       </ul>
 
       <p><a class="button secondary" href="troubleshooting.html">Open troubleshooting</a></p>
     </article>
   </main>
 
-  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · v0.6.0 setup guide</div><div class="footer-links"><a href="index.html">Home</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Report a problem</a></div></div></footer>
+  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · v0.7.0 setup guide</div><div class="footer-links"><a href="index.html">Home</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Report a problem</a></div></div></footer>
 </body>
 </html>

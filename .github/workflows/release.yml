@@ -59,7 +59,7 @@ jobs:
           @"
           ## ArZoom for OBS v$env:VERSION
 
-          **Stable Windows release — generalized Scene Camera mapping + Kinematic Smart Viewport.**
+          **Stable Windows release — Cinematic Spotlight + accepted P4.1 Smart Viewport.**
 
           ### Recommended download
 
@@ -71,63 +71,68 @@ jobs:
 
           A manual ZIP and SHA-256 checksums are also provided.
 
-          ### New in v$env:VERSION — P4.1 stable baseline
+          ### New in v$env:VERSION — Spotlight + cinematic focus
 
-          - Scene-wide pointer mapping now supports one visible top-level Display Capture with deterministically proven positive axis-aligned **scale/inset placement** and **crop-aware mapping**.
-          - Smart Follow, click anchoring, and Presentation Cursor share one read-only mapped coordinate path.
-          - Presentation Cursor size follows the exact live camera zoom.
-          - Unsupported or ambiguous ownership still fails safe instead of guessing, including multiple candidate Display Captures, unproven rotation/skew/flips, unsupported bounds modes, unresolved nested ownership, or invalid geometry.
+          - Three Spotlight behavior modes: **Smart Focus**, **Follow cursor**, and **Click to lock**.
+          - Stable default: **Follow cursor**, **Circle**, **170% area**, **35% background dim**, **40 px edge softness**.
+          - Default Presentation Cursor: **ArZoom Classic Hand**.
+          - **Cinematic Spotlight with Zoom** smoothly closes from full-frame context into focus when Toggle Zoom turns on, then opens back to a full bright frame when Zoom turns off.
+          - Balanced cinematic motion uses a time-based minimum-jerk curve and supports smooth mid-animation reversal.
+          - **Zoom In / Zoom Out are resize-only** while Zoom is active: camera, Presentation Cursor, and Spotlight grow/shrink smoothly without replaying the cinematic focus animation.
+          - Manual Toggle/Hold/Peek Spotlight controls remain independent presenter intent.
 
-          ### Kinematic Smart Viewport
+          Spotlight master controls remain Off by default so adding ArZoom never puts an attention effect on-air without presenter opt-in.
 
-          Scene Camera now separates semantic framing from physical motion:
+          ### Reliability fixes proven in direct OBS
 
-          - SceneViewportPlanner decides **WHERE** the viewport should frame.
-          - SceneKinematicMotion decides **HOW** the viewport moves there.
-          - explicit position + velocity + acceleration state;
-          - bounded jerk-limited acceleration changes;
-          - live tracking → final settle preserves meaningful motion state instead of stop/restart;
-          - latched tracking and continuous follow pressure;
-          - conservative confidence-gated pointer prediction, cleared on direction reversal;
-          - earlier high-zoom tracking and bounded far-distance cruise authority;
-          - automatic moving-target cruise → immutable-target jerk-aware precision braking;
-          - exact drift-free HOLD after final framing.
+          P5 development exposed and fixed a real D3D11 black-frame failure. The stable renderer now initializes the complete shared shader ABI before every processed Draw, including neutral values for inactive optional effects.
 
-          The accepted product character is: local work stays calm, meaningful far movement is followed promptly, pointer acquisition remains bounded at normal/high zoom, movement stays visually smooth and decisive, and the viewport does not repeatedly search after final pointer intent is known.
+          Direct OBS acceptance confirmed:
+          - zero click/Zoom/cursor black-preview regression;
+          - changing Presentation Cursor styles remains healthy;
+          - Spotlight Toggle is no longer needed as a render-recovery action;
+          - Spotlight runtime buttons no longer rebuild/flicker the OBS Properties sheet;
+          - cinematic Toggle Zoom ON/OFF is stable;
+          - Zoom +/- no longer restarts the cinematic iris.
 
-          ### Regression lock
+          ### Kinematic Smart Viewport retained
 
-          The v$env:VERSION deterministic suite preserves all previous P0–P4 gates and adds P4.1 contracts for generalized mapping, pointer-loss bounds, fixed-target convergence, bounded jerk, no zero-speed stall, retarget velocity continuity, bounded direction reversal, continuous pressure, tracking chatter, final framing, and exact HOLD.
+          v$env:VERSION preserves the accepted v0.6.0 P4.1 camera/mapping baseline:
+          - deterministic read-only mapping for one proven top-level Display Capture;
+          - positive axis-aligned fullscreen/scale/inset and proven crop-aware layouts;
+          - shared mapped coordinates for Smart Follow, click, Presentation Cursor, and Spotlight;
+          - SceneViewportPlanner decides **WHERE** to frame;
+          - SceneKinematicMotion decides **HOW** to move there;
+          - jerk-limited motion, far cruise, precision braking, and exact HOLD.
 
-          The accepted baseline is documented in **docs/P4_1_STABLE_BASELINE.md**. Future changes must preserve both pointer acquisition and motion smoothness; one must not be traded away for the other.
+          Ambiguous capture ownership still fails safe rather than guessing. P4.2 deterministic multi-capture target selection remains future work.
 
-          ### Scene Camera architecture remains safe
+          ### Performance and scene safety
 
-          - managed arzoom_filter attached to the current OBS scene source after normal OBS composition;
-          - no persistent obs_sceneitem_set_* mutation;
-          - no custom scene-wide Camera input source;
-          - no duplicate/off-screen scene render graph;
+          - one shared presentation render path;
+          - analytic GPU Spotlight mask;
+          - no duplicate scene render;
+          - no persistent scene-item transform mutation;
+          - no helper source;
           - no CPU frame readback;
-          - no second semantic Smart Camera/planner;
-          - bounded O(1) camera state and GPU-native presentation effects.
+          - no OCR/AI/image analysis;
+          - bounded O(1) presentation state;
+          - OBS pass-through remains available when presentation effects are inactive.
 
-          ### Presenter system included
+          ### Validation
 
-          - Toggle Zoom, Hold Zoom, Freeze Camera, Smart Follow On/Off, Zoom +/−, Reset / Full Frame;
-          - Overview Peek with exact shot restoration;
-          - GPU click visualization;
-          - seven built-in tactile Presentation Cursor presets plus Advanced custom assets;
-          - camera-aware cursor magnification and deterministic hotspot mapping;
-          - first-click render safety on fresh installations.
+          The accepted v$env:VERSION candidate passed **19/19 deterministic P0–P5 tests**, Windows C++/shader compilation, installer packaging, and direct OBS acceptance.
+
+          Stable contracts:
+          - **docs/P4_1_STABLE_BASELINE.md**
+          - **docs/P5_STABLE_BASELINE.md**
 
           ### Platform / scope
 
           - Windows 10/11 x64.
-          - Current build baseline: OBS Studio 31.1.1.
+          - Build baseline: OBS Studio 31.1.1.
+          - Direct accepted field environment included OBS 32.1.2 / D3D11.
           - macOS/Linux are not included in this release.
-          - P4.2 deterministic multi-capture target selection remains future work; v$env:VERSION never guesses capture ownership.
-
-          ArZoom remains scene-safe by design: presentation transforms occur in the filter output and do not persistently modify the user's scene-item transforms.
           "@ | Set-Content -LiteralPath ".github-release-notes.md" -Encoding utf8
 
       - name: Check whether release already exists
@@ -163,7 +168,7 @@ jobs:
             throw "Failed to refresh release metadata for $env:RELEASE_TAG"
           }
 
-      - name: Deterministic motion validation
+      - name: Deterministic validation
         if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         run: ./scripts/run-phase0-validation.ps1
@@ -206,7 +211,6 @@ jobs:
             if ($zip.FullName -ne $manualZip) {
               Copy-Item -LiteralPath $zip.FullName -Destination $manualZip -Force
             }
-            "manual_zip=$manualZip" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           }
 
           $hashLines = @()

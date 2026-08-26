@@ -15,7 +15,7 @@ bool arzoom_register_scene_camera_tools();
 
 namespace {
 constexpr const char *kPhase4BuildIdentity =
-    "v0.6.0-p5.6-zoom-resize-only-v24";
+    "v0.7.0-p5-spotlight-stable";
 }
 
 bool obs_module_load(void)
