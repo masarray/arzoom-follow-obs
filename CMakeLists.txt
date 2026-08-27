@@ -34,7 +34,7 @@ target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
     src/plugin-main.cpp
-    src/arzoom-filter-p42-active.cpp
+    src/arzoom-filter-p42-ui.cpp
     src/arzoom-scene-camera.cpp
     src/arzoom-scene-camera-core.hpp
     src/arzoom-camera.hpp

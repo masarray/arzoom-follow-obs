@@ -80,6 +80,13 @@ target_compile_definitions(
   PRIVATE ARZOOM_SOURCE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/..")
 add_test(NAME arzoom-phase42-shared-consumer-consistency COMMAND arzoom-phase42-shared-consumer-test)
 
+add_executable(arzoom-phase42-properties-ui-test arzoom-phase42-properties-ui-test.cpp)
+arzoom_configure_test_target(arzoom-phase42-properties-ui-test)
+target_compile_definitions(
+  arzoom-phase42-properties-ui-test
+  PRIVATE ARZOOM_SOURCE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/..")
+add_test(NAME arzoom-phase42-beginner-properties-ui COMMAND arzoom-phase42-properties-ui-test)
+
 add_executable(arzoom-phase41-viewport-quality-test arzoom-phase41-viewport-quality-test.cpp)
 arzoom_configure_test_target(arzoom-phase41-viewport-quality-test)
 add_test(NAME arzoom-phase41-viewport-quality COMMAND arzoom-phase41-viewport-quality-test)

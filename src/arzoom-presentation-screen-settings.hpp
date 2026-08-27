@@ -68,6 +68,54 @@ inline PresentationScreenSelectionSettings presentation_screen_decode_selection(
     return settings;
 }
 
+inline bool presentation_screen_selection_contains(
+    const PresentationScreenSelectionSettings &settings,
+    const std::string &source_uuid)
+{
+    if (source_uuid.empty())
+        return false;
+    return std::find(settings.selected_source_uuids.begin(),
+                     settings.selected_source_uuids.end(),
+                     source_uuid) != settings.selected_source_uuids.end();
+}
+
+inline PresentationScreenSelectionSettings presentation_screen_set_selected(
+    const PresentationScreenSelectionSettings &settings,
+    const std::string &source_uuid,
+    bool selected)
+{
+    PresentationScreenSelectionSettings next = settings;
+    next.schema_version = kPresentationScreenSettingsSchemaVersion;
+    next.persisted = true;
+    next.selected_source_uuids = presentation_screen_normalize_selected_uuids(
+        next.selected_source_uuids);
+
+    if (source_uuid.empty())
+        return next;
+
+    const auto found = std::find(next.selected_source_uuids.begin(),
+                                 next.selected_source_uuids.end(),
+                                 source_uuid);
+    if (selected) {
+        if (found == next.selected_source_uuids.end())
+            next.selected_source_uuids.push_back(source_uuid);
+    } else if (found != next.selected_source_uuids.end()) {
+        next.selected_source_uuids.erase(found);
+    }
+    return next;
+}
+
+inline PresentationScreenSelectionSettings presentation_screen_replace_selection(
+    const std::vector<std::string> &source_uuids)
+{
+    PresentationScreenSelectionSettings settings;
+    settings.schema_version = kPresentationScreenSettingsSchemaVersion;
+    settings.persisted = true;
+    settings.selected_source_uuids =
+        presentation_screen_normalize_selected_uuids(source_uuids);
+    return settings;
+}
+
 struct PresentationScreenEligibilityCandidate {
     PresentationScreenDiscoveredIdentity identity{};
     bool ready = false;
