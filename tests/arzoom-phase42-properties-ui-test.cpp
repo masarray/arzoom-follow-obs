@@ -116,6 +116,8 @@ void properties_ui_source_contract_is_safe()
 {
     const std::string ui = compact_source(
         read_source("src/arzoom-filter-p42-ui.cpp"));
+    const std::string active = compact_source(
+        read_source("src/arzoom-filter-p42-active.cpp"));
     const std::string cmake = compact_source(
         read_source("CMakeLists.txt"));
     const std::string en = read_source("data/locale/en-US.ini");
@@ -158,10 +160,32 @@ void properties_ui_source_contract_is_safe()
         "cursor/runtime changes must never force Properties refreshes");
 
     require_contains(
-        ui, "u8\"\\u2611\"", 
+        active, "obs_get_source_by_uuid(candidate.identity.source_uuid.c_str())",
+        "runtime monitor reconciliation must reacquire the Display Capture by durable UUID");
+    require_contains(
+        active, "obs_data_get_string(settings,\"monitor_id\")",
+        "runtime must read the same monitor_id identity stored by OBS Display Capture");
+    require_contains(
+        active, "GetMonitorInfoA(handle,reinterpret_cast<LPMONITORINFO>(&info))",
+        "runtime must mirror OBS Windows monitor identity using GetMonitorInfoA");
+    require_contains(
+        active, "EnumDisplayDevicesA(info.szDevice,0,&device,EDD_GET_DEVICE_INTERFACE_NAME)",
+        "runtime must mirror OBS monitor_id DeviceID lookup");
+    require_contains(
+        active, "phase42_active_reconcile_candidate_monitor(candidate);",
+        "every discovered Presentation Screen must be reconciled before resolver preparation");
+    require_contains(
+        active, "last_discovery_signature",
+        "physical monitor diagnostics must be transition based rather than per-frame spam");
+    require_not_contains(
+        active, "obs_source_update(",
+        "active monitor ownership must never write OBS settings per frame");
+
+    require_contains(
+        ui, "u8\"\\u2611\"",
         "selected rows must render a checkbox-style selected glyph");
     require_contains(
-        ui, "u8\"\\u2610\"", 
+        ui, "u8\"\\u2610\"",
         "unselected rows must render a checkbox-style empty glyph");
     require_contains(
         ui, "phase42_ui_select_all_clicked",

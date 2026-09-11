@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,7 @@ struct Phase42ActiveFilter {
     std::vector<SceneDisplayCandidateSnapshot> discovered_candidates;
     arzoom::PresentationScreenActiveMappingSet prepared{};
     std::string discovery_reason;
+    std::string last_discovery_signature;
 };
 
 Phase41Filter *phase42_active_phase41(Phase42ActiveFilter *wrapper)
@@ -79,6 +81,153 @@ const char *phase42_resolve_reason(arzoom::PresentationScreenResolveStatus statu
     return "Presentation Screen mapping unavailable";
 }
 
+#ifdef _WIN32
+struct Phase42ObsMonitorResolveContext {
+    const char *monitor_id = nullptr;
+    MonitorDescriptor resolved{};
+    std::size_t matches = 0;
+};
+
+bool phase42_monitor_identity_equal(const char *left, const char *right)
+{
+    return left && right && *left && *right && _stricmp(left, right) == 0;
+}
+
+BOOL CALLBACK phase42_resolve_obs_monitor_cb(HMONITOR handle, HDC,
+                                              LPRECT rect, LPARAM param)
+{
+    auto *context = reinterpret_cast<Phase42ObsMonitorResolveContext *>(param);
+    if (!context || !context->monitor_id || !rect)
+        return TRUE;
+
+    MONITORINFOEXA info = {};
+    info.cbSize = sizeof(info);
+    if (!GetMonitorInfoA(handle, reinterpret_cast<LPMONITORINFO>(&info)))
+        return TRUE;
+
+    DISPLAY_DEVICEA device = {};
+    device.cb = sizeof(device);
+    const bool have_interface_id =
+        EnumDisplayDevicesA(info.szDevice, 0, &device,
+                            EDD_GET_DEVICE_INTERFACE_NAME) != FALSE;
+
+    const bool matches_interface =
+        have_interface_id &&
+        phase42_monitor_identity_equal(context->monitor_id, device.DeviceID);
+    const bool matches_gdi_name =
+        phase42_monitor_identity_equal(context->monitor_id, info.szDevice);
+    if (!matches_interface && !matches_gdi_name)
+        return TRUE;
+
+    MonitorDescriptor monitor;
+    monitor.left = rect->left;
+    monitor.top = rect->top;
+    monitor.right = rect->right;
+    monitor.bottom = rect->bottom;
+    monitor.primary = (info.dwFlags & MONITORINFOF_PRIMARY) != 0;
+    monitor.device_name = info.szDevice;
+    if (have_interface_id)
+        monitor.device_id = device.DeviceID;
+    monitor.label = monitor.device_name + "  ·  " +
+                    std::to_string(monitor.width()) + "x" +
+                    std::to_string(monitor.height()) + "  @ " +
+                    std::to_string(monitor.left) + "," +
+                    std::to_string(monitor.top);
+    if (monitor.primary)
+        monitor.label += "  ·  Primary";
+
+    ++context->matches;
+    if (context->matches == 1)
+        context->resolved = std::move(monitor);
+    return TRUE;
+}
+
+bool phase42_resolve_obs_monitor_id(const char *monitor_id,
+                                    MonitorDescriptor &resolved)
+{
+    if (!monitor_id || !*monitor_id ||
+        phase42_monitor_identity_equal(monitor_id, "DUMMY")) {
+        return false;
+    }
+
+    Phase42ObsMonitorResolveContext context;
+    context.monitor_id = monitor_id;
+    EnumDisplayMonitors(nullptr, nullptr, phase42_resolve_obs_monitor_cb,
+                        reinterpret_cast<LPARAM>(&context));
+    if (context.matches != 1 || !context.resolved.valid())
+        return false;
+
+    resolved = context.resolved;
+    return true;
+}
+#else
+bool phase42_resolve_obs_monitor_id(const char *, MonitorDescriptor &)
+{
+    return false;
+}
+#endif
+
+bool phase42_active_reconcile_candidate_monitor(
+    SceneDisplayCandidateSnapshot &candidate)
+{
+    if (!candidate.identity.valid())
+        return false;
+
+    obs_source_t *source = obs_get_source_by_uuid(
+        candidate.identity.source_uuid.c_str());
+    if (!source)
+        return false;
+
+    const bool display_capture = is_display_capture(source);
+    obs_data_t *settings = display_capture ? obs_source_get_settings(source)
+                                           : nullptr;
+    const char *monitor_id = settings
+                                 ? obs_data_get_string(settings, "monitor_id")
+                                 : nullptr;
+    const bool authoritative_monitor_id =
+        monitor_id && *monitor_id && std::strcmp(monitor_id, "DUMMY") != 0;
+
+    MonitorDescriptor resolved;
+    const bool direct_resolved =
+        authoritative_monitor_id &&
+        phase42_resolve_obs_monitor_id(monitor_id, resolved);
+
+    if (settings)
+        obs_data_release(settings);
+    obs_source_release(source);
+
+    /* Legacy Display Capture paths without monitor_id keep the already-proven
+     * P4.1 resolver. Modern OBS monitor_capture uses monitor_id, so mirror the
+     * same Win32 identity path OBS 32.x uses instead of silently falling back
+     * to another same-sized display. */
+    if (!authoritative_monitor_id)
+        return candidate.monitor_resolved;
+
+    if (!direct_resolved) {
+        candidate.monitor_resolved = false;
+        candidate.physical_monitor = {};
+        candidate.mapped_monitor = {};
+        candidate.reason =
+            "Display Capture monitor_id could not be resolved deterministically";
+        return false;
+    }
+
+    candidate.physical_monitor = resolved;
+    candidate.monitor_resolved = true;
+
+    if (candidate.geometry_valid && candidate.mapping.valid()) {
+        if (!build_mapped_monitor(candidate.physical_monitor,
+                                  candidate.mapping,
+                                  candidate.mapped_monitor)) {
+            candidate.reason =
+                "scene mapping exceeded safe desktop-coordinate range";
+            return false;
+        }
+        candidate.reason.clear();
+    }
+    return candidate.monitor_resolved;
+}
+
 arzoom::PresentationScreenActiveMappingCandidate phase42_active_candidate(
     const SceneDisplayCandidateSnapshot &candidate)
 {
@@ -98,6 +247,58 @@ arzoom::PresentationScreenActiveMappingCandidate phase42_active_candidate(
     return result;
 }
 
+std::string phase42_active_discovery_signature(
+    const std::vector<SceneDisplayCandidateSnapshot> &candidates,
+    const std::string &reason)
+{
+    std::string signature = reason;
+    for (const auto &candidate : candidates) {
+        signature += "|" + candidate.identity.source_uuid + ":";
+        signature += std::to_string(candidate.physical_monitor.left) + ",";
+        signature += std::to_string(candidate.physical_monitor.top) + ",";
+        signature += std::to_string(candidate.physical_monitor.right) + ",";
+        signature += std::to_string(candidate.physical_monitor.bottom) + ":";
+        signature += candidate.ready() ? "ready" : candidate.reason;
+    }
+    return signature;
+}
+
+void phase42_active_log_discovery_if_changed(Phase42ActiveFilter *wrapper)
+{
+    if (!wrapper)
+        return;
+
+    const std::string signature = phase42_active_discovery_signature(
+        wrapper->discovered_candidates, wrapper->discovery_reason);
+    if (signature == wrapper->last_discovery_signature)
+        return;
+    wrapper->last_discovery_signature = signature;
+
+    if (!wrapper->discovery_reason.empty()) {
+        blog(LOG_WARNING, "[ArZoom] P4.2 candidate discovery: %s",
+             wrapper->discovery_reason.c_str());
+        return;
+    }
+
+    for (const auto &candidate : wrapper->discovered_candidates) {
+        blog(candidate.ready() ? LOG_INFO : LOG_WARNING,
+             "[ArZoom] P4.2 candidate '%s': monitor=%s rect=%ld,%ld..%ld,%ld ready=%s%s%s",
+             candidate.identity.display_label.empty()
+                 ? "Display Capture"
+                 : candidate.identity.display_label.c_str(),
+             candidate.physical_monitor.device_name.empty()
+                 ? "unresolved"
+                 : candidate.physical_monitor.device_name.c_str(),
+             candidate.physical_monitor.left,
+             candidate.physical_monitor.top,
+             candidate.physical_monitor.right,
+             candidate.physical_monitor.bottom,
+             candidate.ready() ? "yes" : "no",
+             candidate.reason.empty() ? "" : " reason=",
+             candidate.reason.empty() ? "" : candidate.reason.c_str());
+    }
+}
+
 void phase42_active_refresh_candidates(Phase42ActiveFilter *wrapper,
                                        obs_source_t *scene_source)
 {
@@ -111,8 +312,14 @@ void phase42_active_refresh_candidates(Phase42ActiveFilter *wrapper,
     if (!discover_scene_display_candidates(
             scene_source, wrapper->discovered_candidates,
             wrapper->discovery_reason)) {
+        phase42_active_log_discovery_if_changed(wrapper);
         return;
     }
+
+    for (auto &candidate : wrapper->discovered_candidates)
+        phase42_active_reconcile_candidate_monitor(candidate);
+
+    phase42_active_log_discovery_if_changed(wrapper);
 
     std::vector<arzoom::PresentationScreenActiveMappingCandidate> active_candidates;
     active_candidates.reserve(wrapper->discovered_candidates.size());

@@ -227,6 +227,17 @@ inline PresentationScreenEligibilityResult presentation_screen_resolve_eligibili
         }
     }
 
+    /* Explicit Presentation Screen selection is atomic. If the user selected
+     * A+B but B is missing/hidden/invalid, do not silently keep following A.
+     * That masks a broken ownership map and violates the fail-safe contract. */
+    if (result.unavailable_selected_count > 0) {
+        std::fill(result.eligible.begin(), result.eligible.end(), false);
+        result.eligible_count = 0;
+        result.status =
+            PresentationScreenEligibilityStatus::SelectedScreensUnavailable;
+        return result;
+    }
+
     result.status = result.eligible_count > 0
                         ? PresentationScreenEligibilityStatus::ReadySelected
                         : PresentationScreenEligibilityStatus::SelectedScreensUnavailable;

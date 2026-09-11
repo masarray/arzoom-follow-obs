@@ -75,6 +75,26 @@ void explicit_uuid_selection_controls_eligibility()
             "persisted selection must never be reported as implicit Auto");
 }
 
+void partial_explicit_selection_is_atomic_fail_safe()
+{
+    const std::vector<arzoom::PresentationScreenEligibilityCandidate> candidates = {
+        candidate("uuid-a", "Coding", true),
+        candidate("uuid-b", "Application", false),
+        candidate("uuid-c", "OBS Utility", true)};
+    const auto settings = persisted({"uuid-a", "uuid-b"});
+    const auto result = arzoom::presentation_screen_resolve_eligibility(
+        candidates.data(), candidates.size(), settings);
+
+    require(result.status ==
+                arzoom::PresentationScreenEligibilityStatus::SelectedScreensUnavailable,
+            "A+B selection must fail safe when either selected screen is unavailable");
+    require(result.unavailable_selected_count == 1,
+            "unavailable selected screen count must preserve the diagnostic cause");
+    require(result.eligible_count == 0 &&
+                !result.eligible[0] && !result.eligible[1] && !result.eligible[2],
+            "partial explicit availability must never silently keep following only one selected screen");
+}
+
 void rename_and_reorder_preserve_uuid_selection()
 {
     const auto settings = persisted({"uuid-b"});
@@ -197,6 +217,7 @@ int main()
 {
     implicit_auto_requires_exactly_one_ready_screen();
     explicit_uuid_selection_controls_eligibility();
+    partial_explicit_selection_is_atomic_fail_safe();
     rename_and_reorder_preserve_uuid_selection();
     delete_recreate_does_not_inherit_explicit_selection();
     hidden_or_invalid_selected_screen_recovers_by_same_uuid();
