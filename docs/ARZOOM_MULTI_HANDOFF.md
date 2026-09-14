@@ -10,7 +10,7 @@
 
 - Product tracker: **Issue #25 — Multi-Screen Smart Camera**.
 - Current canonical branch: `feature/arzoom-multi-canonical`.
-- Current canonical PR: **to be filled after PR creation**.
+- Current canonical Draft PR: **#34 — ArZoom Multi: canonical architecture + living implementation handoff**.
 - Base branch: `main`.
 - Base SHA used for reset: `ada8f5269246c64429d7aceb6cc72f81e72120ba`.
 - Stable public baseline: ArZoom v0.7.0.
@@ -24,8 +24,8 @@
 
 | Milestone | Status | Evidence |
 |---|---|---|
-| Strategy reset / canonical docs | IN PROGRESS | this branch/PR |
-| M0 Dual-filter registration | NOT STARTED | — |
+| Strategy reset / canonical docs | COMPLETE | PR #34 docs committed |
+| M0 Dual-filter registration | NEXT / NOT STARTED | — |
 | M1 Pure canonical coordinate engine | NOT STARTED | — |
 | M2 Topology capture + coalescing worker | NOT STARTED | — |
 | M3 ScenePointer diagnostic probe | NOT STARTED | — |
@@ -34,9 +34,11 @@
 | M6 UX/persistence/Setup Doctor | NOT STARTED | — |
 | M7 performance/compatibility/acceptance | NOT STARTED | — |
 
-**Next ONE milestone after the strategy PR is accepted:** `M0 — Dual-filter registration boundary`.
+**Next ONE milestone:** `M0 — Dual-filter registration boundary`.
 
 Do not start M1 in the same implementation step as M0.
+
+Before editing, verify the current head SHA of PR #34. Do not trust a SHA copied from an older conversation.
 
 ---
 
@@ -320,7 +322,7 @@ A new thread/agent must read, in this order:
 5. `docs/ARZOOM_MULTI_CANONICAL_IMPLEMENTATION.md`
 6. **this file**
 7. Issue #25
-8. current canonical Draft PR
+8. Draft PR #34
 
 Do not start by reading/continuing PR #27 code as if it were current architecture.
 
@@ -355,11 +357,11 @@ If direct OBS evidence is pending, say `PENDING`; do not label milestone accepte
 If a thread is near context/token limit:
 
 1. stop before starting a new milestone;
-2. update this handoff file with exact current status, head SHA, tests, blockers, and next one milestone;
+2. update this handoff file with exact current status, tests, blockers, and next one milestone;
 3. update the Draft PR body if architecture/evidence changed materially;
 4. commit/push the handoff update;
 5. start a new thread and instruct it to read the mandatory read order above;
-6. the new thread must verify branch/PR head before editing.
+6. the new thread must verify PR #34 branch/head before editing.
 
 Never rely on “the previous assistant remembers it.”
 
@@ -384,9 +386,9 @@ Never rely on “the previous assistant remembers it.”
 
 ## 15. Current next action
 
-**Finish the canonical documentation PR and keep it Draft/authoritative.**
+Strategy reset is complete and PR #34 is the canonical Draft PR.
 
-After the project owner accepts this strategy, the next implementation action is exactly:
+The next implementation action is exactly:
 
 > **M0 — Dual-filter registration boundary**
 
