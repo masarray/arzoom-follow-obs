@@ -49,6 +49,10 @@ add_executable(arzoom-phase4-scene-camera-test arzoom-phase4-scene-camera-test.c
 arzoom_configure_test_target(arzoom-phase4-scene-camera-test)
 add_test(NAME arzoom-phase4-native-scene-camera COMMAND arzoom-phase4-scene-camera-test)
 
+add_executable(arzoom-m0-filter-boundary-test arzoom-m0-filter-boundary-test.cpp)
+arzoom_configure_test_target(arzoom-m0-filter-boundary-test)
+add_test(NAME arzoom-m0-dual-filter-boundary COMMAND arzoom-m0-filter-boundary-test)
+
 add_executable(arzoom-phase41-scene-mapping-test arzoom-phase41-scene-mapping-test.cpp)
 arzoom_configure_test_target(arzoom-phase41-scene-mapping-test)
 add_test(NAME arzoom-phase41-read-only-scene-mapping COMMAND arzoom-phase41-scene-mapping-test)
