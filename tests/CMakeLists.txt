@@ -53,6 +53,10 @@ add_executable(arzoom-m0-filter-boundary-test arzoom-m0-filter-boundary-test.cpp
 arzoom_configure_test_target(arzoom-m0-filter-boundary-test)
 add_test(NAME arzoom-m0-dual-filter-boundary COMMAND arzoom-m0-filter-boundary-test)
 
+add_executable(arzoom-m1-coordinate-engine-test arzoom-m1-coordinate-engine-test.cpp)
+arzoom_configure_test_target(arzoom-m1-coordinate-engine-test)
+add_test(NAME arzoom-m1-canonical-coordinate-engine COMMAND arzoom-m1-coordinate-engine-test)
+
 add_executable(arzoom-phase41-scene-mapping-test arzoom-phase41-scene-mapping-test.cpp)
 arzoom_configure_test_target(arzoom-phase41-scene-mapping-test)
 add_test(NAME arzoom-phase41-read-only-scene-mapping COMMAND arzoom-phase41-scene-mapping-test)
