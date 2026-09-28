@@ -32,7 +32,7 @@
 | Strategy reset / canonical docs | COMPLETE | PR #34, Build Windows #284 PASS |
 | M0 Dual-filter registration | **IMPLEMENTED / CI PASS / DIRECT OBS TRIAL PENDING** | runtime `882053b412f1b2320fe798af313b3f14467c2296`; Build #285 PASS; current-head docs Build #286 PASS |
 | M1 Pure canonical coordinate engine | **COMPLETE / CI PASS / PURE-MATH ONLY** | runtime `750600607c920078a75f8fbe2e37db3b54ec7cb6`; Build #287 PASS; 21/21 CTest |
-| M2 Raw topology capture + coalescing worker | BLOCKED / NOT STARTED | blocked by pending M0 direct OBS boundary acceptance |
+| M2A Pure topology preparation + latest-wins worker core | **COMPLETE / CI PASS / NO OBS WIRING** | `b4155f4ecfc4178ebe5443a7020ae9d6adb23388`; Build #289 PASS; 22/22 CTest |\n| M2B OBS raw topology capture + worker integration | **BLOCKED / NOT STARTED** | blocked by pending M0 direct OBS boundary acceptance |
 | M3 ScenePointer diagnostic probe | NOT STARTED | camera must still not move |
 | M4 Camera-only Multi | NOT STARTED | blocked until M3 physical mapping proof |
 | M5 Shared click/cursor/Spotlight consumers | NOT STARTED | — |
@@ -360,9 +360,11 @@ A limited deviation was taken to avoid wasting development time while preserving
 - M1 does not alter Multi pass-through behavior;
 - no worker/camera/topology integration was added;
 - **M0 remains unaccepted**;
-- **M2 remains blocked until M0 direct boundary trial passes**.
+- after another explicit project-owner instruction to continue progress, **M2A pure worker/publication core** was also allowed to proceed;
+- M2A is not instantiated by the OBS filter and performs no runtime topology capture;
+- **M2B OBS integration remains blocked until M0 direct boundary trial passes**.
 
-This is intentional and documented. A future thread must not reinterpret M1 CI success as proof that M0 passed direct OBS acceptance.
+This is intentional and documented. A future thread must not reinterpret M1/M2A CI success as proof that M0 passed direct OBS acceptance.
 
 ---
 
@@ -546,7 +548,7 @@ However, the overall branch still has the unresolved **M0 direct OBS boundary ga
 
 ## 11. M0 direct filter-list/pass-through acceptance
 
-Use the current Build #287 package. M1 is pure-only, so runtime behavior is still the M0 pass-through boundary.
+Use the current Build #289 package. M1 and M2A are pure-only/not runtime-wired, so runtime behavior is still the M0 pass-through boundary.
 
 Required direct observations:
 
@@ -594,7 +596,7 @@ If all pass:
 
 ### Goal
 
-Create the structural runtime plumbing while **camera remains pass-through**:
+Connect the already-proven M2A structural core to OBS/control-thread topology capture while **camera remains pass-through**:
 
 ```text
 OBS/control thread
@@ -937,7 +939,8 @@ Current engineering state:
 
 - M0 implementation: green in CI, physical boundary acceptance still pending
 - M1 pure canonical engine: complete and green
-- M2: intentionally blocked
+- M2A pure latest-wins worker/publication core: complete and green
+- M2B OBS integration: intentionally blocked
 
 Therefore the next action is exactly:
 

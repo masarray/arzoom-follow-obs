@@ -498,20 +498,38 @@ Tests:
 - crop cases only when supported;
 - unsupported transform rejection.
 
-### M2 — Raw topology capture + coalescing worker
+### M2A — Pure topology/worker/publication core
 
 Goal:
-- main/control thread produces bounded raw topology;
-- one latest-wins worker prepares immutable canonical topology;
-- coherent publication with no hot-path blocking;
-- worker lifecycle is deterministic.
+- establish bounded value-only raw/canonical topology types;
+- implement one latest-wins worker with one pending slot;
+- prove stale generations cannot publish;
+- prove deterministic join/shutdown;
+- prove coherent fixed double-buffer publication with no reader mutex;
+- **no OBS runtime wiring yet**.
 
 Tests:
-- 1,000+ dirty notifications collapse to latest generation;
+- 1,000+ dirty notifications collapse to active + latest only;
 - stale generation never overwrites newer state;
+- older/out-of-order generations are ignored;
 - shutdown during rebuild is safe;
 - no queue growth;
-- failed candidate never publishes torn state.
+- invalid latest state publishes fail-safe/unavailable state;
+- concurrent publication never exposes torn state.
+
+M2A may be completed while an earlier direct boundary gate is pending only if it remains pure and unused by OBS runtime.
+
+### M2B — OBS raw topology capture + worker integration
+
+Goal:
+- OBS/control thread produces the bounded raw topology consumed by M2A;
+- source UUID/visibility/source size/crop/scene geometry enter value-only snapshots;
+- relevant structural events mark topology dirty;
+- M2A worker starts/stops with ArZoom Multi lifecycle;
+- immutable canonical topology is published coherently;
+- Multi remains visually pass-through; camera still does not move.
+
+M2B is a runtime milestone and must not begin while a required earlier direct OBS boundary gate is unresolved.
 
 ### M3 — ScenePointer diagnostic probe
 
