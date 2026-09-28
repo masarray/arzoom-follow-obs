@@ -3,6 +3,8 @@ project(arzoom_phase0_tests LANGUAGES CXX)
 
 enable_testing()
 
+find_package(Threads REQUIRED)
+
 function(arzoom_configure_test_target target)
   target_compile_features(${target} PRIVATE cxx_std_17)
   target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
@@ -48,6 +50,19 @@ add_test(NAME arzoom-phase35-cursor-presets COMMAND arzoom-phase35-preset-test)
 add_executable(arzoom-phase4-scene-camera-test arzoom-phase4-scene-camera-test.cpp)
 arzoom_configure_test_target(arzoom-phase4-scene-camera-test)
 add_test(NAME arzoom-phase4-native-scene-camera COMMAND arzoom-phase4-scene-camera-test)
+
+add_executable(arzoom-m0-filter-boundary-test arzoom-m0-filter-boundary-test.cpp)
+arzoom_configure_test_target(arzoom-m0-filter-boundary-test)
+add_test(NAME arzoom-m0-dual-filter-boundary COMMAND arzoom-m0-filter-boundary-test)
+
+add_executable(arzoom-m1-coordinate-engine-test arzoom-m1-coordinate-engine-test.cpp)
+arzoom_configure_test_target(arzoom-m1-coordinate-engine-test)
+add_test(NAME arzoom-m1-canonical-coordinate-engine COMMAND arzoom-m1-coordinate-engine-test)
+
+add_executable(arzoom-m2-topology-worker-test arzoom-m2-topology-worker-test.cpp)
+arzoom_configure_test_target(arzoom-m2-topology-worker-test)
+target_link_libraries(arzoom-m2-topology-worker-test PRIVATE Threads::Threads)
+add_test(NAME arzoom-m2a-latest-wins-topology-worker COMMAND arzoom-m2-topology-worker-test)
 
 add_executable(arzoom-phase41-scene-mapping-test arzoom-phase41-scene-mapping-test.cpp)
 arzoom_configure_test_target(arzoom-phase41-scene-mapping-test)
