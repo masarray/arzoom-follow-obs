@@ -38,6 +38,7 @@ target_sources(
     src/arzoom-filter-multi.cpp
     src/arzoom-filter-boundary.hpp
     src/arzoom-multi-coordinate.hpp
+    src/arzoom-multi-topology.hpp
     src/arzoom-scene-camera.cpp
     src/arzoom-scene-camera-core.hpp
     src/arzoom-camera.hpp
