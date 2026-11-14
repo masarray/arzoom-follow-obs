@@ -45,6 +45,22 @@ void test_privacy_policy(TestContext &test)
         "Unmodified space is hidden");
 
     test.expect(
+        !should_visualize_shortcut(
+            {ShortcutKey::A, ShortcutShift}),
+        "Shift+letter remains private typing");
+
+    test.expect(
+        !should_visualize_shortcut(
+            {ShortcutKey::Digit1, ShortcutShift}),
+        "Shift+number remains private typing");
+
+    test.expect(
+        !should_visualize_shortcut(
+            {ShortcutKey::Q,
+             static_cast<std::uint8_t>(ShortcutCtrl | ShortcutAlt)}),
+        "Ctrl+Alt printable AltGr text remains private");
+
+    test.expect(
         should_visualize_shortcut(
             {ShortcutKey::C, ShortcutCtrl}),
         "Modified letter action is visible");
