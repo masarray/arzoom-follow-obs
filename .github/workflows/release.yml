@@ -7,6 +7,10 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      # One explicit, version-locked release branch. Unlike main, creating
+      # this branch is a deliberate publish command by repository maintainer.
+      - 'release/v0.7.2'
   workflow_dispatch:
     inputs:
       approve_stable_release:
@@ -29,7 +33,7 @@ concurrency:
 jobs:
   windows:
     name: Build and publish Windows installer
-    if: ${{ (github.event_name == 'push' && github.ref_type == 'tag') || (github.ref == 'refs/heads/main' && inputs.approve_stable_release == true) }}
+    if: ${{ (github.event_name == 'push' && (github.ref_type == 'tag' || github.ref == 'refs/heads/release/v0.7.2')) || (github.ref == 'refs/heads/main' && inputs.approve_stable_release == true) }}
     runs-on: windows-2022
 
     steps:
@@ -64,12 +68,18 @@ jobs:
           if ($testedSha -ne $env:GITHUB_SHA) {
             throw "The approved tested SHA differs from the release commit."
           }
-          if ($env:GITHUB_REF_TYPE -eq 'tag') {
-            if ($env:GITHUB_REF -ne "refs/tags/v$version") {
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -or
+              $env:GITHUB_REF -eq "refs/heads/release/v$version") {
+            if ($env:GITHUB_REF_TYPE -eq 'tag' -and
+                $env:GITHUB_REF -ne "refs/tags/v$version") {
               throw "The explicit release tag must match buildspec.json version v$version."
             }
-            # Refuse a stale or side-branch tag. Stable releases must be at
-            # the current main head and carry its pre-approved source tree.
+            if ($env:GITHUB_REF_TYPE -eq 'branch' -and
+                $env:GITHUB_REF -ne 'refs/heads/release/v0.7.2') {
+              throw "Explicit release branch is limited to the approved v0.7.2 version."
+            }
+            # The explicit tag/branch must point at current main HEAD.
+            # No stale or side-branch code is permitted in public stable.
             git fetch --no-tags origin main
             if ($LASTEXITCODE -ne 0) { throw "Could not verify remote main SHA." }
             $mainSha = (git rev-parse FETCH_HEAD).Trim()
