@@ -89,6 +89,7 @@ void draw_builtin_frame(QPainter &painter,
     case arzoom::BuiltinCursorVisual::Azure: rotation = -0.8f; break;
     case arzoom::BuiltinCursorVisual::Orchid: rotation = 1.4f; break;
     case arzoom::BuiltinCursorVisual::PremiumHand: break;
+    case arzoom::BuiltinCursorVisual::PremiumHandChrome: break;
     }
     const QPolygonF polygon = transformed_pointer(press, rotation);
 
