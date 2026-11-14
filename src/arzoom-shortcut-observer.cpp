@@ -6,8 +6,8 @@
 #include <cstdint>
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
+/* The plugin CMake target already defines WIN32_LEAN_AND_MEAN/NOMINMAX;
+ * do not redeclare them under MSVC /WX (C4005 -> C2220). */
 #include <windows.h>
 
 #include <array>
