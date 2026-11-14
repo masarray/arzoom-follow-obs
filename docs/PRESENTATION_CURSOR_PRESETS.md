@@ -15,7 +15,7 @@ There is no APNG/GIF decoding on the video path. Each optional PNG is decoded on
 
 ## Shipped ArZoom-native presets
 
-- **Premium Hand Chrome (new default for fresh filters)** — approved glossy metallic black/chrome pointing hand, 160×160 transparent bundled PNG (approximately 25 KB), fingertip hotspot at (38,11), and existing 260 ms tactile press/rebound gesture.
+- **Premium Hand Chrome (new default for fresh filters)** — approved glossy metallic black/chrome pointing hand, 160×160 transparent bundled PNG (5.1 KB), fingertip hotspot at (38,11), and existing 260 ms tactile press/rebound gesture.
 - **Premium Hand (original)** — previous owner-approved white pointing hand (3 KB); kept as a selectable preset for backward compatibility and visual choice.
 - **ArZoom Prism** — premium cyan 3D-style presentation pointer.
 - **ArZoom Outline** — clean monochrome professional pointer.
