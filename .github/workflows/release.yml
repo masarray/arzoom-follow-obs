@@ -1,19 +1,18 @@
 name: Release Windows installer
 
+# Stable publish requires explicit maintainer approval and real OBS evidence.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/release.yml"
-      - "buildspec.json"
-      - "CMakeLists.txt"
-      - "CMakePresets.json"
-      - "src/**"
-      - "data/**"
-      - "tests/**"
-      - "scripts/**"
-      - "packaging/windows/**"
+    inputs:
+      approve_stable_release:
+        description: "I reviewed physical OBS evidence and approve stable publication"
+        required: true
+        type: boolean
+        default: false
+      tested_commit_sha:
+        description: "Exact Git commit SHA tested in OBS (must match this main revision)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -25,6 +24,7 @@ concurrency:
 jobs:
   windows:
     name: Build and publish Windows installer
+    if: ${{ github.ref == 'refs/heads/main' && inputs.approve_stable_release == true }}
     runs-on: windows-2022
 
     steps:
@@ -34,11 +34,40 @@ jobs:
       - name: Read release version and validate branding
         id: version
         shell: pwsh
+        env:
+          TESTED_COMMIT_SHA: ${{ inputs.tested_commit_sha }}
         run: |
           $spec = Get-Content -LiteralPath "buildspec.json" -Raw | ConvertFrom-Json
           $version = [string]$spec.version
-          if ([string]::IsNullOrWhiteSpace($version)) {
-            throw "buildspec.json does not contain a valid version."
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "buildspec.json must contain a semantic release version."
+          }
+
+          # A green build is not direct OBS acceptance. This marker must be
+          # manually approved and pinned to the precise source commit.
+          $acceptancePath = "docs/RELEASE_ACCEPTANCE_v$version.md"
+          if (-not (Test-Path -LiteralPath $acceptancePath)) {
+            throw "Missing release acceptance record: $acceptancePath"
+          }
+          $acceptance = Get-Content -LiteralPath $acceptancePath -Raw
+          # Reuse the same fail-closed predicate exercised by Windows CI.
+          . ./scripts/release-acceptance.ps1
+          if (-not (Test-ArZoomReleaseApproval -AcceptanceText $acceptance)) {
+            throw "Public release blocked: exactly one APPROVED gate is required."
+          }
+          $testedSha = $env:TESTED_COMMIT_SHA
+          if ($testedSha -ne $env:GITHUB_SHA) {
+            throw "The explicitly approved tested SHA differs from the selected main commit."
+          }
+          $readme = Get-Content -LiteralPath "README.md" -Raw
+          if (-not $readme.Contains("version-$version")) {
+            throw "README still advertises an older version; sync docs first."
+          }
+          $landing = Get-Content -LiteralPath "docs/index.html" -Raw
+          $guide = Get-Content -LiteralPath "docs/guide.html" -Raw
+          if (-not $landing.Contains('"softwareVersion": "' + $version + '"') -or
+              -not $guide.Contains("ArZoom v$version")) {
+            throw "The landing page or setup guide still advertises the previous stable version."
           }
           if (-not (Test-Path -LiteralPath "packaging/windows/arzoom.ico" -PathType Leaf)) {
             throw "Windows installer icon is missing: packaging/windows/arzoom.ico"
@@ -51,89 +80,16 @@ jobs:
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
-      - name: Prepare release notes
+      - name: Prepare reviewed release notes
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          @"
-          ## ArZoom for OBS v$env:VERSION
-
-          **Stable Windows release — Cinematic Spotlight + accepted P4.1 Smart Viewport.**
-
-          ### Recommended download
-
-          Download **ArZoom-OBS-Setup-windows-x64.exe**. Close OBS completely and run the installer.
-
-          The installer supports:
-          - **Standard OBS Studio** — auto-detected when possible.
-          - **OBS Portable / custom OBS folder** — browse to the OBS root containing **bin\64bit\obs64.exe**.
-
-          A manual ZIP and SHA-256 checksums are also provided.
-
-          ### New in v$env:VERSION — Spotlight + cinematic focus
-
-          - Three Spotlight behavior modes: **Smart Focus**, **Follow cursor**, and **Click to lock**.
-          - Stable default: **Follow cursor**, **Circle**, **170% area**, **35% background dim**, **40 px edge softness**.
-          - Default Presentation Cursor: **ArZoom Classic Hand**.
-          - **Cinematic Spotlight with Zoom** smoothly closes from full-frame context into focus when Toggle Zoom turns on, then opens back to a full bright frame when Zoom turns off.
-          - Balanced cinematic motion uses a time-based minimum-jerk curve and supports smooth mid-animation reversal.
-          - **Zoom In / Zoom Out are resize-only** while Zoom is active: camera, Presentation Cursor, and Spotlight grow/shrink smoothly without replaying the cinematic focus animation.
-          - Manual Toggle/Hold/Peek Spotlight controls remain independent presenter intent.
-
-          Spotlight master controls remain Off by default so adding ArZoom never puts an attention effect on-air without presenter opt-in.
-
-          ### Reliability fixes proven in direct OBS
-
-          P5 development exposed and fixed a real D3D11 black-frame failure. The stable renderer now initializes the complete shared shader ABI before every processed Draw, including neutral values for inactive optional effects.
-
-          Direct OBS acceptance confirmed:
-          - zero click/Zoom/cursor black-preview regression;
-          - changing Presentation Cursor styles remains healthy;
-          - Spotlight Toggle is no longer needed as a render-recovery action;
-          - Spotlight runtime buttons no longer rebuild/flicker the OBS Properties sheet;
-          - cinematic Toggle Zoom ON/OFF is stable;
-          - Zoom +/- no longer restarts the cinematic iris.
-
-          ### Kinematic Smart Viewport retained
-
-          v$env:VERSION preserves the accepted v0.6.0 P4.1 camera/mapping baseline:
-          - deterministic read-only mapping for one proven top-level Display Capture;
-          - positive axis-aligned fullscreen/scale/inset and proven crop-aware layouts;
-          - shared mapped coordinates for Smart Follow, click, Presentation Cursor, and Spotlight;
-          - SceneViewportPlanner decides **WHERE** to frame;
-          - SceneKinematicMotion decides **HOW** to move there;
-          - jerk-limited motion, far cruise, precision braking, and exact HOLD.
-
-          Ambiguous capture ownership still fails safe rather than guessing. P4.2 deterministic multi-capture target selection remains future work.
-
-          ### Performance and scene safety
-
-          - one shared presentation render path;
-          - analytic GPU Spotlight mask;
-          - no duplicate scene render;
-          - no persistent scene-item transform mutation;
-          - no helper source;
-          - no CPU frame readback;
-          - no OCR/AI/image analysis;
-          - bounded O(1) presentation state;
-          - OBS pass-through remains available when presentation effects are inactive.
-
-          ### Validation
-
-          The accepted v$env:VERSION candidate passed **19/19 deterministic P0–P5 tests**, Windows C++/shader compilation, installer packaging, and direct OBS acceptance.
-
-          Stable contracts:
-          - **docs/P4_1_STABLE_BASELINE.md**
-          - **docs/P5_STABLE_BASELINE.md**
-
-          ### Platform / scope
-
-          - Windows 10/11 x64.
-          - Build baseline: OBS Studio 31.1.1.
-          - Direct accepted field environment included OBS 32.1.2 / D3D11.
-          - macOS/Linux are not included in this release.
-          "@ | Set-Content -LiteralPath ".github-release-notes.md" -Encoding utf8
+          $notes = "docs/RELEASE_NOTES_v$env:VERSION.md"
+          if (-not (Test-Path -LiteralPath $notes -PathType Leaf)) {
+            throw "Versioned release notes missing: $notes"
+          }
+          Copy-Item -LiteralPath $notes -Destination ".github-release-notes.md" -Force
 
       - name: Check whether release already exists
         id: existing
@@ -191,8 +147,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           $releaseDir = Join-Path $PWD "release"
-          $installer = Get-ChildItem -LiteralPath $releaseDir -Filter "*.exe" -File |
-            Sort-Object LastWriteTimeUtc -Descending |
+          $installer = Get-ChildItem -LiteralPath $releaseDir -Filter "ArZoom-OBS-Setup-v$env:VERSION-windows-x64.exe" -File |
             Select-Object -First 1
 
           if (-not $installer) {
@@ -202,16 +157,12 @@ jobs:
           $stableInstaller = Join-Path $releaseDir "ArZoom-OBS-Setup-windows-x64.exe"
           Copy-Item -LiteralPath $installer.FullName -Destination $stableInstaller -Force
 
-          $zip = Get-ChildItem -LiteralPath $releaseDir -Filter "*.zip" -File |
-            Sort-Object LastWriteTimeUtc -Descending |
-            Select-Object -First 1
-
-          if ($zip) {
-            $manualZip = Join-Path $releaseDir "ArZoom-OBS-Manual-v$env:VERSION-windows-x64.zip"
-            if ($zip.FullName -ne $manualZip) {
-              Copy-Item -LiteralPath $zip.FullName -Destination $manualZip -Force
-            }
+          $zip = Join-Path $releaseDir "arzoom-obs-v$env:VERSION-windows-x64.zip"
+          if (-not (Test-Path -LiteralPath $zip -PathType Leaf)) {
+            throw "Version-matched ZIP was not generated: $zip"
           }
+          $manualZip = Join-Path $releaseDir "ArZoom-OBS-Manual-v$env:VERSION-windows-x64.zip"
+          Copy-Item -LiteralPath $zip -Destination $manualZip -Force
 
           $hashLines = @()
           foreach ($file in Get-ChildItem -LiteralPath $releaseDir -File |
@@ -235,4 +186,4 @@ jobs:
             release/ArZoom-OBS-Setup-windows-x64.exe
             release/ArZoom-OBS-Manual-v${{ steps.version.outputs.version }}-windows-x64.zip
             release/SHA256SUMS.txt
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true

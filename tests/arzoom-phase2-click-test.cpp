@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <string>
 
 namespace {
@@ -79,14 +80,14 @@ void fixed_slots_are_bounded_and_ordered()
 void premium_click_lifetime_contract()
 {
     using namespace arzoom;
-    require(near(click_lifetime_seconds(ClickType::Left), 0.44f),
-            "left click lifetime drifted from premium dual-ring timing");
-    require(near(click_lifetime_seconds(ClickType::Right), 0.50f),
-            "right click lifetime drifted from premium dual-ring timing");
-    require(near(click_lifetime_seconds(ClickType::Middle), 0.32f),
-            "middle click lifetime drifted from compact timing");
-    require(click_lifetime_seconds(ClickType::Right) <= 0.50f,
-            "click feedback is allowed to linger too long for tutorials");
+    require(near(click_lifetime_seconds(ClickType::Left), 0.88f),
+            "left click lifetime drifted from P4R.3 single-ring timing");
+    require(near(click_lifetime_seconds(ClickType::Right), 0.90f),
+            "right click lifetime drifted from P4R.3 single-ring timing");
+    require(near(click_lifetime_seconds(ClickType::Middle), 0.84f),
+            "middle click lifetime drifted from P4R.3 single-ring timing");
+    require(click_lifetime_seconds(ClickType::Right) <= 0.90f,
+            "click lifetime unexpectedly exceeds accepted premium reference");
 }
 
 void click_lifetimes_expire_without_residual_state()
@@ -97,13 +98,80 @@ void click_lifetimes_expire_without_residual_state()
     state.push(ClickType::Right, {0.4f, 0.4f});
     state.push(ClickType::Middle, {0.6f, 0.6f});
 
-    for (int frame = 0; frame < 40; ++frame)
+    for (int frame = 0; frame < 65; ++frame)
         state.advance(1.0f / 60.0f);
 
     require(!state.has_active(),
             "expired click visual left residual active state");
     require(state.active_count() == 0,
             "expired click slots did not clear exactly");
+}
+
+void repeated_clicks_recharge_without_concentric_duplicates()
+{
+    using namespace arzoom;
+    ClickVisualState state;
+    state.push(ClickType::Left, {0.50f, 0.50f});
+    const uint32_t first_generation = state.slot(0).generation;
+    state.advance(0.08f);
+    state.push(ClickType::Left, {0.502f, 0.501f});
+
+    require(state.active_count() == 1,
+            "fast same-target left click generated a second ring");
+    require(state.slot(0).age_seconds == 0.0f,
+            "retried pulse did not restart its luminous envelope");
+    require(state.slot(0).generation != first_generation,
+            "recharged pulse did not advance generation");
+    require(near(state.slot(0).content_position, {0.502f, 0.501f}),
+            "recharged pulse was not anchored to the latest click");
+
+    state.push(ClickType::Right, {0.502f, 0.501f});
+    require(state.active_count() == 2,
+            "right click was incorrectly coalesced with left click");
+    state.push(ClickType::Left, {0.70f, 0.70f});
+    require(state.active_count() == 3,
+            "spatially separated clicks were incorrectly coalesced");
+
+    state.advance(0.065f);
+    state.advance(0.065f);
+    state.push(ClickType::Left, {0.502f, 0.501f});
+    require(state.active_count() == 4,
+            "click beyond retrigger interval unexpectedly recharged pulse");
+}
+
+void invalid_click_coordinates_fail_safe()
+{
+    using namespace arzoom;
+    ClickVisualState state;
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const float inf = std::numeric_limits<float>::infinity();
+    state.push(ClickType::Left, {nan, 0.5f});
+    state.push(ClickType::Right, {0.5f, inf});
+    state.push(ClickType::None, {0.5f, 0.5f});
+    require(!state.has_active(), "invalid mapped pointer created a click");
+    state.push(ClickType::Middle, {-1.0f, 2.0f});
+    require(near(state.slot(0).content_position, {0.0f, 1.0f}),
+            "finite off-edge pointer was not bounded");
+}
+
+void premium_click_age_is_time_based_across_frame_rates()
+{
+    using namespace arzoom;
+    for (float hz : {30.0f, 60.0f, 120.0f, 144.0f}) {
+        ClickVisualState state;
+        state.push(ClickType::Right, {0.50f, 0.50f});
+        const float dt = 1.0f / hz;
+        for (int frame = 0; frame < static_cast<int>(hz * 0.50f); ++frame)
+            state.advance(dt);
+        require(state.has_active(),
+                "click unexpectedly expired during premium fade");
+        require(std::fabs(state.slot(0).age_seconds - 0.50f) < 0.015f,
+                "click age depends on render FPS rather than time");
+        for (int frame = 0; frame < static_cast<int>(hz); ++frame)
+            state.advance(dt);
+        require(!state.has_active(),
+                "click remained active after 0.90 s lifetime");
+    }
 }
 
 void content_anchor_tracks_camera_transform()
@@ -201,6 +269,9 @@ int main()
     fixed_slots_are_bounded_and_ordered();
     premium_click_lifetime_contract();
     click_lifetimes_expire_without_residual_state();
+    repeated_clicks_recharge_without_concentric_duplicates();
+    invalid_click_coordinates_fail_safe();
+    premium_click_age_is_time_based_across_frame_rates();
     content_anchor_tracks_camera_transform();
     click_subsystem_does_not_retarget_camera();
     edge_click_coordinates_remain_finite();

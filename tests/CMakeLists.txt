@@ -33,6 +33,20 @@ add_executable(arzoom-phase2-click-test arzoom-phase2-click-test.cpp)
 arzoom_configure_test_target(arzoom-phase2-click-test)
 add_test(NAME arzoom-phase2-click-visual COMMAND arzoom-phase2-click-test)
 
+add_executable(arzoom-shortcut-visualizer-test
+  arzoom-shortcut-visualizer-test.cpp
+  ../src/arzoom-shortcut-visualizer.cpp)
+arzoom_configure_test_target(arzoom-shortcut-visualizer-test)
+add_test(NAME arzoom-presentation-shortcut-privacy-and-keycaps
+  COMMAND arzoom-shortcut-visualizer-test)
+
+add_executable(arzoom-shortcut-timeline-test
+  arzoom-shortcut-timeline-test.cpp
+  ../src/arzoom-shortcut-visualizer.cpp)
+arzoom_configure_test_target(arzoom-shortcut-timeline-test)
+add_test(NAME arzoom-presentation-shortcut-timeline
+  COMMAND arzoom-shortcut-timeline-test)
+
 add_executable(arzoom-phase3-presenter-test arzoom-phase3-presenter-test.cpp)
 arzoom_configure_test_target(arzoom-phase3-presenter-test)
 add_test(NAME arzoom-phase3-presenter-controls COMMAND arzoom-phase3-presenter-test)
@@ -100,3 +114,16 @@ arzoom_configure_test_target(arzoom-click-benchmark)
 
 add_executable(arzoom-presenter-benchmark arzoom-presenter-benchmark.cpp)
 arzoom_configure_test_target(arzoom-presenter-benchmark)
+
+# Pure native-UI disclosure policy, no OBS/Qt runtime required.
+add_executable(arzoom-compact-properties-test
+  arzoom-compact-properties-test.cpp)
+arzoom_configure_test_target(arzoom-compact-properties-test)
+add_test(NAME arzoom-presentation-compact-properties
+  COMMAND arzoom-compact-properties-test)
+
+add_executable(arzoom-keycap-runtime-policy-test
+  arzoom-keycap-runtime-policy-test.cpp)
+arzoom_configure_test_target(arzoom-keycap-runtime-policy-test)
+add_test(NAME arzoom-keycap-runtime-policy
+  COMMAND arzoom-keycap-runtime-policy-test)

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>How to Install and Use ArZoom v0.7.0 in OBS</title>
-  <meta name="description" content="Step-by-step guide to install ArZoom v0.7.0, enable Scene Camera, configure presenter controls, Presentation Cursor, Spotlight, and Cinematic Spotlight with Zoom safely in OBS.">
+  <title>How to Install and Use ArZoom v0.7.2 in OBS</title>
+  <meta name="description" content="Step-by-step guide to install ArZoom v0.7.2, enable Scene Camera, configure presenter controls, Presentation Cursor, Spotlight, and Cinematic Spotlight with Zoom safely in OBS.">
   <meta name="keywords" content="install ArZoom OBS, ArZoom Scene Camera, OBS zoom hotkey, OBS spotlight, OBS presentation camera guide">
   <meta name="theme-color" content="#07111f">
   <link rel="canonical" href="https://masarray.github.io/arzoom-follow-obs/guide.html">
@@ -19,7 +19,7 @@
 
   <main id="main" class="container">
     <header class="page-hero">
-      <span class="eyebrow">ArZoom v0.7.0 setup guide</span>
+      <span class="eyebrow">ArZoom v0.7.2 setup guide</span>
       <h1>Install ArZoom, enable Scene Camera, and add Cinematic Spotlight.</h1>
       <p class="lead">The recommended workflow zooms the composed OBS scene, preserves the accepted Kinematic Smart Viewport, and optionally guides attention with a soft GPU Spotlight linked to Toggle Zoom.</p>
     </header>
@@ -30,7 +30,7 @@
       <h2>Before you begin</h2>
       <ul>
         <li>Windows 10 or Windows 11, 64-bit.</li>
-        <li>OBS Studio. Build baseline: OBS 31.1.1; v0.7.0 was also directly accepted on OBS 32.1.2 / D3D11.</li>
+        <li>OBS Studio on Windows x64. Build baseline: OBS 31.1.1; functional smoke recording supplied from OBS 33.0.1 at 1920×1080, 60 FPS.</li>
         <li>For scene-wide pointer-driven behavior, use one visible top-level Display Capture whose monitor and transform can be resolved deterministically.</li>
         <li>Download the latest ArZoom Windows installer.</li>
       </ul>
@@ -69,7 +69,7 @@
       </div>
 
       <h2>6. Enable Spotlight controls</h2>
-      <p>In the ArZoom filter properties, enable <strong>Spotlight controls</strong>. The v0.7.0 recommended defaults are:</p>
+      <p>In the ArZoom filter properties, enable <strong>Enable spotlight</strong>. The v0.7.2 recommended defaults are:</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Spotlight setting</th><th>Stable default</th></tr></thead>
@@ -91,13 +91,16 @@
       <p>The animation is time-based and can reverse cleanly if you toggle Zoom again before it finishes.</p>
 
       <h2>8. Zoom In / Zoom Out is resize-only</h2>
-      <div class="callout"><strong>v0.7.0 behavior lock:</strong> while Zoom is already active, Zoom + and Zoom − must not replay the cinematic iris. Camera magnification, Presentation Cursor, and Spotlight only grow or shrink smoothly.</div>
+      <div class="callout"><strong>v0.7.2 behavior lock:</strong> while Zoom is already active, Zoom + and Zoom − must not replay the cinematic iris. Camera magnification, Presentation Cursor, and Spotlight only grow or shrink smoothly.</div>
 
       <h2>9. Presentation Cursor</h2>
-      <p>v0.7.0 defaults to <strong>ArZoom Classic Hand</strong>. Seven built-in cursor styles remain available. Cursor size follows the exact live camera zoom.</p>
+      <p>v0.7.2 defaults to <strong>ArZoom Classic Hand</strong>. Seven built-in cursor styles remain available. Cursor size follows the exact live camera zoom.</p>
       <div class="callout warning"><strong>Avoid double cursor:</strong> when ArZoom Presentation Cursor is enabled, disable native cursor capture in the underlying Display Capture.</div>
 
-      <h2>10. Assign presenter controls</h2>
+      <h2>10. Click feedback and shortcut keycaps</h2>
+      <p>Use <strong>Click feedback</strong> to highlight mouse clicks without changing camera zoom. Turn <strong>Show shortcut keys</strong> on only when you want recognized action shortcuts visible in the recording; it is off by default. Normal typing is hidden. The native OBS settings place advanced tuning behind <strong>Show advanced options</strong>.</p>
+      <p>Turn shortcut keycaps off for sensitive work. More information: <a href="privacy.html">Privacy and security</a>.</p>
+      <h2>11. Assign presenter controls</h2>
       <p>Open <strong>OBS Settings → Hotkeys</strong>. Available controls include:</p>
       <ul>
         <li>Toggle Zoom;</li>
@@ -111,7 +114,7 @@
         <li>Hold Spotlight.</li>
       </ul>
 
-      <h2>11. Test the complete presentation path</h2>
+      <h2>12. Test the complete presentation path</h2>
       <ol>
         <li>Restart OBS after installation.</li>
         <li>Enable Scene Camera.</li>
@@ -142,6 +145,6 @@
     </article>
   </main>
 
-  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · v0.7.0 setup guide</div><div class="footer-links"><a href="index.html">Home</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Report a problem</a></div></div></footer>
+  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · v0.7.2 setup guide</div><div class="footer-links"><a href="index.html">Home</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Report a problem</a></div></div></footer>
 </body>
 </html>
