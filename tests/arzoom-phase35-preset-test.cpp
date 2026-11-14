@@ -90,8 +90,8 @@ void style_helpers_are_unambiguous()
     require(std::string(arzoom::cursor_raster_asset_filename(*arrow)) ==
                 "cursors/premium-chrome-arrow.png",
             "Chrome Arrow must load its own bundled PNG");
-    require(near(arrow->hotspot_x, 35.0f / 160.0f) &&
-                near(arrow->hotspot_y, 6.0f / 160.0f) &&
+    require(near(arrow->hotspot_x, 25.0f / 160.0f) &&
+                near(arrow->hotspot_y, 4.0f / 160.0f) &&
                 arrow->recommended_size_px >= 60.0f,
             "Chrome Arrow hotspot must land on the pointer tip");
     require(arzoom::find_cursor_preset(arzoom::kCursorStyleDefault) == chrome,

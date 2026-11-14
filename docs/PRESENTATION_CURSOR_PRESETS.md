@@ -15,7 +15,7 @@ There is no APNG/GIF decoding on the video path. Each optional PNG is decoded on
 
 ## Shipped ArZoom-native presets
 
-- **Premium Chrome Arrow (optional choice)** — approved metallic pointer, optimized transparent 160×160 PNG (4.1 KB), calibrated arrow-tip hotspot (35,6), existing 260 ms tactile gesture. No default or existing saved selection is changed.
+- **Premium Chrome Arrow (optional choice)** — redrawn smooth-contour metallic pointer, transparent 160×160 PNG (3.7 KB), calibrated tip hotspot (25,4). Verified at 32/48/64 px on dark and light backgrounds; retains existing 260 ms tactile gesture. No default or existing saved selection is changed.
 - **Premium Hand Chrome (new default for fresh filters)** — approved glossy metallic black/chrome pointing hand, 160×160 transparent bundled PNG (5.1 KB), fingertip hotspot at (38,11), and existing 260 ms tactile press/rebound gesture.
 - **Premium Hand (original)** — previous owner-approved white pointing hand (3 KB); kept as a selectable preset for backward compatibility and visual choice.
 - **ArZoom Prism** — premium cyan 3D-style presentation pointer.
@@ -40,3 +40,9 @@ The atlas contract is intentionally simple: frame 0 is idle; frames 1..N are one
 - Custom import, hotspot, and background-key controls are shown only when **Custom** is selected.
 - Built-in atlas generation happens only when a preset changes, never per click or per video frame.
 - Any cursor-layer failure leaves Smart Camera, click visualization, and Presenter Controls functional.
+
+## Premium Chrome Arrow artwork quality gate (2026-11-15)
+
+The first image-derived sprite contained fine reflection noise and edge artifacts that became distracting at normal cursor size. Byte-level PNG integrity alone did not detect this. The replacement was rebuilt with a closed vector silhouette, a solid readable black contour, a restrained chrome rim, and a clean white interior, then downsampled and checked at **32, 48, and 64 px on both dark and light backgrounds**. The new image has one connected alpha silhouette without detached speckles. The editable art master is `assets/source/premium-chrome-arrow.svg`; only the optimized PNG is installed with OBS.
+
+The raster preset, 28-frame tactile atlas, shader pass and saved-style IDs remain unchanged. Physical OBS testing is still required to confirm the fingertip/arrow hotspot against the click ring.

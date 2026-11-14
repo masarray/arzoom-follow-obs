@@ -19,10 +19,10 @@ $assets = @(
     },
     @{
         File = 'premium-chrome-arrow.png'
-        Sha256 = '4ee9801f59e2e3a6157839874c1777b81331ef0082bc172fc044ec3b445a073f'
+        Sha256 = 'dbcadd91d442485cd71c97b5c04cb1fe1eb19bd992da0d51e4da60e74cad0fa1'
         MaxBytes = 16384
-        HotspotX = 35
-        HotspotY = 6
+        HotspotX = 25
+        HotspotY = 4
     }
 )
 
@@ -57,6 +57,73 @@ foreach ($asset in $assets) {
             }
             if ($image.GetPixel($asset.HotspotX, $asset.HotspotY).A -lt 120) {
                 throw "$($asset.File) hotspot no longer touches the cursor tip"
+            }
+            if ($asset.File -eq 'premium-chrome-arrow.png') {
+                # A technically valid PNG can still look dirty at video scale.
+                # Require a single connected, legible silhouette on both
+                # dark and light backgrounds at native 32/48/64 px sizes.
+                foreach ($size in @(32, 48, 64)) {
+                    $small = [System.Drawing.Bitmap]::new(
+                        $size, $size,
+                        [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+                    try {
+                        $g = [System.Drawing.Graphics]::FromImage($small)
+                        try {
+                            $g.Clear([System.Drawing.Color]::Transparent)
+                            $g.InterpolationMode =
+                                [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+                            $g.DrawImage($image, 0, 0, $size, $size)
+                        } finally { $g.Dispose() }
+                        $occupied = [bool[]]::new($size * $size)
+                        $bright = 0
+                        for ($y=0; $y -lt $size; ++$y) {
+                            for ($x=0; $x -lt $size; ++$x) {
+                                $c = $small.GetPixel($x, $y)
+                                $occupied[$y*$size+$x] = $c.A -ge 64
+                                if ($c.A -ge 192 -and $c.R -ge 185 -and
+                                    $c.G -ge 185 -and $c.B -ge 185) {
+                                    ++$bright
+                                }
+                            }
+                        }
+                        $seen = [bool[]]::new($size * $size)
+                        $components = 0
+                        for ($i=0; $i -lt $occupied.Length; ++$i) {
+                            if (-not $occupied[$i] -or $seen[$i]) { continue }
+                            ++$components
+                            if ($components -ne 1) {
+                                throw "Detached alpha speckle at $size px"
+                            }
+                            $queue = [System.Collections.Generic.Queue[int]]::new()
+                            $queue.Enqueue($i); $seen[$i] = $true
+                            while ($queue.Count -gt 0) {
+                                $cell = $queue.Dequeue()
+                                $cx = $cell % $size
+                                $cy = [int][math]::Floor($cell / $size)
+                                for ($dy=-1; $dy -le 1; ++$dy) {
+                                    for ($dx=-1; $dx -le 1; ++$dx) {
+                                        if ($dx -eq 0 -and $dy -eq 0) { continue }
+                                        $nx=$cx+$dx; $ny=$cy+$dy
+                                        if ($nx -lt 0 -or $ny -lt 0 -or
+                                            $nx -ge $size -or $ny -ge $size) {
+                                            continue
+                                        }
+                                        $ni=$ny*$size+$nx
+                                        if ($occupied[$ni] -and -not $seen[$ni]) {
+                                            $seen[$ni]=$true
+                                            $queue.Enqueue($ni)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if ($components -ne 1 -or
+                            $bright -lt $size * $size * 0.08) {
+                            throw "Unreadable or fragmented Chrome Arrow at $size px"
+                        }
+                        Write-Host "[PASS] Chrome Arrow $size px: connected alpha and readable white face"
+                    } finally { $small.Dispose() }
+                }
             }
         } finally {
             $image.Dispose()

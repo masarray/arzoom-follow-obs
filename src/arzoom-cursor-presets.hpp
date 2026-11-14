@@ -64,7 +64,7 @@ inline constexpr std::array<CursorPreset, 10> kCursorPresets{{
     {kCursorStylePremiumChromeArrow,
      "ArZoom.PresentationCursor.Preset.PremiumChromeArrow",
      BuiltinCursorVisual::PremiumChromeArrow, 28, 0.260f,
-     35.0f / 160.0f, 6.0f / 160.0f, 64.0f},
+     25.0f / 160.0f, 4.0f / 160.0f, 64.0f},
     {"prism", "ArZoom.PresentationCursor.Preset.Prism",
      BuiltinCursorVisual::Prism, 28, 0.280f, 0.19375f, 0.10625f, 52.0f},
     {"outline", "ArZoom.PresentationCursor.Preset.Outline",
