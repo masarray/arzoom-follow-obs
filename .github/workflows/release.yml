@@ -72,7 +72,7 @@ jobs:
             # the current main head and carry its pre-approved source tree.
             git fetch --no-tags origin main
             if ($LASTEXITCODE -ne 0) { throw "Could not verify remote main SHA." }
-            $mainSha = (git rev-parse refs/remotes/origin/main).Trim()
+            $mainSha = (git rev-parse FETCH_HEAD).Trim()
             if ($mainSha -ne $env:GITHUB_SHA) {
               throw "The release tag must point to the current main commit."
             }
