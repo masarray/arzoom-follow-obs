@@ -62,6 +62,6 @@ Refactoring the historical wrappers is a separate evidence-driven task.
 1. Finish direct field tests and enter real recordings/logs/benchmarks.
 2. Finalize README/website version badge and `docs/RELEASE_NOTES_v0.7.2.md`.
 3. On `main`, commit `ReleaseGate: APPROVED` only after review.
-4. Run the manual stable workflow on `main` with checkbox approval and
+4. Run the approved stable workflow on `main` with checkbox approval and
    `tested_commit_sha` equal to the exact GitHub SHA of the selected revision.
 5. Verify release installer, ZIP, SHA256 and public landing-page link.
