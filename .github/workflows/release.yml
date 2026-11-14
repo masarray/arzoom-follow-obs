@@ -1,7 +1,12 @@
 name: Release Windows installer
 
-# Stable publish requires explicit maintainer approval and real OBS evidence.
+# Stable publish requires deliberate manual dispatch OR an explicitly
+# pushed version tag, plus matching owner-approved release evidence.
+# Ordinary commits to main never publish a public stable release.
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       approve_stable_release:
@@ -24,7 +29,7 @@ concurrency:
 jobs:
   windows:
     name: Build and publish Windows installer
-    if: ${{ github.ref == 'refs/heads/main' && inputs.approve_stable_release == true }}
+    if: ${{ (github.event_name == 'push' && github.ref_type == 'tag') || (github.ref == 'refs/heads/main' && inputs.approve_stable_release == true) }}
     runs-on: windows-2022
 
     steps:
@@ -35,7 +40,7 @@ jobs:
         id: version
         shell: pwsh
         env:
-          TESTED_COMMIT_SHA: ${{ inputs.tested_commit_sha }}
+          TESTED_COMMIT_SHA: ${{ inputs.tested_commit_sha || github.sha }}
         run: |
           $spec = Get-Content -LiteralPath "buildspec.json" -Raw | ConvertFrom-Json
           $version = [string]$spec.version
@@ -57,7 +62,20 @@ jobs:
           }
           $testedSha = $env:TESTED_COMMIT_SHA
           if ($testedSha -ne $env:GITHUB_SHA) {
-            throw "The explicitly approved tested SHA differs from the selected main commit."
+            throw "The approved tested SHA differs from the release commit."
+          }
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            if ($env:GITHUB_REF -ne "refs/tags/v$version") {
+              throw "The explicit release tag must match buildspec.json version v$version."
+            }
+            # Refuse a stale or side-branch tag. Stable releases must be at
+            # the current main head and carry its pre-approved source tree.
+            git fetch --no-tags origin main
+            if ($LASTEXITCODE -ne 0) { throw "Could not verify remote main SHA." }
+            $mainSha = (git rev-parse refs/remotes/origin/main).Trim()
+            if ($mainSha -ne $env:GITHUB_SHA) {
+              throw "The release tag must point to the current main commit."
+            }
           }
           $readme = Get-Content -LiteralPath "README.md" -Raw
           if (-not $readme.Contains("version-$version")) {
