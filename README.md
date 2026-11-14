@@ -23,6 +23,8 @@
 
 ArZoom is a native OBS presentation-camera plugin for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming.
 
+> **Upcoming v0.7.2 preview:** Premium single-ring click feedback, opt-in shortcut keycaps and a compact OBS Properties interface are under final review in [PR #39](https://github.com/masarray/arzoom-follow-obs/pull/39). The keyboard observer is off by default and should only run for visibly used filters after opt-in. **v0.7.0 remains the latest stable download** until direct OBS acceptance and publication are completed. Mouse clicks never activate Arssyut-style auto zoom.
+
 **v0.7.0 is the current Windows stable release.** It keeps the accepted v0.6.0 P4.1 generalized mapping + Kinematic Smart Viewport baseline and adds the accepted P5 Spotlight presentation layer, cinematic Zoom-linked focus animation, zero-refresh Spotlight controls, and resize-only Spotlight behavior for Zoom +/-.
 
 > **Current status:** Phase 0 through P5 Spotlight are shipped on Windows. The stable camera/mapping contract remains [`docs/P4_1_STABLE_BASELINE.md`](docs/P4_1_STABLE_BASELINE.md); the accepted Spotlight contract is [`docs/P5_STABLE_BASELINE.md`](docs/P5_STABLE_BASELINE.md).
