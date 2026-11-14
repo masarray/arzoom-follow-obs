@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>How to Install and Use ArZoom v0.7.2 in OBS</title>
-  <meta name="description" content="Step-by-step guide to install ArZoom v0.7.2, enable Scene Camera, configure presenter controls, Presentation Cursor, Spotlight, and Cinematic Spotlight with Zoom safely in OBS.">
+  <meta name="description" content="Install ArZoom stable v0.7.2 for OBS Windows, enable Smart Camera, use luminous click feedback, opt-in shortcut keycaps and configure Spotlight and hotkeys.">
   <meta name="keywords" content="install ArZoom OBS, ArZoom Scene Camera, OBS zoom hotkey, OBS spotlight, OBS presentation camera guide">
   <meta name="theme-color" content="#07111f">
   <link rel="canonical" href="https://masarray.github.io/arzoom-follow-obs/guide.html">
@@ -15,13 +15,13 @@
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <header class="site-header"><div class="container nav"><a class="brand" href="index.html">Ar<span>Zoom</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="index.html">Home</a><a href="troubleshooting.html">Troubleshooting</a><a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a><a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe">Download</a></nav></div></header>
+  <header class="site-header"><div class="container nav"><a class="brand" href="index.html">Ar<span>Zoom</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="index.html">Home</a><a href="troubleshooting.html">Troubleshooting</a><a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a><a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe">Download</a></nav></div></header>
 
   <main id="main" class="container">
     <header class="page-hero">
       <span class="eyebrow">ArZoom v0.7.2 setup guide</span>
-      <h1>Install ArZoom, enable Scene Camera, and add Cinematic Spotlight.</h1>
-      <p class="lead">The recommended workflow zooms the composed OBS scene, preserves the accepted Kinematic Smart Viewport, and optionally guides attention with a soft GPU Spotlight linked to Toggle Zoom.</p>
+      <h1>Set up ArZoom v0.7.2 for clean OBS presentations.</h1>
+      <p class="lead">Start with Smart Camera and Click feedback. Add Shortcut keys or Spotlight when needed, with advanced adjustments kept out of the way until you request them.</p>
     </header>
 
     <article class="prose">
@@ -36,8 +36,8 @@
       </ul>
 
       <h2>1. Download and install</h2>
-      <p><a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe">Download the latest Windows installer</a></p>
-      <p>Close OBS completely before running the installer. Standard OBS Studio and OBS Portable/custom roots are supported.</p>
+      <p><a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe">Download the latest Windows installer</a></p>
+      <p>Close OBS completely before running the v0.7.2 installer. The package supports standard OBS and portable/custom installation roots; if upgrading, back up your working setup first. <a href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Manual-v0.7.2-windows-x64.zip">Manual ZIP</a> · <a href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/SHA256SUMS.txt">SHA-256 checksums</a> · <a href="https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2">Release notes</a>.</p>
 
       <h2>2. Prepare the presentation scene</h2>
       <p>Use one visible top-level Display Capture as the presentation owner. Fullscreen is simplest, but deterministic positive axis-aligned scaled/inset and crop-aware layouts are also supported.</p>
@@ -59,32 +59,32 @@
         <table>
           <thead><tr><th>Setting</th><th>Start with</th><th>Purpose</th></tr></thead>
           <tbody>
-            <tr><td>Zoom amount</td><td><code>2.00×</code></td><td>Useful detail without excessive crop.</td></tr>
-            <tr><td>Camera follow</td><td><code>Smart Camera</code></td><td>Follows presentation-context changes instead of every pointer movement.</td></tr>
-            <tr><td>Camera character</td><td><code>Balanced</code></td><td>Recommended stability and travel speed.</td></tr>
-            <tr><td>Stable comfort zone</td><td><code>28%</code></td><td>Allows local explanation movement without camera shake.</td></tr>
-            <tr><td>Target monitor</td><td><code>Auto</code></td><td>Uses deterministic monitor ownership when available.</td></tr>
+            <tr><td>Zoom</td><td><code>2.00×</code></td><td>Useful detail without excessive crop.</td></tr>
+            <tr><td>Follow</td><td><code>Smart Camera</code></td><td>Follows presentation-context changes instead of every pointer movement.</td></tr>
+            <tr><td>Motion</td><td><code>Balanced</code></td><td>Recommended stability and travel speed.</td></tr>
+            <tr><td>Follow range</td><td><code>28%</code></td><td>Allows local explanation movement without camera shake.</td></tr>
+            <tr><td>Display (Advanced)</td><td><code>Auto</code></td><td>Uses deterministic monitor ownership when available.</td></tr>
           </tbody>
         </table>
       </div>
 
-      <h2>6. Enable Spotlight controls</h2>
+      <h2>6. Enable Spotlight only when useful</h2>
       <p>In the ArZoom filter properties, enable <strong>Enable spotlight</strong>. The v0.7.2 recommended defaults are:</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Spotlight setting</th><th>Stable default</th></tr></thead>
           <tbody>
-            <tr><td>Mode</td><td><strong>Follow cursor</strong></td></tr>
-            <tr><td>Shape</td><td><strong>Circle</strong></td></tr>
-            <tr><td>Area size</td><td><strong>170%</strong></td></tr>
+            <tr><td>Focus follows</td><td><strong>Cursor</strong></td></tr>
+            <tr><td>Shape (Advanced)</td><td><strong>Circle</strong></td></tr>
+            <tr><td>Focus area</td><td><strong>170%</strong></td></tr>
             <tr><td>Background dim</td><td><strong>35%</strong></td></tr>
-            <tr><td>Edge softness</td><td><strong>40 px</strong></td></tr>
-            <tr><td>Cinematic Spotlight with Zoom</td><td><strong>On</strong></td></tr>
-            <tr><td>Cinematic Focus Speed</td><td><strong>Balanced</strong></td></tr>
+            <tr><td>Edge softness (Advanced)</td><td><strong>40 px</strong></td></tr>
+            <tr><td>Animate with zoom</td><td><strong>On</strong> after Spotlight is enabled</td></tr>
+            <tr><td>Animation speed (Advanced)</td><td><strong>Balanced</strong></td></tr>
           </tbody>
         </table>
       </div>
-      <p>The Spotlight master remains Off until you enable it, so adding a fresh ArZoom filter never places the effect on-air automatically.</p>
+      <p>Spotlight starts Off. Switching <strong>Enable spotlight</strong> on reveals the main focus controls; activate <strong>Show advanced options</strong> to adjust shape, animation speed, edge softness, display selection and focus anchor. Hiding Advanced does not reset settings.</p>
 
       <h2>7. Understand Cinematic Spotlight with Zoom</h2>
       <p><strong>Toggle Zoom ON</strong> starts the cinematic focus choreography: the aperture begins larger than the frame, closes smoothly to the focus Circle, and brings in the configured background dim gently. <strong>Toggle Zoom OFF</strong> reverses the motion and restores full bright context.</p>
@@ -98,7 +98,7 @@
       <div class="callout warning"><strong>Avoid double cursor:</strong> when ArZoom Presentation Cursor is enabled, disable native cursor capture in the underlying Display Capture.</div>
 
       <h2>10. Click feedback and shortcut keycaps</h2>
-      <p>Use <strong>Click feedback</strong> to highlight mouse clicks without changing camera zoom. Turn <strong>Show shortcut keys</strong> on only when you want recognized action shortcuts visible in the recording; it is off by default. Normal typing is hidden. The native OBS settings place advanced tuning behind <strong>Show advanced options</strong>.</p>
+      <p><strong>Show click feedback</strong> displays one luminous ring for left, right and middle clicks; a quick repeat on the same target recharges the pulse, without starting auto-zoom. <strong>Show shortcut keys</strong> displays raised keycaps for recognized action chords such as Ctrl+S and F12; it is <strong>Off by default</strong>, and normal typing is suppressed.</p>
       <p>Turn shortcut keycaps off for sensitive work. More information: <a href="privacy.html">Privacy and security</a>.</p>
       <h2>11. Assign presenter controls</h2>
       <p>Open <strong>OBS Settings → Hotkeys</strong>. Available controls include:</p>
@@ -124,7 +124,8 @@
         <li>Toggle Zoom OFF and verify the normal cinematic opening back to full context.</li>
         <li>Move the pointer locally and across large distances; Smart Camera should stay calm locally and acquire meaningful relocation promptly.</li>
         <li>Change Presentation Cursor styles and confirm the preview remains healthy.</li>
-        <li>Test Toggle/Hold Spotlight and confirm the Properties panel does not flicker/rebuild.</li>
+        <li>Test Toggle/Hold Spotlight; switch Spotlight and Advanced On/Off and confirm saved values remain and the Properties panel stays responsive.</li>
+        <li>Test single/double click feedback; optionally enable Shortcut keys and press Ctrl+S or F12. Ordinary typing must not appear.</li>
         <li>Add webcam/logo/browser overlays and confirm composed content zooms together.</li>
       </ol>
 
