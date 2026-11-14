@@ -39,6 +39,14 @@ target_sources(
     src/arzoom-scene-camera-core.hpp
     src/arzoom-camera.hpp
     src/arzoom-click-visual.hpp
+    src/arzoom-shortcut.hpp
+    src/arzoom-shortcut-visualizer.hpp
+    src/arzoom-shortcut-visualizer.cpp
+    src/arzoom-shortcut-observer.hpp
+    src/arzoom-shortcut-observer.cpp
+    src/arzoom-shortcut-timeline.hpp
+    src/arzoom-keycap-rasterizer.hpp
+    src/arzoom-keycap-rasterizer.cpp
     src/arzoom-presenter-controls.hpp
     src/arzoom-presentation-cursor.hpp
     src/arzoom-cursor-presets.hpp
