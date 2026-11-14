@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — v0.7.2 Premium presentation + compact UX candidate
+## v0.7.2 — Premium presentation + compact UX (Windows stable)
 
 - Replaced click feedback with Arssyut P4R.3-style single luminous ring, 4 fixed event slots, bounded rapid same-target retrigger. **Click-triggered auto-zoom is excluded.**
 - Added optional physical shortcut keycaps with privacy-first semantic chord filtering, event-driven retained GPU atlas, one OBS shader pass and default-OFF consent.
@@ -9,7 +9,7 @@
 - Protected keycap timeline against cross-phase read/write races and stale shortcut replay when a scene is reactivated.
 - Kept core Zoom/Click/Presentation Cursor rendering available with legacy shader data missing the optional keycap ABI; missing required sampler safety still fails to pass-through.
 - Locked Windows public publishing behind explicit manual acceptance of the exact commit, version-matched installer/ZIP and reviewed release notes. A merge no longer silently publishes stable.
-- Candidate Windows CI and unit tests are separate from direct OBS graphics/performance acceptance. See `docs/RELEASE_ACCEPTANCE_v0.7.2.md`. **Not yet a public stable release.**
+- Windows CI passed 23/23 deterministic tests plus the release-policy suite, DLL build and packaging. User supplied OBS 33.0.1 1080p60 screen recording demonstrates click and shortcut overlays. Extended 4K GPU p50/p95 and clean-install rollback tests were not supplied; scope and limitations are documented in `docs/RELEASE_ACCEPTANCE_v0.7.2.md`.
 
 ## v0.6.0 — P4.1 generalized mapping + Kinematic Smart Viewport
 
