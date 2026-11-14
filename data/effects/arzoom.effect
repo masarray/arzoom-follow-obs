@@ -278,6 +278,18 @@ float3 apply_click(float3 base, float2 output_uv,
 
     const float2 delta_px = event_delta_px(
         output_uv, event_data, safe_zoom, safe_viewport);
+
+    /* Conservative screen-space rectangle culling: the entire ring,
+     * chromatic support and outer halo fit inside this radius at all times.
+     * Most 4K pixels therefore skip costly length/glow math for active clicks,
+     * without adding a pass, texture, or reducing the visible halo. */
+    const float scale = clamp(
+        min(safe_viewport.x, safe_viewport.y) / 1080.0,
+        0.85, 1.60);
+    const float extent = (64.0 + 30.0 + 6.0) * scale;
+    if (abs(delta_px.x) > extent || abs(delta_px.y) > extent)
+        return base;
+
     const float progress = saturate(
         event_data.z / max(event_lifetime(type), 0.001));
     return composite_single_ring(
