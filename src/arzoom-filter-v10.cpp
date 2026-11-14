@@ -300,11 +300,11 @@ bool load_extended_cursor_preset(Phase352Filter *filter,
     return true;
 }
 
-/* Bundled Premium Hand uses the same fixed 28-frame P3.5 atlas as all
+/* Both bundled Premium Hand raster presets use the same 28-frame P3.5 atlas as all
  * previous cursors. The PNG is loaded only on a preset switch; video_tick
  * merely advances a frame index and PSZoom samples the existing cursor_atlas.
  * No image decode, QPainter or texture allocation on audio/video callbacks. */
-bool load_premium_hand_preset(Phase352Filter *filter,
+bool load_raster_hand_preset(Phase352Filter *filter,
                               const arzoom::CursorPreset &preset)
 {
     Phase35Filter *phase35 = phase35_from_352(filter);
@@ -312,7 +312,10 @@ bool load_premium_hand_preset(Phase352Filter *filter,
         !arzoom::cursor_is_raster_preset(preset))
         return false;
 
-    char *asset_path = obs_module_file("cursors/premium-hand.png");
+    const char *resource = arzoom::cursor_raster_asset_filename(preset);
+    if (!resource)
+        return false;
+    char *asset_path = obs_module_file(resource);
     QImage source;
     if (asset_path) {
         source.load(QString::fromUtf8(asset_path), "PNG");
@@ -323,7 +326,7 @@ bool load_premium_hand_preset(Phase352Filter *filter,
         source.height() != kBuiltinCursorFrameSize ||
         !source.hasAlphaChannel()) {
         blog(LOG_WARNING,
-             "[ArZoom] Premium Hand PNG missing, invalid or not transparent");
+             "[ArZoom] Raster cursor PNG missing/invalid: %s", resource);
         return false;
     }
 
@@ -392,8 +395,8 @@ bool load_premium_hand_preset(Phase352Filter *filter,
         filter->phase351, preset.frame_count, preset.play_seconds);
 
     blog(LOG_INFO,
-         "[ArZoom] Premium Hand ready: one cached atlas, %zu tactile frames",
-         preset.frame_count);
+         "[ArZoom] %s ready: one cached atlas, %zu tactile frames",
+         preset.id, preset.frame_count);
     return true;
 }
 
@@ -416,14 +419,14 @@ void phase354_update(void *data, obs_data_t *settings)
         arzoom::find_cursor_preset(style.c_str());
     if (preset && arzoom::cursor_is_raster_preset(*preset)) {
         if (filter->loaded_raster_style != style) {
-            if (!load_premium_hand_preset(
+            if (!load_raster_hand_preset(
                     filter->phase353->phase352, *preset)) {
                 /* A missing optional packaged asset must not black out the
                  * pointer or change camera/click feedback. Keep the previous
                  * stable procedural Classic Hand as an independent fallback. */
                 blog(LOG_WARNING,
-                     "[ArZoom] Premium Hand asset unavailable; "
-                     "falling back to Classic Hand");
+                     "[ArZoom] %s unavailable; falling back to Classic Hand",
+                     preset->id);
                 if (const arzoom::CursorPreset *fallback =
                         arzoom::find_cursor_preset("classic_hand"))
                     load_extended_cursor_preset(
