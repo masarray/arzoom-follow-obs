@@ -38,8 +38,8 @@ void preset_metadata_is_safe_and_unique()
     }
     require(ids.size() == arzoom::kCursorPresets.size(),
             "preset id count changed unexpectedly");
-    require(arzoom::kCursorPresets.size() == 9,
-            "both original and chrome Premium Hands must remain available");
+    require(arzoom::kCursorPresets.size() == 10,
+            "original and Chrome Hands plus Chrome Arrow must stay available");
 }
 
 void style_helpers_are_unambiguous()
@@ -82,6 +82,20 @@ void style_helpers_are_unambiguous()
     require(chrome->visual == arzoom::BuiltinCursorVisual::PremiumHandChrome &&
                 chrome->recommended_size_px >= 60.0f,
             "Chrome cursor must be a visible distinct raster preset");
+    const auto *arrow =
+        arzoom::find_cursor_preset(arzoom::kCursorStylePremiumChromeArrow);
+    require(arrow && arzoom::cursor_is_raster_preset(*arrow) &&
+                arrow->visual == arzoom::BuiltinCursorVisual::PremiumChromeArrow,
+            "Chrome Arrow must be selectable as an independent raster preset");
+    require(std::string(arzoom::cursor_raster_asset_filename(*arrow)) ==
+                "cursors/premium-chrome-arrow.png",
+            "Chrome Arrow must load its own bundled PNG");
+    require(near(arrow->hotspot_x, 35.0f / 160.0f) &&
+                near(arrow->hotspot_y, 6.0f / 160.0f) &&
+                arrow->recommended_size_px >= 60.0f,
+            "Chrome Arrow hotspot must land on the pointer tip");
+    require(arzoom::find_cursor_preset(arzoom::kCursorStyleDefault) == chrome,
+            "New Chrome Arrow choice must not change the approved default");
     require(arzoom::cursor_raster_asset_filename(
                 *arzoom::find_cursor_preset("classic_hand")) == nullptr,
             "procedural styles must not require raster assets");

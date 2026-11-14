@@ -300,11 +300,11 @@ bool load_extended_cursor_preset(Phase352Filter *filter,
     return true;
 }
 
-/* Both bundled Premium Hand raster presets use the same 28-frame P3.5 atlas as all
- * previous cursors. The PNG is loaded only on a preset switch; video_tick
+/* All bundled raster presets (hands and arrow) use the existing P3.5
+ * atlas. The selected PNG is loaded only on a preset switch; video_tick
  * merely advances a frame index and PSZoom samples the existing cursor_atlas.
  * No image decode, QPainter or texture allocation on audio/video callbacks. */
-bool load_raster_hand_preset(Phase352Filter *filter,
+bool load_raster_cursor_preset(Phase352Filter *filter,
                               const arzoom::CursorPreset &preset)
 {
     Phase35Filter *phase35 = phase35_from_352(filter);
@@ -337,7 +337,7 @@ bool load_raster_hand_preset(Phase352Filter *filter,
         return false;
     atlas.fill(Qt::transparent);
 
-    const QPointF fingertip(
+    const QPointF hotspot(
         preset.hotspot_x * kBuiltinCursorFrameSize,
         preset.hotspot_y * kBuiltinCursorFrameSize);
     QPainter painter(&atlas);
@@ -355,9 +355,9 @@ bool load_raster_hand_preset(Phase352Filter *filter,
         const qreal y = static_cast<qreal>(i / kBuiltinCursorColumns) *
                         kBuiltinCursorFrameSize;
         painter.save();
-        painter.translate(x + fingertip.x(), y + fingertip.y());
+        painter.translate(x + hotspot.x(), y + hotspot.y());
         painter.scale(scale_x, scale_y);
-        painter.translate(-fingertip);
+        painter.translate(-hotspot);
         painter.drawImage(QPointF(0.0, 0.0), source);
         painter.restore();
     }
@@ -419,7 +419,7 @@ void phase354_update(void *data, obs_data_t *settings)
         arzoom::find_cursor_preset(style.c_str());
     if (preset && arzoom::cursor_is_raster_preset(*preset)) {
         if (filter->loaded_raster_style != style) {
-            if (!load_raster_hand_preset(
+            if (!load_raster_cursor_preset(
                     filter->phase353->phase352, *preset)) {
                 /* A missing optional packaged asset must not black out the
                  * pointer or change camera/click feedback. Keep the previous

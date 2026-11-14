@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
-# Validate BOTH bundled hands. The original is preserved so saved settings
-# keep rendering the previous artwork; Chrome becomes the new-filter default.
+# Validate all bundled raster cursors. Saved choices remain independent;
+# Premium Hand Chrome remains the new-filter default.
 $assets = @(
     @{
         File = 'premium-hand.png'
@@ -16,6 +16,13 @@ $assets = @(
         MaxBytes = 65536
         HotspotX = 38
         HotspotY = 11
+    },
+    @{
+        File = 'premium-chrome-arrow.png'
+        Sha256 = '4ee9801f59e2e3a6157839874c1777b81331ef0082bc172fc044ec3b445a073f'
+        MaxBytes = 16384
+        HotspotX = 35
+        HotspotY = 6
     }
 )
 
@@ -49,7 +56,7 @@ foreach ($asset in $assets) {
                 throw "$($asset.File) has an opaque lower-right background"
             }
             if ($image.GetPixel($asset.HotspotX, $asset.HotspotY).A -lt 120) {
-                throw "$($asset.File) hotspot no longer touches the fingertip"
+                throw "$($asset.File) hotspot no longer touches the cursor tip"
             }
         } finally {
             $image.Dispose()
@@ -57,5 +64,5 @@ foreach ($asset in $assets) {
     } finally {
         $stream.Dispose()
     }
-    Write-Host "[PASS] $($asset.File): $($bytes.Length) bytes, transparent 160x160, fingertip ($($asset.HotspotX),$($asset.HotspotY))"
+    Write-Host "[PASS] $($asset.File): $($bytes.Length) bytes, transparent 160x160, hotspot ($($asset.HotspotX),$($asset.HotspotY))"
 }

@@ -18,6 +18,7 @@ enum class BuiltinCursorVisual {
     StickerHand,
     PremiumHand,
     PremiumHandChrome,
+    PremiumChromeArrow,
 };
 
 struct CursorPreset {
@@ -34,6 +35,7 @@ struct CursorPreset {
 inline constexpr const char *kCursorStyleOff = "off";
 inline constexpr const char *kCursorStylePremiumHand = "premium_hand";
 inline constexpr const char *kCursorStylePremiumHandChrome = "premium_hand_chrome";
+inline constexpr const char *kCursorStylePremiumChromeArrow = "premium_chrome_arrow";
 inline constexpr const char *kCursorStyleDefault = kCursorStylePremiumHandChrome;
 inline constexpr const char *kCursorStyleCustom = "custom";
 
@@ -48,7 +50,7 @@ inline constexpr const char *kCursorStyleCustom = "custom";
  * cursor categories supplied during visual research; no third-party SVG data
  * is embedded or redistributed.
  */
-inline constexpr std::array<CursorPreset, 9> kCursorPresets{{
+inline constexpr std::array<CursorPreset, 10> kCursorPresets{{
     /* Approved transparent image; click hotspot measured at index fingertip. */
     /* New default first in the picker; original is still selectable. */
     {kCursorStylePremiumHandChrome,
@@ -58,6 +60,11 @@ inline constexpr std::array<CursorPreset, 9> kCursorPresets{{
     {kCursorStylePremiumHand, "ArZoom.PresentationCursor.Preset.PremiumHand",
      BuiltinCursorVisual::PremiumHand, 28, 0.260f,
      29.0f / 160.0f, 17.0f / 160.0f, 64.0f},
+    /* User-approved metallic arrow; selectable, never the new default. */
+    {kCursorStylePremiumChromeArrow,
+     "ArZoom.PresentationCursor.Preset.PremiumChromeArrow",
+     BuiltinCursorVisual::PremiumChromeArrow, 28, 0.260f,
+     35.0f / 160.0f, 6.0f / 160.0f, 64.0f},
     {"prism", "ArZoom.PresentationCursor.Preset.Prism",
      BuiltinCursorVisual::Prism, 28, 0.280f, 0.19375f, 0.10625f, 52.0f},
     {"outline", "ArZoom.PresentationCursor.Preset.Outline",
@@ -77,11 +84,12 @@ inline constexpr std::array<CursorPreset, 9> kCursorPresets{{
 inline bool cursor_is_raster_preset(const CursorPreset &preset)
 {
     return preset.visual == BuiltinCursorVisual::PremiumHand ||
-           preset.visual == BuiltinCursorVisual::PremiumHandChrome;
+           preset.visual == BuiltinCursorVisual::PremiumHandChrome ||
+           preset.visual == BuiltinCursorVisual::PremiumChromeArrow;
 }
 
-/* Both raster presets share one atlas generator, but not one sprite.
- * Original selections remain stable and only the active sprite is decoded. */
+/* Raster presets share one atlas generator, but not one sprite.
+ * Saved selections remain stable and only the active sprite is decoded. */
 inline const char *cursor_raster_asset_filename(
     const CursorPreset &preset) noexcept
 {
@@ -90,6 +98,8 @@ inline const char *cursor_raster_asset_filename(
         return "cursors/premium-hand.png";
     case BuiltinCursorVisual::PremiumHandChrome:
         return "cursors/premium-hand-chrome.png";
+    case BuiltinCursorVisual::PremiumChromeArrow:
+        return "cursors/premium-chrome-arrow.png";
     default:
         return nullptr;
     }
