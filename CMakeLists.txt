@@ -14,7 +14,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake")
   include(defaults)
   include(helpers)
 else()
-  project(arzoom VERSION 0.7.0 LANGUAGES C CXX)
+  project(arzoom VERSION 0.7.2 LANGUAGES C CXX)
   option(ENABLE_FRONTEND_API "Use obs-frontend-api" ON)
   option(ENABLE_QT "Use Qt" ON)
 endif()
@@ -47,6 +47,7 @@ target_sources(
     src/arzoom-shortcut-timeline.hpp
     src/arzoom-properties-ux-policy.hpp
     src/arzoom-properties-ux-obs.hpp
+    src/arzoom-keycap-runtime-policy.hpp
     src/arzoom-keycap-rasterizer.hpp
     src/arzoom-keycap-rasterizer.cpp
     src/arzoom-presenter-controls.hpp
