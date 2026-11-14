@@ -12,7 +12,7 @@ $assets = @(
     },
     @{
         File = 'premium-hand-chrome.png'
-        Sha256 = 'cec032657b8a247c1bc5c848bc94a1b1b635e6c2d3040571bb2dde36bbc9ddee'
+        Sha256 = '6882dbced932ea2d12e1496f8f568b6b15ff849196832c4dc4001bec06ff86eb'
         MaxBytes = 65536
         HotspotX = 38
         HotspotY = 11
