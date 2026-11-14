@@ -24,6 +24,8 @@ RECONNAISSANCE -> REPRODUCE/BASELINE -> ROOT CAUSE -> INVARIANTS -> ARCHITECTURE
 
 Before editing, read the current project direction and accepted stable-baseline documents referenced by README. Identify the owning subsystem and all downstream consumers before changing shared camera, mapping, render, hotkey, shader, cursor, or Spotlight behavior.
 
+**Issue #25 / ArZoom Multi special rule:** before any implementation work, also read `docs/ARZOOM_MULTI_CANONICAL_IMPLEMENTATION.md` and `docs/ARZOOM_MULTI_HANDOFF.md`, then verify the current canonical Draft PR head. Those two files are the implementation source of truth and living cross-thread handoff for ArZoom Multi. The closed PR #27 synthetic-monitor runtime is superseded failure evidence and must not be resumed as the production architecture.
+
 If three consecutive patches in the same subsystem are still treating symptoms, STOP. A fourth patch requires a fresh root-cause/state-ownership/architecture audit.
 
 Do not revive superseded architectures merely because they look easier locally.
