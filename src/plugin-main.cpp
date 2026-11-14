@@ -1,3 +1,4 @@
+#include "arzoom-shortcut-observer.hpp"
 #include <obs-module.h>
 #include <obs-frontend-api.h>
 
@@ -15,7 +16,7 @@ bool arzoom_register_scene_camera_tools();
 
 namespace {
 constexpr const char *kPhase4BuildIdentity =
-    "v0.7.0-p5-spotlight-stable";
+    "v0.7.1-premium-physical-trial";
 }
 
 bool obs_module_load(void)
@@ -62,6 +63,8 @@ bool obs_module_load(void)
 
 void obs_module_unload(void)
 {
+    /* Hook worker must be stopped and joined before arzoom.dll unloads. */
+    arzoom::shortcut::shutdown();
     arzoom_unregister_spotlight_hotkeys();
     arzoom_unregister_presenter_hotkeys();
     arzoom_unregister_global_hotkey();
