@@ -13,7 +13,8 @@ struct Snapshot {
     std::uint32_t generation = 0;
 };
 
-void subscribe();
+/* Nonblocking on the OBS video tick; returns false if its worker could not start. */
+bool subscribe();
 void unsubscribe();
 Snapshot snapshot() noexcept;
 void shutdown();
