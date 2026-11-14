@@ -48,13 +48,15 @@ performance, a zero-overhead claim, or universal support.
 ## Release publication safeguards
 
 Public publishing is an **explicit release action**, never an ordinary
-`main` push. It may be launched either by manual workflow dispatch on
-`main` (`approve_stable_release=true` and `tested_commit_sha` matching
-the exact selected commit), or by deliberately creating the matching
-`v0.7.2` tag at the **current `main` HEAD**. Both paths verify this one
-owner-approved release gate, exact versioned assets, reviewed notes and
-README/website version alignment. The operator must ensure no runtime
-source changes occurred after the field-accepted candidate.
+`main` push. It may be launched by manual workflow dispatch on `main`
+(`approve_stable_release=true` and matching `tested_commit_sha`), a
+version-matched `v0.7.2` tag, or the one-off, version-locked release branch
+`release/v0.7.2`. The tag/branch must point to current `main` HEAD.
+All paths validate this one owner-approved release gate, reviewed release
+notes, matching ZIP/EXE installer and public website/README version. The
+release branch is intentionally version-locked so ordinary pushes or other
+branches cannot publish. The runtime code has not changed since the
+field-accepted build.
 
 The single `ReleaseGate: APPROVED` line at the top of this file is the
 maintainer's explicit release decision. The CI-tested release-policy guard
