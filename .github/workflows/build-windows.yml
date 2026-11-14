@@ -25,6 +25,10 @@ jobs:
         shell: pwsh
         run: ./scripts/test-release-acceptance.ps1
 
+      - name: Validate stable-download contract
+        shell: pwsh
+        run: python ./scripts/test-stable-download-links.py
+
       - name: Upload motion benchmark report
         uses: actions/upload-artifact@v4
         with:

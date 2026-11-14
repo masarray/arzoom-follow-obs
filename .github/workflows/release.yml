@@ -193,6 +193,15 @@ jobs:
           $manualZip = Join-Path $releaseDir "ArZoom-OBS-Manual-v$env:VERSION-windows-x64.zip"
           Copy-Item -LiteralPath $zip -Destination $manualZip -Force
 
+          # Stable alias is constant across versions; GitHub /releases/latest/download/
+          # resolves directly to the ZIP, even when the versioned ZIP name changes.
+          $latestManualZip = Join-Path $releaseDir "ArZoom-OBS-Manual-windows-x64.zip"
+          Copy-Item -LiteralPath $manualZip -Destination $latestManualZip -Force
+          if ((Get-FileHash -LiteralPath $manualZip -Algorithm SHA256).Hash -ne
+              (Get-FileHash -LiteralPath $latestManualZip -Algorithm SHA256).Hash) {
+            throw "Stable ZIP alias differs from the versioned package."
+          }
+
           $hashLines = @()
           foreach ($file in Get-ChildItem -LiteralPath $releaseDir -File |
             Where-Object { $_.Name -eq "ArZoom-OBS-Setup-windows-x64.exe" -or $_.Name -like "ArZoom-OBS-Manual-*.zip" }) {
@@ -214,5 +223,6 @@ jobs:
           files: |
             release/ArZoom-OBS-Setup-windows-x64.exe
             release/ArZoom-OBS-Manual-v${{ steps.version.outputs.version }}-windows-x64.zip
+            release/ArZoom-OBS-Manual-windows-x64.zip
             release/SHA256SUMS.txt
           fail_on_unmatched_files: true

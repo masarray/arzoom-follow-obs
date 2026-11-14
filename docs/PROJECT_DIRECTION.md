@@ -1,12 +1,12 @@
 # ArZoom Project Direction — Current Source of Truth
 
-**Status:** authoritative after ArZoom v0.7.0.
+**Status:** current product direction, synchronized to public Windows stable v0.7.3 (2026-11-15).
 
 This document prevents contributors, automation, and AI agents from reviving superseded experiments or regressing accepted public behavior. When historical planning documents conflict with this file or the stable-baseline documents linked below, the current stable baselines take precedence.
 
 ## Current stable product line
 
-- Public stable: **ArZoom v0.7.0 for Windows 10/11 x64**.
+- Public stable: **[ArZoom v0.7.3 for Windows 10/11 x64](https://github.com/masarray/arzoom-follow-obs/releases/latest)**; download the installer/ZIP via permanent latest-stable URLs from the landing page.
 - Phase 0 through P5 Spotlight are shipped.
 - P4.1 generalized read-only mapping + Kinematic Smart Viewport remains the accepted camera/motion baseline.
 - P5 Spotlight + Cinematic Zoom focus is the accepted presentation-attention baseline.
@@ -15,7 +15,7 @@ This document prevents contributors, automation, and AI agents from reviving sup
   - [`P5_STABLE_BASELINE.md`](P5_STABLE_BASELINE.md)
 - Active implementation blueprint for the next tutorial-camera capabilities:
   - [`TUTORIAL_CAMERA_IMPLEMENTATION_BLUEPRINT.md`](TUTORIAL_CAMERA_IMPLEMENTATION_BLUEPRINT.md)
-- Pre-release P5 design/hotfix documents remain useful engineering history but do not override the v0.7.0 stable baseline.
+- Pre-release P5 design/hotfix documents remain useful engineering history but do not override the accepted P4.1/P5 stable architectural contracts or the v0.7.3 release notes.
 
 ## Product North Star
 
@@ -118,7 +118,7 @@ Accepted v0.7.0 product behavior:
 - default area: 170%;
 - default background dim: 35%;
 - default edge softness: 40 px;
-- default Presentation Cursor: ArZoom Classic Hand;
+- default Presentation Cursor at v0.7.0: ArZoom Classic Hand (historical; v0.7.3 defaults to **Premium Hand Chrome** for new filters);
 - Spotlight master controls remain Off by default;
 - Cinematic Spotlight with Zoom is enabled by default once Spotlight controls are enabled;
 - Toggle Zoom ON/OFF owns cinematic close/open;
@@ -267,6 +267,6 @@ Stable baselines always override future-feature planning when a proposed impleme
 
 ## Current release boundary
 
-**v0.7.0** ships the accepted v0.6.0 camera/mapping baseline plus P5 Spotlight, Cinematic Spotlight with Zoom, D3D11-safe shared shader initialization, zero-refresh Spotlight runtime controls, and resize-only Spotlight behavior during Zoom +/-.
+**v0.7.3** ships the accepted camera/mapping and P5 Spotlight baseline plus premium click/keycaps, 13 cursor presets (Premium Hand Chrome new-filter default), Spotlight Focus Area 50–400% (170% default) and pointer size 24–160 px (52 px default, 512 px rendered cap). It retains D3D11-safe shared shader initialization and resize-only behavior during Zoom +/-. Direct OBS evidence for the newest art/expanded settings remains pending, as disclosed in the v0.7.3 release acceptance record.
 
-P4.2 Multi-Screen Smart Camera (#25) and P4.3 Protected Overlays (#26) are **not** included in v0.7.0. They are active future work and must remain isolated from `main` runtime until their deterministic gates and direct OBS acceptance pass.
+P4.2 Multi-Screen Smart Camera (#25, draft PR #34) and P4.3 Protected Overlays (#26) are **not** included in v0.7.3. They are active future work and must remain isolated from `main` runtime until their deterministic gates and direct OBS acceptance pass.

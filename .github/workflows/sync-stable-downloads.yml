@@ -1,0 +1,29 @@
+name: Sync stable ZIP direct-download alias
+
+# One-shot on the new release-link contract; future stable releases bundle the
+# alias in the version-locked release workflow. Does not rebuild or retag.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-stable-downloads.yml'
+      - 'scripts/sync-latest-stable-zip.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arzoom-stable-zip-alias
+  cancel-in-progress: false
+
+jobs:
+  ensure-alias:
+    if: ${{ github.repository == 'masarray/arzoom-follow-obs' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify current latest stable and publish missing immutable ZIP alias
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash ./scripts/sync-latest-stable-zip.sh
