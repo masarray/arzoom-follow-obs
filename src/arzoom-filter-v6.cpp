@@ -343,8 +343,8 @@ void phase351_render(void *data, gs_effect_t *effect)
         filter->base_cursor_size_px.load(std::memory_order_acquire);
 
     /* Match the replacement cursor to the magnified captured screen. The
-     * existing shader already has a 256 px safety clamp, so normal 52 px at
-     * 2x/3x/4x becomes approximately 104/156/208 px without runaway size. */
+     * GPU and CPU both cap final output at 512 px. Normal 52 px at
+     * 2x/3x/4x still becomes approximately 104/156/208 px. */
     filter->phase35->cursor_size_px.store(
         base_size * zoom, std::memory_order_release);
     phase35_render(filter->phase35, effect);
@@ -361,7 +361,8 @@ void phase351_update(void *data, obs_data_t *settings)
     const float base_size = std::clamp(
         static_cast<float>(obs_data_get_int(
             settings, SETTING_PRESENTATION_CURSOR_SIZE)),
-        24.0f, 96.0f);
+        static_cast<float>(arzoom::kPresentationCursorBaseMinPixels),
+         static_cast<float>(arzoom::kPresentationCursorBaseMaxPixels));
     filter->base_cursor_size_px.store(base_size, std::memory_order_release);
 
     const bool auto_key =
@@ -418,7 +419,8 @@ void *phase351_create(obs_data_t *settings, obs_source_t *context)
     filter->base_cursor_size_px.store(
         std::clamp(static_cast<float>(obs_data_get_int(
                        settings, SETTING_PRESENTATION_CURSOR_SIZE)),
-                   24.0f, 96.0f),
+                   static_cast<float>(arzoom::kPresentationCursorBaseMinPixels),
+         static_cast<float>(arzoom::kPresentationCursorBaseMaxPixels)),
         std::memory_order_release);
 
     const bool auto_key =

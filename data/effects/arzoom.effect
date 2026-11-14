@@ -326,7 +326,7 @@ float3 apply_presentation_cursor(float3 base, float2 output_uv,
         return base;
 
     const float2 safe_asset = max(cursor_asset_size, float2(1.0, 1.0));
-    const float display_height_px = clamp(cursor_size_px, 8.0, 256.0);
+    const float display_height_px = clamp(cursor_size_px, 8.0, 512.0);
     const float display_width_px =
         display_height_px * safe_asset.x / safe_asset.y;
     const float2 display_size_px =

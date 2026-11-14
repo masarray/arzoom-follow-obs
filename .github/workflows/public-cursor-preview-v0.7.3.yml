@@ -1,0 +1,98 @@
+name: Public Cursor Preview v0.7.3 RC1
+
+# Public pre-release only. The stable release pipeline requires separate,
+# owner-reviewed direct OBS evidence and must not be bypassed here.
+on:
+  push:
+    branches:
+      - release/cursor-v0.7.3-rc1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arzoom-public-cursor-preview-v0.7.3-rc1
+  cancel-in-progress: false
+
+jobs:
+  windows-preview:
+    name: Validate, package and publish public Windows preview
+    if: ${{ github.repository == 'masarray/arzoom-follow-obs' && github.ref == 'refs/heads/release/cursor-v0.7.3-rc1' }}
+    runs-on: windows-2022
+    steps:
+      - name: Checkout exact release-candidate source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enforce dedicated preview boundary and version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -ne 'refs/heads/release/cursor-v0.7.3-rc1') {
+            throw 'Public preview only runs on the explicitly named RC branch.'
+          }
+          $version = (Get-Content -Raw buildspec.json | ConvertFrom-Json).version
+          if ($version -cne '0.7.3') { throw 'Unexpected version; expected 0.7.3.' }
+          git merge-base --is-ancestor e9c09ca175f505b3cb9e5f28f8302a9200632df1 HEAD
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Preview source must descend from the reviewed Blue Sleeve cursor tester.'
+          }
+          if (-not (Test-Path docs/RELEASE_NOTES_v0.7.3-rc1.md -PathType Leaf)) {
+            throw 'Missing public preview notes.'
+          }
+
+      - name: Deterministic validation
+        shell: pwsh
+        run: ./scripts/run-phase0-validation.ps1
+
+      - name: Validate all shipped cursor PNGs, hotspots and silhouettes
+        shell: pwsh
+        run: ./scripts/validate-premium-cursor.ps1
+
+      - name: Validate stable-release policy tests (no approval implied)
+        shell: pwsh
+        run: ./scripts/test-release-acceptance.ps1
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build OBS DLL, Windows installer and manual ZIP
+        shell: pwsh
+        run: ./scripts/build-local-windows.ps1 -VisualStudio 2022 -Ci
+
+      - name: Verify artifacts and generate SHA-256 checksums
+        shell: pwsh
+        run: |
+          $dir = Join-Path $PWD 'release'
+          $files = @(
+            'ArZoom-OBS-Setup-v0.7.3-windows-x64.exe',
+            'arzoom-obs-v0.7.3-windows-x64.zip'
+          )
+          foreach ($file in $files) {
+            if (-not (Test-Path -LiteralPath (Join-Path $dir $file) -PathType Leaf)) {
+              throw "Missing Windows preview artifact: $file"
+            }
+          }
+          $hashes = foreach ($file in $files) {
+            $hash = (Get-FileHash -LiteralPath (Join-Path $dir $file) -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $file"
+          }
+          $hashes | Set-Content -LiteralPath (Join-Path $dir 'SHA256SUMS-v0.7.3-rc1.txt') -Encoding ascii
+
+      - name: Publish public RC (never latest stable)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: preview-v0.7.3-rc1
+          target_commitish: ${{ github.sha }}
+          name: ArZoom v0.7.3 RC1 — Public Cursor Preview
+          body_path: docs/RELEASE_NOTES_v0.7.3-rc1.md
+          draft: false
+          prerelease: true
+          make_latest: false
+          generate_release_notes: false
+          files: |
+            release/ArZoom-OBS-Setup-v0.7.3-windows-x64.exe
+            release/arzoom-obs-v0.7.3-windows-x64.zip
+            release/SHA256SUMS-v0.7.3-rc1.txt
+          fail_on_unmatched_files: true

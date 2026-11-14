@@ -490,7 +490,8 @@ void phase35_update(void *data, obs_data_t *settings)
     const float size_px = std::clamp(
         static_cast<float>(obs_data_get_int(
             settings, SETTING_PRESENTATION_CURSOR_SIZE)),
-        24.0f, 96.0f);
+        static_cast<float>(arzoom::kPresentationCursorBaseMinPixels),
+         static_cast<float>(arzoom::kPresentationCursorBaseMaxPixels));
     const float hotspot_x = std::clamp(
         static_cast<float>(obs_data_get_int(
             settings, SETTING_PRESENTATION_CURSOR_HOTSPOT_X)) / 100.0f,
@@ -560,7 +561,8 @@ obs_properties_t *phase35_properties(void *data)
     obs_property_t *size = obs_properties_add_int_slider(
         cursor, SETTING_PRESENTATION_CURSOR_SIZE,
         obs_module_text("ArZoom.PresentationCursor.Size"),
-        24, 96, 1);
+        arzoom::kPresentationCursorBaseMinPixels,
+        arzoom::kPresentationCursorBaseMaxPixels, 1);
     obs_property_int_set_suffix(size, " px");
 
     obs_property_t *info = obs_properties_add_text(

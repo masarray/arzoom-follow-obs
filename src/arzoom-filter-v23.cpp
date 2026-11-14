@@ -129,7 +129,8 @@ void phase23_publish_cinematic_visual(Phase23Filter *wrapper,
         base_radius, full_radius);
     const float working_area_percent = std::clamp(
         filter->area_scale_percent.load(std::memory_order_acquire),
-        50.0f, 200.0f);
+        arzoom::kSpotlightAreaMinPercent,
+        arzoom::kSpotlightAreaMaxPercent);
 
     const float visual_area_percent =
         full_area_percent +
@@ -234,8 +235,11 @@ bool phase23_migrate_defaults(obs_data_t *settings)
     obs_data_set_int(settings, SETTING_SPOTLIGHT_AREA_SCALE, 170);
     obs_data_set_int(settings, SETTING_SPOTLIGHT_DIM, 35);
     obs_data_set_int(settings, SETTING_SPOTLIGHT_FEATHER, 40);
-    obs_data_set_string(settings, SETTING_PRESENTATION_CURSOR_STYLE,
-                        "classic_hand");
+    /* Existing explicit selections (including Off) belong to the user.
+     * Apply Premium Hand only when this filter never chose a cursor. */
+    if (!obs_data_has_user_value(settings, SETTING_PRESENTATION_CURSOR_STYLE))
+        obs_data_set_string(settings, SETTING_PRESENTATION_CURSOR_STYLE,
+                            arzoom::kCursorStyleDefault);
     obs_data_set_bool(settings, SETTING_SPOTLIGHT_LINK_ZOOM, true);
     obs_data_set_string(settings, SETTING_SPOTLIGHT_CINEMATIC_SPEED,
                         CINEMATIC_SPEED_BALANCED);
@@ -243,7 +247,7 @@ bool phase23_migrate_defaults(obs_data_t *settings)
 
     blog(LOG_INFO,
          "[ArZoom] P5 cinematic defaults applied: cursor focus, 170%% area, "
-         "35%% dim, 40 px softness, Classic Hand");
+         "35%% dim, 40 px softness, Premium Hand default");
     return true;
 }
 
@@ -280,7 +284,7 @@ void phase23_defaults(obs_data_t *settings)
     obs_data_set_default_int(settings, SETTING_SPOTLIGHT_DIM, 35);
     obs_data_set_default_int(settings, SETTING_SPOTLIGHT_FEATHER, 40);
     obs_data_set_default_string(settings, SETTING_PRESENTATION_CURSOR_STYLE,
-                                "classic_hand");
+                                arzoom::kCursorStyleDefault);
     obs_data_set_default_bool(settings, SETTING_SPOTLIGHT_LINK_ZOOM, true);
     obs_data_set_default_string(settings, SETTING_SPOTLIGHT_CINEMATIC_SPEED,
                                 CINEMATIC_SPEED_BALANCED);
@@ -354,7 +358,9 @@ obs_properties_t *phase23_properties(void *data)
 
     obs_property_t *area = obs_properties_add_int_slider(
         spotlight, SETTING_SPOTLIGHT_AREA_SCALE,
-        obs_module_text("ArZoom.Spotlight.AreaSize"), 50, 200, 5);
+        obs_module_text("ArZoom.Spotlight.AreaSize"),
+        static_cast<int>(arzoom::kSpotlightAreaMinPercent),
+        static_cast<int>(arzoom::kSpotlightAreaMaxPercent), 5);
     obs_property_int_set_suffix(area, " %");
 
     obs_property_t *dim = obs_properties_add_int_slider(

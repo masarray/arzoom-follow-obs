@@ -16,6 +16,12 @@ enum class BuiltinCursorVisual {
     Parakeet,
     ClassicHand,
     StickerHand,
+    PremiumHand,
+    PremiumHandChrome,
+    PremiumChromeArrow,
+    Hand3DPointer,
+    CartoonHandPointer,
+    BlueSleeveHand,
 };
 
 struct CursorPreset {
@@ -30,6 +36,13 @@ struct CursorPreset {
 };
 
 inline constexpr const char *kCursorStyleOff = "off";
+inline constexpr const char *kCursorStylePremiumHand = "premium_hand";
+inline constexpr const char *kCursorStylePremiumHandChrome = "premium_hand_chrome";
+inline constexpr const char *kCursorStylePremiumChromeArrow = "premium_chrome_arrow";
+inline constexpr const char *kCursorStyleHand3DPointer = "hand_3d_pointer";
+inline constexpr const char *kCursorStyleCartoonHandPointer = "cartoon_hand_pointer";
+inline constexpr const char *kCursorStyleBlueSleeveHand = "blue_sleeve_hand";
+inline constexpr const char *kCursorStyleDefault = kCursorStylePremiumHandChrome;
 inline constexpr const char *kCursorStyleCustom = "custom";
 
 /*
@@ -43,7 +56,36 @@ inline constexpr const char *kCursorStyleCustom = "custom";
  * cursor categories supplied during visual research; no third-party SVG data
  * is embedded or redistributed.
  */
-inline constexpr std::array<CursorPreset, 7> kCursorPresets{{
+inline constexpr std::array<CursorPreset, 13> kCursorPresets{{
+    /* Approved transparent image; click hotspot measured at index fingertip. */
+    /* New default first in the picker; original is still selectable. */
+    {kCursorStylePremiumHandChrome,
+     "ArZoom.PresentationCursor.Preset.PremiumHandChrome",
+     BuiltinCursorVisual::PremiumHandChrome, 28, 0.260f,
+     38.0f / 160.0f, 11.0f / 160.0f, 64.0f},
+    {kCursorStylePremiumHand, "ArZoom.PresentationCursor.Preset.PremiumHand",
+     BuiltinCursorVisual::PremiumHand, 28, 0.260f,
+     29.0f / 160.0f, 17.0f / 160.0f, 64.0f},
+    /* User-approved metallic arrow; selectable, never the new default. */
+    {kCursorStylePremiumChromeArrow,
+     "ArZoom.PresentationCursor.Preset.PremiumChromeArrow",
+     BuiltinCursorVisual::PremiumChromeArrow, 28, 0.260f,
+     25.0f / 160.0f, 4.0f / 160.0f, 64.0f},
+    /* User-supplied 3D pointing hand; independent, opt-in preset. */
+    {kCursorStyleHand3DPointer,
+     "ArZoom.PresentationCursor.Preset.Hand3DPointer",
+     BuiltinCursorVisual::Hand3DPointer, 28, 0.260f,
+     14.0f / 160.0f, 15.0f / 160.0f, 72.0f},
+    /* User-approved illustrated pointing hand, rasterized once per selection. */
+    {kCursorStyleCartoonHandPointer,
+     "ArZoom.PresentationCursor.Preset.CartoonHandPointer",
+     BuiltinCursorVisual::CartoonHandPointer, 28, 0.260f,
+     23.0f / 160.0f, 7.0f / 160.0f, 72.0f},
+    /* Glossy pointing hand, full blue cylindrical sleeve; fingertip hotspot. */
+    {kCursorStyleBlueSleeveHand,
+     "ArZoom.PresentationCursor.Preset.BlueSleeveHand",
+     BuiltinCursorVisual::BlueSleeveHand, 28, 0.260f,
+     37.0f / 160.0f, 5.0f / 160.0f, 80.0f},
     {"prism", "ArZoom.PresentationCursor.Preset.Prism",
      BuiltinCursorVisual::Prism, 28, 0.280f, 0.19375f, 0.10625f, 52.0f},
     {"outline", "ArZoom.PresentationCursor.Preset.Outline",
@@ -59,6 +101,39 @@ inline constexpr std::array<CursorPreset, 7> kCursorPresets{{
     {"sticker_hand", "ArZoom.PresentationCursor.Preset.StickerHand",
      BuiltinCursorVisual::StickerHand, 28, 0.260f, 0.41875f, 0.05625f, 60.0f},
 }};
+
+inline bool cursor_is_raster_preset(const CursorPreset &preset)
+{
+    return preset.visual == BuiltinCursorVisual::PremiumHand ||
+           preset.visual == BuiltinCursorVisual::PremiumHandChrome ||
+           preset.visual == BuiltinCursorVisual::PremiumChromeArrow ||
+           preset.visual == BuiltinCursorVisual::Hand3DPointer ||
+           preset.visual == BuiltinCursorVisual::CartoonHandPointer ||
+           preset.visual == BuiltinCursorVisual::BlueSleeveHand;
+}
+
+/* Raster presets share one atlas generator, but not one sprite.
+ * Saved selections remain stable and only the active sprite is decoded. */
+inline const char *cursor_raster_asset_filename(
+    const CursorPreset &preset) noexcept
+{
+    switch (preset.visual) {
+    case BuiltinCursorVisual::PremiumHand:
+        return "cursors/premium-hand.png";
+    case BuiltinCursorVisual::PremiumHandChrome:
+        return "cursors/premium-hand-chrome.png";
+    case BuiltinCursorVisual::PremiumChromeArrow:
+        return "cursors/premium-chrome-arrow.png";
+    case BuiltinCursorVisual::Hand3DPointer:
+        return "cursors/hand-3d-pointer.png";
+    case BuiltinCursorVisual::CartoonHandPointer:
+        return "cursors/cartoon-hand-pointer.png";
+    case BuiltinCursorVisual::BlueSleeveHand:
+        return "cursors/blue-sleeve-hand.png";
+    default:
+        return nullptr;
+    }
+}
 
 inline float cursor_tactile_smoothstep(float x)
 {

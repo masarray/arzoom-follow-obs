@@ -141,6 +141,22 @@ void cursor_size_tracks_camera_zoom()
     require(near(four.size_output.x, one.size_output.x * 4.0f, 1.0e-7f) &&
                 near(four.size_output.y, one.size_output.y * 4.0f, 1.0e-7f),
             "Presentation Cursor did not scale 4x with the camera");
+
+    require(kPresentationCursorBaseMaxPixels == 160 &&
+                near(presentation_cursor_scaled_height(160.0f, 1.0f), 160.0f) &&
+                near(presentation_cursor_scaled_height(160.0f, 2.0f), 320.0f) &&
+                near(presentation_cursor_scaled_height(160.0f, 3.0f), 480.0f) &&
+                near(presentation_cursor_scaled_height(160.0f, 4.0f), 512.0f) &&
+                near(presentation_cursor_scaled_height(160.0f, 6.0f), 512.0f),
+            "Extended cursor sizes must follow zoom until the shared 512px cap");
+    const auto large = presentation_cursor_geometry(
+        content, {0.5f, 0.5f}, 4.0f,
+        {1920.0f, 1080.0f}, {160.0f, 160.0f}, hotspot, 160.0f);
+    require(near(presentation_cursor_hotspot_from_geometry(large, hotspot).x,
+                 large.hotspot_output.x, 1.0e-6f) &&
+                near(presentation_cursor_hotspot_from_geometry(large, hotspot).y,
+                 large.hotspot_output.y, 1.0e-6f),
+            "Large cursor must preserve the click hotspot at 4x zoom");
 }
 
 void overview_mapping_keeps_hotspot_exact()

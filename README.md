@@ -10,12 +10,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe"><img alt="Download ArZoom installer" src="https://img.shields.io/badge/Download-Windows%20installer-2563eb?style=for-the-badge&logo=windows11&logoColor=white"></a>
+  <a href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe"><img alt="Download ArZoom installer" src="https://img.shields.io/badge/Download-Windows%20installer-2563eb?style=for-the-badge&logo=windows11&logoColor=white"></a>
   <a href="https://masarray.github.io/arzoom-follow-obs/"><img alt="ArZoom website" src="https://img.shields.io/badge/Open-Setup%20guide-0f766e?style=for-the-badge"></a>
 </p>
 
 <p align="center">
-  <img alt="Version 0.7.2" src="https://img.shields.io/badge/version-0.7.2-0f766e">
+  <img alt="Version 0.7.3" src="https://img.shields.io/badge/version-0.7.3-0f766e">
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?logo=windows11&logoColor=white">
   <img alt="OBS Studio plugin" src="https://img.shields.io/badge/OBS%20Studio-native%20plugin-302e31?logo=obsstudio&logoColor=white">
   <a href="LICENSE"><img alt="GPL 2.0 or later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue"></a>
@@ -23,9 +23,9 @@
 
 ArZoom is a native OBS presentation-camera plugin for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming.
 
-**[v0.7.2 is the current Windows stable release](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2).** It preserves the accepted P4.1 smart viewport and P5 cinematic Spotlight, and adds premium single-ring mouse click feedback, optional physical shortcut keycaps, and a compact native OBS Properties interface. Mouse clicks **never** activate auto zoom.
+**[ArZoom v0.7.3 is the Windows stable release](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3).** It retains the native P4.1 camera, P5 cinematic Spotlight, click feedback, opt-in shortcut keycaps and compact OBS Properties. This update adds **13 Presentation Cursor presets**, including Blue Sleeve Hand, plus **Spotlight Focus Area to 400%** and **Cursor Size to 160 px**. Mouse clicks **never** activate auto zoom.
 
-**Official v0.7.2 downloads:** [Windows installer](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe) · [Portable/manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Manual-v0.7.2-windows-x64.zip) · [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/SHA256SUMS.txt) · [Release notes](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2). These are pinned to the published stable version, not a development build.
+**Official v0.7.3 downloads:** [Windows installer](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe) · [Portable/manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Manual-v0.7.3-windows-x64.zip) · [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/SHA256SUMS.txt) · [Release notes](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3). These are pinned to the published stable version, not a development build.
 
 **Privacy:** shortcut keycaps are OFF by default. When switched on, the Windows keyboard observer displays recognized action chords, not ordinary typing; it does not store typed text or clipboard history. Disable the optional feature during sensitive work.
 
@@ -34,7 +34,14 @@ ArZoom is a native OBS presentation-camera plugin for tutorials, engineering tra
   <img alt="ArZoom Scene Camera running in OBS Studio" src="docs/assets/product-screenshot.png" width="920">
 </p>
 
-## Highlights in v0.7.2
+## Highlights in v0.7.3
+
+### Expanded Spotlight and hand-pointer options
+
+- **Spotlight Focus Area: 50–400%** (5% steps, unchanged 170% default); at 400%, the lit area can fill most of the screen.
+- **Pointer Size: 24–160 px** (default 52 px), enlarged with camera zoom and capped at **512 output pixels**. Extremely large cursors may look softer due to 160×160 source artwork.
+- **13 built-in cursor styles**, including Blue Sleeve Hand with a full cylindrical cuff, Cartoon Hand Pointer, 3D Hand Pointer, Premium Chrome Arrow and Premium Hand Chrome. **Premium Hand Chrome** is the new-filter default; saved selections remain intact.
+
 
 ### Premium click, shortcut keycaps, and compact controls
 
@@ -67,7 +74,7 @@ Accepted default Spotlight presentation settings:
 - area size: **170%**;
 - background dim: **35%**;
 - edge softness: **40 px**;
-- Presentation Cursor: **ArZoom Classic Hand**;
+- Presentation Cursor: **Premium Hand Chrome**;
 - Cinematic Spotlight with Zoom: **On** after Spotlight controls are enabled;
 - cinematic speed: **Balanced**.
 
@@ -79,7 +86,7 @@ Toggle Zoom ON/OFF owns the cinematic open/close choreography. While Zoom is alr
 
 ### D3D11-safe shared shader ABI
 
-An earlier P5 regression caused black output when shader parameters were not initialized. The stable renderer now primes shared Draw parameters deterministically and preserves a safe fallback when the optional keycap shader ABI is unavailable. A full renderer/backend matrix is not claimed for v0.7.2.
+An earlier P5 regression caused black output when shader parameters were not initialized. The stable renderer now primes shared Draw parameters deterministically and preserves a safe fallback when the optional keycap shader ABI is unavailable. A full renderer/backend matrix is not claimed for v0.7.3.
 
 ## Scene Camera architecture
 
@@ -121,11 +128,11 @@ Architecture invariants:
 
 ### Recommended: Windows installer
 
-**[Download ArZoom-OBS-Setup-windows-x64.exe](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe)**
+**[Download ArZoom-OBS-Setup-windows-x64.exe](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe)**
 
 Close OBS completely before installation. The installer supports Standard OBS Studio and OBS Portable/custom roots containing `bin\64bit\obs64.exe`.
 
-The [manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Manual-v0.7.2-windows-x64.zip) and [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/SHA256SUMS.txt) are published alongside this installer. Download the [v0.7.2 release notes](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2) for upgrade details.
+The [manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Manual-v0.7.3-windows-x64.zip) and [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/SHA256SUMS.txt) are published alongside this installer. Download the [v0.7.3 release notes](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3) for upgrade details.
 
 ## Recommended workflow
 
@@ -170,7 +177,7 @@ Profile-persistent OBS hotkeys include:
 
 ## Presentation Cursor and click feedback
 
-Seven built-in ArZoom cursor presets are available, including **Classic Hand** and **Sticker Hand**. Cursor size follows the exact live camera zoom and keeps its hotspot aligned through camera motion.
+**13 built-in cursor presets** are available, including Blue Sleeve Hand, Cartoon Hand Pointer, 3D Hand Pointer, Premium Hand Chrome and legacy procedural pointers. Cursor size is **24–160 px** and follows live camera zoom up to a **512 px** output cap, with its hotspot kept aligned.
 
 Click feedback is GPU-native, content-anchored and bounded. Left/right/middle clicks create a single luminous ring; quick repeated clicks at the same point recharge it. Click feedback never starts automatic Zoom.
 
@@ -182,12 +189,12 @@ ArZoom does not require AI, OCR, image recognition, cloud processing, or frame a
 
 ## Compatibility
 
-| Item | v0.7.2 support |
+| Item | v0.7.3 support |
 |---|---|
 | Operating system | Windows 10/11 x64 |
 | Build baseline | OBS Studio 31.1.1 |
-| v0.7.2 user-supplied functional recording | OBS 33.0.1 · 1920×1080/60 FPS (short smoke test) |
-| Earlier P5 verification | OBS 32.1.2 / D3D11 (previous baseline, not full v0.7.2 matrix) |
+| v0.7.2 user-supplied functional recording (prior baseline) | OBS 33.0.1 · 1920×1080/60 FPS (short smoke test) |
+| Earlier P5 verification | OBS 32.1.2 / D3D11 (previous baseline, not full v0.7.3 matrix) |
 | Scene Camera | Supported |
 | Per-source Display Capture filter | Supported |
 | Scene-wide Smart Follow | One proven top-level Display Capture; deterministic axis-aligned fullscreen/scale/inset/crop mapping |
@@ -202,7 +209,7 @@ ArZoom does not require AI, OCR, image recognition, cloud processing, or frame a
 
 ## Engineering gates
 
-The [published v0.7.2 stable release](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2) was built after **23/23 deterministic tests**, six release-gate safety cases, and Windows DLL, ZIP and installer compilation/packaging. A supplied 1920×1080/60 FPS OBS recording demonstrates click/keycap presentation on OBS 33.0.1. This short smoke recording is not an isolated GPU benchmark or evidence of long-duration, clean-install, or 4K acceptance; see [`docs/RELEASE_ACCEPTANCE_v0.7.2.md`](docs/RELEASE_ACCEPTANCE_v0.7.2.md).
+The v0.7.3 candidate passed [Windows CI run #43645833252](https://github.com/masarray/arzoom-follow-obs/actions/runs/43645833252), including deterministic regression tests, PNG validation, release-policy tests, plugin compilation and EXE/ZIP packaging. The earlier v0.7.2 1080p60 OBS recording demonstrates the retained click/keycap baseline, **not** the new hand cursors or extended settings. Direct new-feature OBS capture, 4K performance measurements, soak and clean-install matrices remain unverified; see [`docs/RELEASE_ACCEPTANCE_v0.7.3.md`](docs/RELEASE_ACCEPTANCE_v0.7.3.md).
 
 Run locally on Windows PowerShell:
 

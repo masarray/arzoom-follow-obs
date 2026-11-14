@@ -436,7 +436,8 @@ void phase51_update(void *data, obs_data_t *settings)
     filter->area_scale_percent.store(
         std::clamp(static_cast<float>(
                        obs_data_get_int(settings, SETTING_SPOTLIGHT_AREA_SCALE)),
-                   50.0f, 200.0f),
+                   arzoom::kSpotlightAreaMinPercent,
+                    arzoom::kSpotlightAreaMaxPercent),
         std::memory_order_release);
 
     /* v15 shader distinguishes rounded rectangle from ellipse. Circle is the
@@ -535,7 +536,9 @@ obs_properties_t *phase51_properties(void *data)
 
     obs_property_t *area = obs_properties_add_int_slider(
         spotlight, SETTING_SPOTLIGHT_AREA_SCALE,
-        obs_module_text("ArZoom.Spotlight.AreaSize"), 50, 200, 5);
+        obs_module_text("ArZoom.Spotlight.AreaSize"),
+        static_cast<int>(arzoom::kSpotlightAreaMinPercent),
+        static_cast<int>(arzoom::kSpotlightAreaMaxPercent), 5);
     obs_property_int_set_suffix(area, " %");
 
     obs_property_t *dim = obs_properties_add_int_slider(
@@ -584,7 +587,8 @@ void phase51_set_extension_uniforms(Phase51Filter *filter)
         return;
     const float scale = std::clamp(
         filter->area_scale_percent.load(std::memory_order_acquire),
-        50.0f, 200.0f) / 100.0f;
+        arzoom::kSpotlightAreaMinPercent,
+                    arzoom::kSpotlightAreaMaxPercent) / 100.0f;
     const auto shape = static_cast<Phase51Shape>(
         filter->shape.load(std::memory_order_acquire));
     gs_effect_set_float(filter->area_scale_param, scale);

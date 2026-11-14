@@ -88,6 +88,12 @@ void draw_builtin_frame(QPainter &painter,
     case arzoom::BuiltinCursorVisual::Outline: rotation = 1.0f; break;
     case arzoom::BuiltinCursorVisual::Azure: rotation = -0.8f; break;
     case arzoom::BuiltinCursorVisual::Orchid: rotation = 1.4f; break;
+    case arzoom::BuiltinCursorVisual::PremiumHand: break;
+    case arzoom::BuiltinCursorVisual::PremiumHandChrome: break;
+    case arzoom::BuiltinCursorVisual::PremiumChromeArrow: break;
+    case arzoom::BuiltinCursorVisual::Hand3DPointer: break;
+    case arzoom::BuiltinCursorVisual::CartoonHandPointer: break;
+    case arzoom::BuiltinCursorVisual::BlueSleeveHand: break;
     }
     const QPolygonF polygon = transformed_pointer(press, rotation);
 
@@ -384,7 +390,8 @@ void phase352_update(void *data, obs_data_t *settings)
 
     if (const arzoom::CursorPreset *preset =
             arzoom::find_cursor_preset(style.c_str())) {
-        if (style_changed || custom_source_changed)
+        if (!arzoom::cursor_is_raster_preset(*preset) &&
+            (style_changed || custom_source_changed))
             load_builtin_preset(filter, *preset);
         Phase35Filter *phase35 = phase35_from_352(filter);
         if (phase35) {
@@ -455,7 +462,9 @@ obs_properties_t *phase352_properties(void *data)
 
     obs_property_t *size = obs_properties_add_int_slider(
         cursor, SETTING_PRESENTATION_CURSOR_SIZE,
-        obs_module_text("ArZoom.PresentationCursor.Size"), 24, 96, 1);
+        obs_module_text("ArZoom.PresentationCursor.Size"),
+        arzoom::kPresentationCursorBaseMinPixels,
+        arzoom::kPresentationCursorBaseMaxPixels, 1);
     obs_property_int_set_suffix(size, " px");
 
     obs_property_t *info = obs_properties_add_text(

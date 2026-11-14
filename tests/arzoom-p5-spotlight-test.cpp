@@ -59,6 +59,19 @@ int main()
     assert(near(circle_100.x, circle_100.y));
     assert(circle_50.x < circle_100.x && circle_100.x < circle_200.x);
     assert(near(circle_200.x / circle_100.x, 2.0f));
+    const auto circle_300 = spotlight_focus_half_size_px(
+        SpotlightShape::Circle, 300.0f, 1920.0f, 1080.0f);
+    const auto circle_400 = spotlight_focus_half_size_px(
+        SpotlightShape::Circle, 400.0f, 1920.0f, 1080.0f);
+    const auto circle_500 = spotlight_focus_half_size_px(
+        SpotlightShape::Circle, 500.0f, 1920.0f, 1080.0f);
+    assert(near(circle_300.x / circle_100.x, 3.0f));
+    assert(near(circle_400.x / circle_100.x, 4.0f));
+    assert(near(circle_500.x, circle_400.x));
+    assert(near(spotlight_focus_half_size_px(
+        SpotlightShape::Ellipse, 350.0f, 1920.0f, 1080.0f).x /
+        spotlight_focus_half_size_px(
+        SpotlightShape::Ellipse, 100.0f, 1920.0f, 1080.0f).x, 3.5f));
 
     const float circle_center = spotlight_circle_signed_distance_px(
         {0.0f, 0.0f}, circle_100.x);
