@@ -7,6 +7,7 @@
 uniform float4x4 ViewProj;
 uniform texture2d image;
 uniform texture2d cursor_atlas;
+uniform texture2d keycap_atlas;
 
 /* Camera ABI. */
 uniform float zoom_amount;
@@ -53,6 +54,10 @@ uniform float cursor_frame;
 uniform float cursor_size_px;
 uniform float cursor_visible;
 
+/* Event-driven physical keycap atlas; neutral opacity MUST be primed. */
+uniform float2 keycap_size_px;
+uniform float keycap_opacity;
+
 sampler_state textureSampler {
     Filter   = Linear;
     AddressU = Clamp;
@@ -60,6 +65,12 @@ sampler_state textureSampler {
 };
 
 sampler_state cursorSampler {
+    Filter   = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
+sampler_state keycapSampler {
     Filter   = Linear;
     AddressU = Clamp;
     AddressV = Clamp;
@@ -348,6 +359,32 @@ float3 apply_presentation_cursor(float3 base, float2 output_uv,
     return base;
 }
 
+/* Physical keyboard overlay stays fixed in final output pixels, regardless
+ * of camera zoom or pan. Rasterization is retained and only uploaded on new
+ * semantic shortcut generation, never per rendered frame. */
+float3 apply_keycap_overlay(float3 base, float2 output_uv,
+                            float2 safe_viewport)
+{
+    if (keycap_opacity < 0.005)
+        return base;
+
+    const float scale = clamp(safe_viewport.y / 1080.0, 0.75, 1.60);
+    const float2 visible_px = max(keycap_size_px * scale,
+                                  float2(1.0, 1.0));
+    const float2 size_uv = visible_px / safe_viewport;
+    const float2 top_left = float2(
+        0.50 - 0.50 * size_uv.x,
+        1.0 - (42.0 * scale / safe_viewport.y) - size_uv.y);
+    const float2 local_uv = (output_uv - top_left) / size_uv;
+    if (any(local_uv < float2(0.0, 0.0)) ||
+        any(local_uv > float2(1.0, 1.0)))
+        return base;
+
+    const float4 keycaps = keycap_atlas.Sample(keycapSampler, local_uv);
+    return lerp(base, keycaps.rgb,
+                saturate(keycaps.a * keycap_opacity));
+}
+
 float4 PSZoom(FragData f_in) : TARGET
 {
     const float safe_zoom = max(zoom_amount, 1.0);
@@ -375,6 +412,9 @@ float4 PSZoom(FragData f_in) : TARGET
     /* Cursor is composited last so click rings naturally radiate behind it. */
     color.rgb = apply_presentation_cursor(
         color.rgb, f_in.uv, safe_zoom, safe_viewport);
+
+    /* Shortcut keycaps are a final-output HUD, never a camera input. */
+    color.rgb = apply_keycap_overlay(color.rgb, f_in.uv, safe_viewport);
     return color;
 }
 
