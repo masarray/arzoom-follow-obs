@@ -1,36 +1,61 @@
 $ErrorActionPreference = 'Stop'
-$path = Join-Path $PSScriptRoot '../data/cursors/premium-hand.png'
-if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-    throw 'Bundled Premium Hand cursor image is missing.'
-}
-$bytes = [System.IO.File]::ReadAllBytes((Resolve-Path $path))
-if ($bytes.Length -gt 16384 -or $bytes.Length -lt 512) {
-    throw "Unexpected Premium Hand size: $($bytes.Length) bytes."
-}
-$sha = [System.BitConverter]::ToString(
-    [System.Security.Cryptography.SHA256]::HashData($bytes)
-).Replace('-', '').ToLowerInvariant()
-if ($sha -ne '691d368d833bd78c9a186589ddf125be5007eba8eae603a9c970a7efe526b626') {
-    throw 'Bundled Premium Hand PNG does not match approved optimized artwork.'
-}
+
+# Validate BOTH bundled hands. The original is preserved so saved settings
+# keep rendering the previous artwork; Chrome becomes the new-filter default.
+$assets = @(
+    @{
+        File = 'premium-hand.png'
+        Sha256 = '691d368d833bd78c9a186589ddf125be5007eba8eae603a9c970a7efe526b626'
+        MaxBytes = 16384
+        HotspotX = 29
+        HotspotY = 17
+    },
+    @{
+        File = 'premium-hand-chrome.png'
+        Sha256 = 'cec032657b8a247c1bc5c848bc94a1b1b635e6c2d3040571bb2dde36bbc9ddee'
+        MaxBytes = 65536
+        HotspotX = 38
+        HotspotY = 11
+    }
+)
+
 Add-Type -AssemblyName System.Drawing
-$stream = [System.IO.MemoryStream]::new($bytes, $false)
-try {
-    $image = [System.Drawing.Bitmap]::new($stream)
+foreach ($asset in $assets) {
+    $path = Join-Path $PSScriptRoot "../data/cursors/$($asset.File)"
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Missing bundled cursor image: $($asset.File)"
+    }
+    $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path $path))
+    if ($bytes.Length -lt 512 -or $bytes.Length -gt $asset.MaxBytes) {
+        throw "Oversized or invalid cursor $($asset.File): $($bytes.Length) bytes"
+    }
+    $sha = [System.Convert]::ToHexString(
+        [System.Security.Cryptography.SHA256]::HashData($bytes)
+    ).ToLowerInvariant()
+    if ($sha -cne $asset.Sha256) {
+        throw "Unexpected cursor bytes or unapproved artwork: $($asset.File)"
+    }
+    $stream = [System.IO.MemoryStream]::new($bytes, $false)
     try {
-        if ($image.Width -ne 160 -or $image.Height -ne 160) {
-            throw 'Premium Hand cursor must be 160 x 160 to fit the preset atlas.'
-        }
-        if ($image.GetPixel(0, 0).A -ne 0) {
-            throw 'Premium Hand contains an opaque background.'
-        }
-        if ($image.GetPixel(29, 17).A -lt 120) {
-            throw 'Premium Hand pointer hotspot is no longer at the fingertip.'
+        $image = [System.Drawing.Bitmap]::new($stream)
+        try {
+            if ($image.Width -ne 160 -or $image.Height -ne 160) {
+                throw "$($asset.File) must match the 160x160 GPU atlas cells"
+            }
+            if ($image.GetPixel(0, 0).A -ne 0) {
+                throw "$($asset.File) has an opaque upper-left background"
+            }
+            if ($image.GetPixel(159, 159).A -ne 0) {
+                throw "$($asset.File) has an opaque lower-right background"
+            }
+            if ($image.GetPixel($asset.HotspotX, $asset.HotspotY).A -lt 120) {
+                throw "$($asset.File) hotspot no longer touches the fingertip"
+            }
+        } finally {
+            $image.Dispose()
         }
     } finally {
-        $image.Dispose()
+        $stream.Dispose()
     }
-} finally {
-    $stream.Dispose()
+    Write-Host "[PASS] $($asset.File): $($bytes.Length) bytes, transparent 160x160, fingertip ($($asset.HotspotX),$($asset.HotspotY))"
 }
-Write-Host "[PASS] Bundled Premium Hand PNG: $($bytes.Length) bytes, transparent, 160x160, fingertip hotspot."
