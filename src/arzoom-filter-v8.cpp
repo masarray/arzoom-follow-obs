@@ -88,6 +88,9 @@ void draw_builtin_frame(QPainter &painter,
     case arzoom::BuiltinCursorVisual::Outline: rotation = 1.0f; break;
     case arzoom::BuiltinCursorVisual::Azure: rotation = -0.8f; break;
     case arzoom::BuiltinCursorVisual::Orchid: rotation = 1.4f; break;
+    case arzoom::BuiltinCursorVisual::PremiumHand: break;
+    case arzoom::BuiltinCursorVisual::PremiumHandChrome: break;
+    case arzoom::BuiltinCursorVisual::PremiumChromeArrow: break;
     }
     const QPolygonF polygon = transformed_pointer(press, rotation);
 
@@ -384,7 +387,8 @@ void phase352_update(void *data, obs_data_t *settings)
 
     if (const arzoom::CursorPreset *preset =
             arzoom::find_cursor_preset(style.c_str())) {
-        if (style_changed || custom_source_changed)
+        if (!arzoom::cursor_is_raster_preset(*preset) &&
+            (style_changed || custom_source_changed))
             load_builtin_preset(filter, *preset);
         Phase35Filter *phase35 = phase35_from_352(filter);
         if (phase35) {
