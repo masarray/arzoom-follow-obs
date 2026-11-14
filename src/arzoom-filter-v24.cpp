@@ -3,6 +3,7 @@
 #include "arzoom-shortcut-observer.hpp"
 #include "arzoom-shortcut-timeline.hpp"
 #include "arzoom-keycap-rasterizer.hpp"
+#include "arzoom-properties-ux-obs.hpp"
 
 #define SETTING_KEYCAP_VISUAL "shortcut_keycaps_enabled"
 
@@ -239,6 +240,39 @@ obs_properties_t *phase24_properties(void *data)
         props, "shortcut_keycap_group",
         obs_module_text("ArZoom.Keycaps.Group"),
         OBS_GROUP_NORMAL, group);
+
+    /* One deliberate second-level entry point for rarely used controls.
+     * Default OFF; unlike runtime buttons, changing this setting is allowed
+     * to rebuild only the OBS property layout. */
+    obs_property_t *advanced = obs_properties_add_bool(
+        props, arzoom::ux::kAdvancedSettingsKey,
+        obs_module_text("ArZoom.UX.AdvancedToggle"));
+    obs_property_set_modified_callback(advanced, arzoom::ux::modified);
+
+    if (obs_properties_t *spotlight =
+            arzoom::ux::subgroup(props, "spotlight_group")) {
+        /* All existing parameter keys and event bindings remain unchanged. */
+        if (obs_property_t *enabled =
+                obs_properties_get(spotlight, SETTING_SPOTLIGHT_ENABLED))
+            obs_property_set_modified_callback(
+                enabled, arzoom::ux::modified);
+        if (obs_property_t *cinematic =
+                obs_properties_get(spotlight, SETTING_SPOTLIGHT_LINK_ZOOM))
+            obs_property_set_modified_callback(
+                cinematic, arzoom::ux::modified);
+    }
+
+    ArZoomFilter *phase1 = phase24_phase1(wrapper);
+    if (phase1 && phase1->effect_ready)
+        arzoom::ux::visible(props, "runtime_status", false);
+
+    obs_data_t *settings = phase1 && phase1->context
+                               ? obs_source_get_settings(phase1->context)
+                               : nullptr;
+    arzoom::ux::apply(props, arzoom::ux::policy(settings));
+    arzoom::ux::attach_contextual_help(props);
+    if (settings)
+        obs_data_release(settings);
     return props;
 }
 
@@ -328,6 +362,8 @@ void phase24_defaults(obs_data_t *settings)
 {
     phase23_defaults(settings);
     obs_data_set_default_bool(settings, SETTING_KEYCAP_VISUAL, false);
+    obs_data_set_default_bool(settings, arzoom::ux::kAdvancedSettingsKey,
+                              false);
 }
 
 struct Phase24SourceInfoOverride {
