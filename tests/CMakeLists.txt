@@ -121,3 +121,9 @@ add_executable(arzoom-compact-properties-test
 arzoom_configure_test_target(arzoom-compact-properties-test)
 add_test(NAME arzoom-presentation-compact-properties
   COMMAND arzoom-compact-properties-test)
+
+add_executable(arzoom-keycap-runtime-policy-test
+  arzoom-keycap-runtime-policy-test.cpp)
+arzoom_configure_test_target(arzoom-keycap-runtime-policy-test)
+add_test(NAME arzoom-keycap-runtime-policy
+  COMMAND arzoom-keycap-runtime-policy-test)
