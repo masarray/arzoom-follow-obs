@@ -15,6 +15,7 @@ There is no APNG/GIF decoding on the video path. Each optional PNG is decoded on
 
 ## Shipped ArZoom-native presets
 
+- **3D Hand Pointer (optional choice)** — user-supplied 3D hand illustration, transparent 160×160 optimized PNG (~5.2 KiB), fingertip hotspot (14,15); designed for a readable 64–96 px presentation pointer. Reuses the same 28-frame/260 ms raster atlas without changing the default. Before public redistribution, confirm that the source artwork may be bundled under the project's distribution terms.
 - **Premium Chrome Arrow (optional choice)** — redrawn smooth-contour metallic pointer, transparent 160×160 PNG (3.7 KB), calibrated tip hotspot (25,4). Verified at 32/48/64 px on dark and light backgrounds; retains existing 260 ms tactile gesture. No default or existing saved selection is changed.
 - **Premium Hand Chrome (new default for fresh filters)** — approved glossy metallic black/chrome pointing hand, 160×160 transparent bundled PNG (5.1 KB), fingertip hotspot at (38,11), and existing 260 ms tactile press/rebound gesture.
 - **Premium Hand (original)** — previous owner-approved white pointing hand (3 KB); kept as a selectable preset for backward compatibility and visual choice.
@@ -23,7 +24,7 @@ There is no APNG/GIF decoding on the video path. Each optional PNG is decoded on
 - **ArZoom Azure** — restrained light-blue technical pointer.
 - **ArZoom Orchid** — pastel blue/violet presentation pointer.
 
-Earlier procedural presets remain original vector artwork. Premium Hand, Premium Hand Chrome and Premium Chrome Arrow are separately selectable owner-approved generated PNG masters, rendered by **one shared** Qt/QPainter tactile GPU-atlas pipeline. Only the active raster master is decoded; no second renderer or extra full-screen pass is introduced. No third-party cursor pack is redistributed.
+Earlier procedural presets remain original vector artwork. Premium Hand, Premium Hand Chrome, Premium Chrome Arrow and 3D Hand Pointer are separately selectable owner-approved generated PNG masters, rendered by **one shared** Qt/QPainter tactile GPU-atlas pipeline. Only the active raster master is decoded; no second renderer or extra full-screen pass is introduced. The 3D Hand artwork retains its original pose and is optimized to an indexed PNG with transparency. No third-party cursor pack is redistributed.
 
 ## APNG strategy
 
