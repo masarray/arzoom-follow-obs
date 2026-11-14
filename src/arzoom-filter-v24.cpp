@@ -88,7 +88,9 @@ void phase24_tick(void *data, float seconds)
 
     const bool keycaps_wanted =
         arzoom::shortcut::ObserverActivation{
-            wrapper->keycaps_enabled.load(std::memory_order_acquire),
+            wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
+                wrapper->keycap_shader_ready &&
+                wrapper->keycap_fallback != nullptr,
             phase1->enabled.load(std::memory_order_acquire),
             phase1->context && obs_source_showing(phase1->context)
         }.subscribe();
@@ -280,6 +282,17 @@ obs_properties_t *phase24_properties(void *data)
         obs_module_text("ArZoom.Keycaps.Info"), OBS_TEXT_INFO);
     obs_property_text_set_info_type(info, OBS_TEXT_INFO_NORMAL);
     obs_property_text_set_info_word_wrap(info, true);
+    if (wrapper &&
+        (!wrapper->keycap_shader_ready || !wrapper->keycap_fallback)) {
+        /* Do not silently collect shortcuts for a feature that cannot
+         * display them. Keep the warning actionable, unlike tutorial text. */
+        obs_property_t *warning = obs_properties_add_text(
+            group, "keycap_render_warning",
+            obs_module_text("ArZoom.Keycaps.RuntimeUnavailable"),
+            OBS_TEXT_INFO);
+        obs_property_text_set_info_type(warning, OBS_TEXT_INFO_WARNING);
+        obs_property_text_set_info_word_wrap(warning, true);
+    }
     obs_properties_add_group(
         props, "shortcut_keycap_group",
         obs_module_text("ArZoom.Keycaps.Group"),
