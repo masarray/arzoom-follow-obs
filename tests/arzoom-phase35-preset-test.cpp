@@ -38,8 +38,8 @@ void preset_metadata_is_safe_and_unique()
     }
     require(ids.size() == arzoom::kCursorPresets.size(),
             "preset id count changed unexpectedly");
-    require(arzoom::kCursorPresets.size() == 7,
-            "public built-in cursor palette should contain seven presets");
+    require(arzoom::kCursorPresets.size() == 8,
+            "built-in palette must include the approved Premium Hand");
 }
 
 void style_helpers_are_unambiguous()
@@ -59,6 +59,17 @@ void style_helpers_are_unambiguous()
             "Classic Hand preset missing");
     require(arzoom::find_cursor_preset("sticker_hand") != nullptr,
             "Sticker Hand preset missing");
+    const arzoom::CursorPreset *premium =
+        arzoom::find_cursor_preset(arzoom::kCursorStyleDefault);
+    require(premium &&
+                premium->visual == arzoom::BuiltinCursorVisual::PremiumHand &&
+                arzoom::cursor_is_raster_preset(*premium),
+            "new filters must default to the bundled Premium Hand asset");
+    require(near(premium->hotspot_x, 29.0f / 160.0f) &&
+                near(premium->hotspot_y, 17.0f / 160.0f),
+            "Premium Hand hotspot is no longer at the index fingertip");
+    require(premium->recommended_size_px >= 60.0f,
+            "Premium Hand must be readable at normal presentation scale");
 }
 
 void tactile_curve_has_press_rebound_and_settle()
