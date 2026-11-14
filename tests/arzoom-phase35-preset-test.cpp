@@ -38,8 +38,8 @@ void preset_metadata_is_safe_and_unique()
     }
     require(ids.size() == arzoom::kCursorPresets.size(),
             "preset id count changed unexpectedly");
-    require(arzoom::kCursorPresets.size() == 12,
-            "all existing cursor presets and Cartoon Hand must stay available");
+    require(arzoom::kCursorPresets.size() == 13,
+            "all existing cursor presets and Blue Sleeve Hand must stay available");
 }
 
 void style_helpers_are_unambiguous()
@@ -121,6 +121,23 @@ void style_helpers_are_unambiguous()
     require(std::string(arzoom::cursor_raster_asset_filename(*cartoon)) !=
                 arzoom::cursor_raster_asset_filename(*hand3d),
             "Cartoon Hand must not alias the original 3D Hand sprite");
+    const auto *sleeve =
+        arzoom::find_cursor_preset(arzoom::kCursorStyleBlueSleeveHand);
+    require(sleeve && arzoom::cursor_is_raster_preset(*sleeve) &&
+                sleeve->visual == arzoom::BuiltinCursorVisual::BlueSleeveHand,
+            "Blue Sleeve Hand must be independently selectable");
+    require(std::string(arzoom::cursor_raster_asset_filename(*sleeve)) ==
+                "cursors/blue-sleeve-hand.png",
+            "Blue Sleeve Hand must load its own bundled PNG");
+    require(near(sleeve->hotspot_x, 37.0f / 160.0f) &&
+                near(sleeve->hotspot_y, 5.0f / 160.0f) &&
+                sleeve->recommended_size_px >= 64.0f,
+            "Blue Sleeve Hand fingertip or readable default size changed");
+    require(std::string(arzoom::cursor_raster_asset_filename(*sleeve)) !=
+                arzoom::cursor_raster_asset_filename(*cartoon) &&
+                std::string(arzoom::cursor_raster_asset_filename(*sleeve)) !=
+                arzoom::cursor_raster_asset_filename(*hand3d),
+            "Blue Sleeve must not alias the older hand cursor assets");
     require(arzoom::find_cursor_preset(arzoom::kCursorStyleDefault) == chrome,
             "New optional presets must not change the approved default");
     require(arzoom::cursor_raster_asset_filename(

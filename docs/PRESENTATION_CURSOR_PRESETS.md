@@ -15,6 +15,7 @@ There is no APNG/GIF decoding on the video path. Each optional PNG is decoded on
 
 ## Shipped ArZoom-native presets
 
+- **Blue Sleeve Hand (optional choice)** — revised glossy original artwork featuring the entire blue cylindrical sleeve, not a half cuff. Bundled transparent 160×160 optimized 128-color indexed PNG (4,668 bytes), fingertip hotspot (37,5); recommended 80 px, legible at 32/48/64 px on dark and light backgrounds. Existing 28-frame/260 ms shared raster atlas, no per-frame image decoding, no default changes. Keep this artwork distinct from all other hand presets.
 - **Cartoon Hand Pointer (optional choice)** — redrawn from the supplied cartoon hand reference on a transparent background, optimized 160×160 indexed PNG (3,222 bytes), fingertip hotspot (23,7). Clean continuous outline at 32/48/64 px, best shown at 64–96 px. Shares the original 28-frame/260 ms raster atlas; original 3D Hand and all other styles remain available. Confirm source-reference redistribution rights before public release.
 - **3D Hand Pointer (optional choice)** — user-supplied 3D hand illustration, transparent 160×160 optimized PNG (~5.2 KiB), fingertip hotspot (14,15); designed for a readable 64–96 px presentation pointer. Reuses the same 28-frame/260 ms raster atlas without changing the default. Before public redistribution, confirm that the source artwork may be bundled under the project's distribution terms.
 - **Premium Chrome Arrow (optional choice)** — redrawn smooth-contour metallic pointer, transparent 160×160 PNG (3.7 KB), calibrated tip hotspot (25,4). Verified at 32/48/64 px on dark and light backgrounds; retains existing 260 ms tactile gesture. No default or existing saved selection is changed.
@@ -25,7 +26,7 @@ There is no APNG/GIF decoding on the video path. Each optional PNG is decoded on
 - **ArZoom Azure** — restrained light-blue technical pointer.
 - **ArZoom Orchid** — pastel blue/violet presentation pointer.
 
-Earlier procedural presets remain original vector artwork. Premium Hand, Premium Hand Chrome, Premium Chrome Arrow, 3D Hand Pointer and Cartoon Hand Pointer are separately selectable owner-approved generated PNG masters, rendered by **one shared** Qt/QPainter tactile GPU-atlas pipeline. Only the active raster master is decoded; no second renderer or extra full-screen pass is introduced. The two newer Hand artworks retain their approved poses and use indexed PNGs with transparency. No third-party cursor pack is redistributed.
+Earlier procedural presets remain original vector artwork. Premium Hand, Premium Hand Chrome, Premium Chrome Arrow, 3D Hand Pointer, Cartoon Hand Pointer and Blue Sleeve Hand are separately selectable owner-approved generated PNG masters, rendered by **one shared** Qt/QPainter tactile GPU-atlas pipeline. Only the active raster master is decoded; no second renderer or extra full-screen pass is introduced. The two newer Hand artworks retain their approved poses and use indexed PNGs with transparency. No third-party cursor pack is redistributed.
 
 ## APNG strategy
 

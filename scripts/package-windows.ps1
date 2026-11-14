@@ -87,6 +87,7 @@ $Required = @(
     'data/obs-plugins/arzoom/cursors/premium-chrome-arrow.png',
     'data/obs-plugins/arzoom/cursors/hand-3d-pointer.png',
     'data/obs-plugins/arzoom/cursors/cartoon-hand-pointer.png',
+    'data/obs-plugins/arzoom/cursors/blue-sleeve-hand.png',
     'data/obs-plugins/arzoom/locale/en-US.ini',
     'data/obs-plugins/arzoom/locale/id-ID.ini'
 )

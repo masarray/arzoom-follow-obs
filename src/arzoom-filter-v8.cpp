@@ -93,6 +93,7 @@ void draw_builtin_frame(QPainter &painter,
     case arzoom::BuiltinCursorVisual::PremiumChromeArrow: break;
     case arzoom::BuiltinCursorVisual::Hand3DPointer: break;
     case arzoom::BuiltinCursorVisual::CartoonHandPointer: break;
+    case arzoom::BuiltinCursorVisual::BlueSleeveHand: break;
     }
     const QPolygonF polygon = transformed_pointer(press, rotation);
 

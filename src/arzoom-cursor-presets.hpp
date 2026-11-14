@@ -21,6 +21,7 @@ enum class BuiltinCursorVisual {
     PremiumChromeArrow,
     Hand3DPointer,
     CartoonHandPointer,
+    BlueSleeveHand,
 };
 
 struct CursorPreset {
@@ -40,6 +41,7 @@ inline constexpr const char *kCursorStylePremiumHandChrome = "premium_hand_chrom
 inline constexpr const char *kCursorStylePremiumChromeArrow = "premium_chrome_arrow";
 inline constexpr const char *kCursorStyleHand3DPointer = "hand_3d_pointer";
 inline constexpr const char *kCursorStyleCartoonHandPointer = "cartoon_hand_pointer";
+inline constexpr const char *kCursorStyleBlueSleeveHand = "blue_sleeve_hand";
 inline constexpr const char *kCursorStyleDefault = kCursorStylePremiumHandChrome;
 inline constexpr const char *kCursorStyleCustom = "custom";
 
@@ -54,7 +56,7 @@ inline constexpr const char *kCursorStyleCustom = "custom";
  * cursor categories supplied during visual research; no third-party SVG data
  * is embedded or redistributed.
  */
-inline constexpr std::array<CursorPreset, 12> kCursorPresets{{
+inline constexpr std::array<CursorPreset, 13> kCursorPresets{{
     /* Approved transparent image; click hotspot measured at index fingertip. */
     /* New default first in the picker; original is still selectable. */
     {kCursorStylePremiumHandChrome,
@@ -79,6 +81,11 @@ inline constexpr std::array<CursorPreset, 12> kCursorPresets{{
      "ArZoom.PresentationCursor.Preset.CartoonHandPointer",
      BuiltinCursorVisual::CartoonHandPointer, 28, 0.260f,
      23.0f / 160.0f, 7.0f / 160.0f, 72.0f},
+    /* Glossy pointing hand, full blue cylindrical sleeve; fingertip hotspot. */
+    {kCursorStyleBlueSleeveHand,
+     "ArZoom.PresentationCursor.Preset.BlueSleeveHand",
+     BuiltinCursorVisual::BlueSleeveHand, 28, 0.260f,
+     37.0f / 160.0f, 5.0f / 160.0f, 80.0f},
     {"prism", "ArZoom.PresentationCursor.Preset.Prism",
      BuiltinCursorVisual::Prism, 28, 0.280f, 0.19375f, 0.10625f, 52.0f},
     {"outline", "ArZoom.PresentationCursor.Preset.Outline",
@@ -101,7 +108,8 @@ inline bool cursor_is_raster_preset(const CursorPreset &preset)
            preset.visual == BuiltinCursorVisual::PremiumHandChrome ||
            preset.visual == BuiltinCursorVisual::PremiumChromeArrow ||
            preset.visual == BuiltinCursorVisual::Hand3DPointer ||
-           preset.visual == BuiltinCursorVisual::CartoonHandPointer;
+           preset.visual == BuiltinCursorVisual::CartoonHandPointer ||
+           preset.visual == BuiltinCursorVisual::BlueSleeveHand;
 }
 
 /* Raster presets share one atlas generator, but not one sprite.
@@ -120,6 +128,8 @@ inline const char *cursor_raster_asset_filename(
         return "cursors/hand-3d-pointer.png";
     case BuiltinCursorVisual::CartoonHandPointer:
         return "cursors/cartoon-hand-pointer.png";
+    case BuiltinCursorVisual::BlueSleeveHand:
+        return "cursors/blue-sleeve-hand.png";
     default:
         return nullptr;
     }
