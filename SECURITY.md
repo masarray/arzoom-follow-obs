@@ -9,6 +9,17 @@ Security fixes are applied to the newest published ArZoom release. Preview relea
 | Latest release | Yes |
 | Older preview releases | No |
 
+## Optional shortcut keyboard observer (v0.7.2 candidate)
+
+Shortcut keycaps are **off by default**. When enabled for a showing ArZoom
+filter, the Windows low-level observer receives keyboard events from the host
+system but publishes only bounded, recognized action chords for the on-video
+overlay. It does not store a typing history, read the clipboard, or transmit
+keys over a network. Plain typing, Shift-only printable text and AltGr
+printable text are suppressed; however, users should leave the feature off
+during sensitive activity. The observer is deactivated when the presenting
+filter is hidden, disabled, removed or OBS exits.
+
 ## Reporting a vulnerability
 
 Please do not open a public GitHub issue for a suspected vulnerability.
