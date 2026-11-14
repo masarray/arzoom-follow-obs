@@ -50,8 +50,13 @@ jobs:
             throw "Missing release acceptance record: $acceptancePath"
           }
           $acceptance = Get-Content -LiteralPath $acceptancePath -Raw
-          if ($acceptance -notmatch '(?m)^ReleaseGate: APPROVED\s*$') {
-            throw "Public release blocked: physical OBS validation not approved."
+          # Exactly one authoritative gate line. A prose example mentioning
+          # APPROVED must never bypass a BLOCKED header.
+          $gateLines = @($acceptance -split "`r?`n" |
+            Where-Object { $_ -match '^ReleaseGate:' })
+          if ($gateLines.Count -ne 1 -or
+              $gateLines[0] -ne 'ReleaseGate: APPROVED') {
+            throw "Public release blocked: exactly one APPROVED gate is required."
           }
           $testedSha = $env:TESTED_COMMIT_SHA
           if ($testedSha -ne $env:GITHUB_SHA) {
