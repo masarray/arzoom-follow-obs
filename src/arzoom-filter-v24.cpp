@@ -116,10 +116,8 @@ void phase24_update(void *data, obs_data_t *settings)
     if (next_keycaps != prior_keycaps) {
         if (next_keycaps)
             arzoom::shortcut::subscribe();
-        else {
+        else
             arzoom::shortcut::unsubscribe();
-            wrapper->keycaps.reset();
-        }
     }
 
     const bool previous_link =
