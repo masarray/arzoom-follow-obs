@@ -38,8 +38,8 @@ void preset_metadata_is_safe_and_unique()
     }
     require(ids.size() == arzoom::kCursorPresets.size(),
             "preset id count changed unexpectedly");
-    require(arzoom::kCursorPresets.size() == 10,
-            "original and Chrome Hands plus Chrome Arrow must stay available");
+    require(arzoom::kCursorPresets.size() == 11,
+            "all legacy pointer presets and 3D Hand must stay available");
 }
 
 void style_helpers_are_unambiguous()
@@ -94,8 +94,20 @@ void style_helpers_are_unambiguous()
                 near(arrow->hotspot_y, 4.0f / 160.0f) &&
                 arrow->recommended_size_px >= 60.0f,
             "Chrome Arrow hotspot must land on the pointer tip");
+    const auto *hand3d =
+        arzoom::find_cursor_preset(arzoom::kCursorStyleHand3DPointer);
+    require(hand3d && arzoom::cursor_is_raster_preset(*hand3d) &&
+                hand3d->visual == arzoom::BuiltinCursorVisual::Hand3DPointer,
+            "3D Hand Pointer must be a separate selectable raster preset");
+    require(std::string(arzoom::cursor_raster_asset_filename(*hand3d)) ==
+                "cursors/hand-3d-pointer.png",
+            "3D Hand Pointer must load its own bundled PNG");
+    require(near(hand3d->hotspot_x, 14.0f / 160.0f) &&
+                near(hand3d->hotspot_y, 15.0f / 160.0f) &&
+                hand3d->recommended_size_px >= 64.0f,
+            "3D Hand Pointer hotspot must be on the fingertip at a readable size");
     require(arzoom::find_cursor_preset(arzoom::kCursorStyleDefault) == chrome,
-            "New Chrome Arrow choice must not change the approved default");
+            "New optional presets must not change the approved default");
     require(arzoom::cursor_raster_asset_filename(
                 *arzoom::find_cursor_preset("classic_hand")) == nullptr,
             "procedural styles must not require raster assets");

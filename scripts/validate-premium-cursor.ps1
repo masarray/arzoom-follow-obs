@@ -23,6 +23,13 @@ $assets = @(
         MaxBytes = 16384
         HotspotX = 25
         HotspotY = 4
+    },
+    @{
+        File = 'hand-3d-pointer.png'
+        Sha256 = 'cc344659a7a9bda84356b943fa0f6a4b32ab122416df4740a9ae414244f8e339'
+        MaxBytes = 16384
+        HotspotX = 14
+        HotspotY = 15
     }
 )
 
@@ -58,7 +65,8 @@ foreach ($asset in $assets) {
             if ($image.GetPixel($asset.HotspotX, $asset.HotspotY).A -lt 120) {
                 throw "$($asset.File) hotspot no longer touches the cursor tip"
             }
-            if ($asset.File -eq 'premium-chrome-arrow.png') {
+            if ($asset.File -eq 'premium-chrome-arrow.png' -or
+                $asset.File -eq 'hand-3d-pointer.png') {
                 # A technically valid PNG can still look dirty at video scale.
                 # Require a single connected, legible silhouette on both
                 # dark and light backgrounds at native 32/48/64 px sizes.
@@ -118,10 +126,11 @@ foreach ($asset in $assets) {
                             }
                         }
                         if ($components -ne 1 -or
-                            $bright -lt $size * $size * 0.08) {
-                            throw "Unreadable or fragmented Chrome Arrow at $size px"
+                            ($asset.File -eq 'premium-chrome-arrow.png' -and
+                             $bright -lt $size * $size * 0.08)) {
+                            throw "Unreadable or fragmented cursor $($asset.File) at $size px"
                         }
-                        Write-Host "[PASS] Chrome Arrow $size px: connected alpha and readable white face"
+                        Write-Host "[PASS] $($asset.File) $size px: connected alpha silhouette"
                     } finally { $small.Dispose() }
                 }
             }
