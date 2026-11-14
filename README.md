@@ -10,12 +10,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe"><img alt="Download ArZoom installer" src="https://img.shields.io/badge/Download-Windows%20installer-2563eb?style=for-the-badge&logo=windows11&logoColor=white"></a>
+  <a href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe"><img alt="Download ArZoom installer" src="https://img.shields.io/badge/Download-Windows%20installer-2563eb?style=for-the-badge&logo=windows11&logoColor=white"></a>
   <a href="https://masarray.github.io/arzoom-follow-obs/"><img alt="ArZoom website" src="https://img.shields.io/badge/Open-Setup%20guide-0f766e?style=for-the-badge"></a>
 </p>
 
 <p align="center">
-  <img alt="Version 0.7.3" src="https://img.shields.io/badge/version-0.7.3-0f766e">
+  <img alt="Latest stable version" src="https://img.shields.io/github/v/release/masarray/arzoom-follow-obs?include_prereleases=false&amp;label=stable&amp;color=0f766e">
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?logo=windows11&logoColor=white">
   <img alt="OBS Studio plugin" src="https://img.shields.io/badge/OBS%20Studio-native%20plugin-302e31?logo=obsstudio&logoColor=white">
   <a href="LICENSE"><img alt="GPL 2.0 or later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue"></a>
@@ -23,9 +23,9 @@
 
 ArZoom is a native OBS presentation-camera plugin for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming.
 
-**[ArZoom v0.7.3 is the Windows stable release](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3).** It retains the native P4.1 camera, P5 cinematic Spotlight, click feedback, opt-in shortcut keycaps and compact OBS Properties. This update adds **13 Presentation Cursor presets**, including Blue Sleeve Hand, plus **Spotlight Focus Area to 400%** and **Cursor Size to 160 px**. Mouse clicks **never** activate auto zoom.
+**[Download the latest Windows stable release](https://github.com/masarray/arzoom-follow-obs/releases/latest).** It retains the native P4.1 camera, P5 cinematic Spotlight, click feedback, opt-in shortcut keycaps and compact OBS Properties. This update adds **13 Presentation Cursor presets**, including Blue Sleeve Hand, plus **Spotlight Focus Area to 400%** and **Cursor Size to 160 px**. Mouse clicks **never** activate auto zoom.
 
-**Official v0.7.3 downloads:** [Windows installer](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe) · [Portable/manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Manual-v0.7.3-windows-x64.zip) · [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/SHA256SUMS.txt) · [Release notes](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3). These are pinned to the published stable version, not a development build.
+**Latest stable downloads (automatic, version-independent):** [Windows installer](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe) · [Portable/manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip) · [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/SHA256SUMS.txt) · [Release notes](https://github.com/masarray/arzoom-follow-obs/releases/latest). These direct file links always select GitHub's **latest non-prerelease** without requiring visitors to browse the GitHub Releases page.
 
 **Privacy:** shortcut keycaps are OFF by default. When switched on, the Windows keyboard observer displays recognized action chords, not ordinary typing; it does not store typed text or clipboard history. Disable the optional feature during sensitive work.
 
@@ -128,11 +128,11 @@ Architecture invariants:
 
 ### Recommended: Windows installer
 
-**[Download ArZoom-OBS-Setup-windows-x64.exe](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe)**
+**[Download latest ArZoom Windows installer EXE](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe)** · **[Download latest portable/manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip)**
 
 Close OBS completely before installation. The installer supports Standard OBS Studio and OBS Portable/custom roots containing `bin\64bit\obs64.exe`.
 
-The [manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Manual-v0.7.3-windows-x64.zip) and [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/SHA256SUMS.txt) are published alongside this installer. Download the [v0.7.3 release notes](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3) for upgrade details.
+The [manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip) and [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/SHA256SUMS.txt) are published alongside this installer. Download the [latest stable release notes](https://github.com/masarray/arzoom-follow-obs/releases/latest) for upgrade details. Both EXE and ZIP links above are permanent latest-stable redirects; pre-releases are excluded.
 
 ## Recommended workflow
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ArZoom v0.7.3 for OBS — Smart Zoom, Click Feedback & Shortcut Keycaps</title>
-  <meta name="description" content="Download ArZoom v0.7.3 for OBS Studio on Windows. Smooth scene-wide Smart Camera zoom, luminous click feedback, optional physical shortcut keycaps, compact native controls and cinematic Spotlight.">
+  <meta name="description" content="Download the latest stable ArZoom for OBS Studio on Windows. Smooth scene-wide Smart Camera zoom, luminous click feedback, optional physical shortcut keycaps, compact native controls and cinematic Spotlight.">
   <meta name="keywords" content="OBS zoom plugin, OBS scene zoom, OBS spotlight, OBS mouse follow zoom, screen capture zoom, OBS tutorial plugin, OBS shortcut keycaps, OBS click feedback, OBS presentation camera">
   <meta name="author" content="Mas Ari">
   <meta name="theme-color" content="#07111f">
@@ -22,6 +22,7 @@
   <meta property="og:image" content="https://masarray.github.io/arzoom-follow-obs/assets/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://masarray.github.io/arzoom-follow-obs/assets/og-image.png">
+  <script src="latest-release.js" defer></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -33,7 +34,7 @@
     "softwareVersion": "0.7.3",
     "image": "https://masarray.github.io/arzoom-follow-obs/assets/og-image.png",
     "description": "ArZoom v0.7.3 for Windows x64: stable Smart Camera zoom, single luminous click feedback, optional shortcut keycaps, compact native settings and cinematic Spotlight.",
-    "downloadUrl": "https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe",
+    "downloadUrl": "https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe",
     "softwareHelp": "https://masarray.github.io/arzoom-follow-obs/guide.html",
     "codeRepository": "https://github.com/masarray/arzoom-follow-obs",
     "license": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
@@ -51,7 +52,7 @@
         <a href="guide.html">Setup guide</a>
         <a href="troubleshooting.html">Troubleshooting</a>
         <a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a>
-        <a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe">Download</a>
+        <a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe">Download</a>
       </nav>
     </div>
   </header>
@@ -59,13 +60,14 @@
   <main id="main">
     <section class="container hero">
       <div>
-        <span class="eyebrow">ArZoom v0.7.3 · Windows stable release</span>
+        <span class="eyebrow">ArZoom <span data-latest-stable-version>v0.7.3</span> · Windows stable release</span>
         <h1>Smart camera zoom, clicks and shortcuts. Built into OBS.</h1>
         <p class="lead">Guide viewers with smooth scene-wide zoom, a clean luminous ring for mouse clicks, and optional physical shortcut keycaps. Add cinematic Spotlight when you need focus—all inside native OBS, without click-triggered auto zoom.</p>
         <div class="hero-actions">
-          <a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe">Download Windows installer</a>
-          <a class="button secondary" href="guide.html">Setup Scene Camera</a>
+          <a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe" download>Download latest installer · EXE</a>
+          <a class="button secondary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip" download>Download portable · ZIP</a>
         </div>
+        <p class="hero-note">Direct downloads from the latest public stable release · <a href="guide.html">Installation guide</a> · <a href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/SHA256SUMS.txt">SHA-256 checksums</a></p>
         <p class="hero-note">Windows 10/11 x64 · OBS 31.1.1 build baseline · prior v0.7.2 OBS smoke recording · new cursor features validated in Windows CI · GPL-2.0-or-later</p>
       </div>
       <figure class="product-shot">
@@ -135,7 +137,7 @@
 
     <section class="section alt" aria-labelledby="setup-title">
       <div class="container">
-        <div class="section-heading"><span class="eyebrow">Recommended v0.7.3 setup</span><h2 id="setup-title">Start presenting in a few steps.</h2></div>
+        <div class="section-heading"><span class="eyebrow">Recommended stable setup</span><h2 id="setup-title">Start presenting in a few steps.</h2></div>
         <div class="steps">
           <article class="step"><div><h3>Install</h3><p>Close OBS and run the Windows installer.</p></div></article>
           <article class="step"><div><h3>Toggle Scene Camera</h3><p>Choose <strong>Tools → ArZoom — Toggle Scene Camera</strong>.</p></div></article>
@@ -154,7 +156,7 @@
         <details><summary>Does Spotlight activate automatically when I add the filter?</summary><p>No. The master Spotlight controls remain Off by default. After you enable them, the recommended cinematic Zoom-linked behavior is ready.</p></details>
         <details><summary>What happens when I press Zoom + or Zoom −?</summary><p>While Zoom is active, only magnification changes. The cinematic Spotlight iris does not restart.</p></details>
         <details><summary>Can Smart Follow work when Display Capture is not fullscreen?</summary><p>Yes when one top-level Display Capture has a deterministic positive axis-aligned scaled/inset or crop-aware mapping. Ambiguous ownership still fails safe.</p></details>
-        <details><summary>What does v0.7.3 stable add?</summary><p><a href="https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3">ArZoom v0.7.3</a> adds 13 pointer styles, Spotlight up to 400% and cursor size to 160 px. Windows CI passed; the previous v0.7.2 OBS recording covers retained click/keycap functions, not these new settings. New-feature direct-OBS proof, 4K benchmarks and a full clean-install matrix are not claimed.</p></details>
+        <details><summary>What does the current stable line include?</summary><p><a href="https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3">ArZoom v0.7.3</a> adds 13 pointer styles, Spotlight up to 400% and cursor size to 160 px. Windows CI passed; the previous v0.7.2 OBS recording covers retained click/keycap functions, not these new settings. New-feature direct-OBS proof, 4K benchmarks and a full clean-install matrix are not claimed.</p></details>
         <details><summary>Does the optional keycap overlay track typing?</summary><p>Keycaps start Off. When enabled on a visible filter, a Windows keyboard observer shows recognized action shortcuts only; ordinary typing and AltGr text are suppressed, and no typing history is stored. Keep the feature Off during sensitive work. <a href="privacy.html">Privacy details</a>.</p></details>
         <details><summary>Can I use multiple Display Captures for Smart Follow?</summary><p>Stable v0.7.3 resolves one unambiguous top-level Display Capture. Automated multiple-capture target selection is a separate, not-yet-released ArZoom Multi feature.</p></details>
         <details><summary>Does ArZoom collect telemetry?</summary><p>No. ArZoom has no analytics service and does not transmit captured frames, cursor data, clicks, or settings.</p></details>
@@ -165,13 +167,13 @@
       <div class="container cta">
         <div><h2>Present with clearer focus and less effort.</h2><p>Download stable v0.7.3 for native OBS zoom, expanded Spotlight, hand pointers and precise click feedback.</p></div>
         <div class="hero-actions">
-          <a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe">Download installer</a>
-          <a class="button secondary" href="https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3">v0.7.3 release notes</a>
+          <a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe" download>Latest installer · EXE</a>
+          <a class="button secondary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip" download>Latest portable · ZIP</a>
         </div>
       </div>
     </section>
   </main>
 
-  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · v0.7.3 · GPL-2.0-or-later</div><div class="footer-links"><a href="guide.html">Guide</a><a href="troubleshooting.html">Troubleshooting</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Issues</a></div></div></footer>
+  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · <span data-latest-stable-version>v0.7.3</span> · GPL-2.0-or-later</div><div class="footer-links"><a href="guide.html">Guide</a><a href="troubleshooting.html">Troubleshooting</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Issues</a></div></div></footer>
 </body>
 </html>
