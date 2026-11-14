@@ -161,6 +161,16 @@ bool should_visualize_shortcut(
     if ((chord.modifiers & ~kKnownModifiers) != 0)
         return false;
 
+    // Shift+letter/number is normal typing. Ctrl+Alt printable combinations
+    // are often AltGr text entry on international keyboards. Fail closed at
+    // the model boundary, not only inside one Win32 input adapter.
+    if (is_textual_shortcut_key(chord.key) &&
+        (chord.modifiers == ShortcutShift ||
+         ((chord.modifiers & (ShortcutCtrl | ShortcutAlt)) ==
+              (ShortcutCtrl | ShortcutAlt) &&
+          (chord.modifiers & ShortcutWin) == 0)))
+        return false;
+
     // Modified keys represent explicit actions. We show the action chord but
     // never reconstruct text or clipboard content.
     if (chord.modifiers != 0)
