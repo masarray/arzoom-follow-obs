@@ -16,6 +16,7 @@ enum class BuiltinCursorVisual {
     Parakeet,
     ClassicHand,
     StickerHand,
+    PremiumHand,
 };
 
 struct CursorPreset {
@@ -30,6 +31,8 @@ struct CursorPreset {
 };
 
 inline constexpr const char *kCursorStyleOff = "off";
+inline constexpr const char *kCursorStylePremiumHand = "premium_hand";
+inline constexpr const char *kCursorStyleDefault = kCursorStylePremiumHand;
 inline constexpr const char *kCursorStyleCustom = "custom";
 
 /*
@@ -43,7 +46,11 @@ inline constexpr const char *kCursorStyleCustom = "custom";
  * cursor categories supplied during visual research; no third-party SVG data
  * is embedded or redistributed.
  */
-inline constexpr std::array<CursorPreset, 7> kCursorPresets{{
+inline constexpr std::array<CursorPreset, 8> kCursorPresets{{
+    /* Approved transparent image; click hotspot measured at index fingertip. */
+    {kCursorStylePremiumHand, "ArZoom.PresentationCursor.Preset.PremiumHand",
+     BuiltinCursorVisual::PremiumHand, 28, 0.260f,
+     29.0f / 160.0f, 17.0f / 160.0f, 64.0f},
     {"prism", "ArZoom.PresentationCursor.Preset.Prism",
      BuiltinCursorVisual::Prism, 28, 0.280f, 0.19375f, 0.10625f, 52.0f},
     {"outline", "ArZoom.PresentationCursor.Preset.Outline",
@@ -59,6 +66,11 @@ inline constexpr std::array<CursorPreset, 7> kCursorPresets{{
     {"sticker_hand", "ArZoom.PresentationCursor.Preset.StickerHand",
      BuiltinCursorVisual::StickerHand, 28, 0.260f, 0.41875f, 0.05625f, 60.0f},
 }};
+
+inline bool cursor_is_raster_preset(const CursorPreset &preset)
+{
+    return preset.visual == BuiltinCursorVisual::PremiumHand;
+}
 
 inline float cursor_tactile_smoothstep(float x)
 {
