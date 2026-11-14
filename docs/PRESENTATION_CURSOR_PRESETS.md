@@ -11,17 +11,18 @@ Phase 3.5 uses a preset-first UX. Normal OBS users do not import animation files
 5. Any click restarts frames 1..N exactly once, then returns to frame 0.
 6. The cursor hotspot remains aligned with the click-ring center and the cursor scales with camera zoom.
 
-There is no APNG/GIF decoding on the video path. Premium Hand PNG is decoded only when the preset is newly selected. The existing file loader remains available only under **Custom — Advanced**.
+There is no APNG/GIF decoding on the video path. Each optional PNG is decoded only when its corresponding raster preset is newly selected. The existing file loader remains available only under **Custom — Advanced**.
 
 ## Shipped ArZoom-native presets
 
-- **Premium Hand (new default for fresh filters)** — approved glossy white pointing hand, 160×160 transparent bundled PNG (approximately 3 KB), fingertip hotspot, existing 260 ms tactile press/rebound gesture.
+- **Premium Hand Chrome (new default for fresh filters)** — approved glossy metallic black/chrome pointing hand, 160×160 transparent bundled PNG (approximately 25 KB), fingertip hotspot at (38,11), and existing 260 ms tactile press/rebound gesture.
+- **Premium Hand (original)** — previous owner-approved white pointing hand (3 KB); kept as a selectable preset for backward compatibility and visual choice.
 - **ArZoom Prism** — premium cyan 3D-style presentation pointer.
 - **ArZoom Outline** — clean monochrome professional pointer.
 - **ArZoom Azure** — restrained light-blue technical pointer.
 - **ArZoom Orchid** — pastel blue/violet presentation pointer.
 
-Earlier procedural presets are original ArZoom vector geometry rendered with Qt/QPainter. Premium Hand is the owner-approved AI-generated artwork, stored as an optimized transparent raster master and rendered by the same QPainter GPU-atlas pipeline. No third-party cursor pack is redistributed.
+Earlier procedural presets remain original vector artwork. Premium Hand and Premium Hand Chrome are separately selectable owner-approved generated PNG masters, rendered by **one shared** Qt/QPainter tactile GPU-atlas pipeline. Only the active raster master is decoded; no second renderer or extra full-screen pass is introduced. No third-party cursor pack is redistributed.
 
 ## APNG strategy
 
@@ -31,7 +32,7 @@ The atlas contract is intentionally simple: frame 0 is idle; frames 1..N are one
 
 ## Product safety
 
-- Fresh filters default to **Premium Hand**. Previously saved cursor selections, including Off or Classic Hand, are preserved on upgrade; users may select Premium Hand explicitly for an existing filter. Disable the native Display Capture cursor to avoid two pointers.
+- Fresh filters default to **Premium Hand Chrome**. Previously saved cursor selections, including Off, Classic Hand, and the original Premium Hand, are preserved; users can choose Chrome explicitly on older filters. Disable the native Display Capture cursor to avoid two pointers.
 - Choosing any ArZoom preset enables Presentation Cursor immediately.
 - If Display Capture still captures the native pointer, the filter warns the user to disable source cursor capture.
 - Built-in hotspot metadata is fixed and hidden from the Basic UI.
