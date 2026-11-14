@@ -135,7 +135,12 @@ void phase18_spotlight_only_render(Phase51Filter *filter,
      * presentation frame cannot leak stale feedback into this pass. */
     phase18_clear_click_uniforms(phase2);
     set_cursor_hidden(cursor);
-    phase18_prepare_spotlight_uniforms(filter, width, height);
+    /* A keycap-only presentation frame reuses this safe one-pass path,
+     * but must never activate Spotlight's dim mask by accident. */
+    if (filter->phase5->runtime_active.load(std::memory_order_acquire))
+        phase18_prepare_spotlight_uniforms(filter, width, height);
+    else
+        phase5_set_disabled_uniform(filter->phase5);
 
     obs_source_process_filter_end(
         phase1->context, phase1->effect, 0, 0);
