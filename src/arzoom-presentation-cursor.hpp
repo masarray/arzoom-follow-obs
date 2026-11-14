@@ -8,6 +8,11 @@
 
 namespace arzoom {
 
+/* Logical base size and GPU display cap: do not change one without the shader. */
+inline constexpr int kPresentationCursorBaseMinPixels = 24;
+inline constexpr int kPresentationCursorBaseMaxPixels = 160;
+inline constexpr float kPresentationCursorRenderedMaxPixels = 512.0f;
+
 /*
  * Presentation Cursor core
  * ------------------------
@@ -91,7 +96,8 @@ inline float presentation_cursor_scaled_height(float base_height_pixels,
                                                 float zoom)
 {
     const float safe_zoom = std::max(zoom, 1.0f);
-    return std::clamp(base_height_pixels * safe_zoom, 8.0f, 256.0f);
+    return std::clamp(base_height_pixels * safe_zoom, 8.0f,
+                      kPresentationCursorRenderedMaxPixels);
 }
 
 /*

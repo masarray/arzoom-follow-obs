@@ -129,7 +129,8 @@ void phase23_publish_cinematic_visual(Phase23Filter *wrapper,
         base_radius, full_radius);
     const float working_area_percent = std::clamp(
         filter->area_scale_percent.load(std::memory_order_acquire),
-        50.0f, 200.0f);
+        arzoom::kSpotlightAreaMinPercent,
+        arzoom::kSpotlightAreaMaxPercent);
 
     const float visual_area_percent =
         full_area_percent +
@@ -357,7 +358,9 @@ obs_properties_t *phase23_properties(void *data)
 
     obs_property_t *area = obs_properties_add_int_slider(
         spotlight, SETTING_SPOTLIGHT_AREA_SCALE,
-        obs_module_text("ArZoom.Spotlight.AreaSize"), 50, 200, 5);
+        obs_module_text("ArZoom.Spotlight.AreaSize"),
+        static_cast<int>(arzoom::kSpotlightAreaMinPercent),
+        static_cast<int>(arzoom::kSpotlightAreaMaxPercent), 5);
     obs_property_int_set_suffix(area, " %");
 
     obs_property_t *dim = obs_properties_add_int_slider(

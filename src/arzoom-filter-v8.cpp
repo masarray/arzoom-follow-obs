@@ -462,7 +462,9 @@ obs_properties_t *phase352_properties(void *data)
 
     obs_property_t *size = obs_properties_add_int_slider(
         cursor, SETTING_PRESENTATION_CURSOR_SIZE,
-        obs_module_text("ArZoom.PresentationCursor.Size"), 24, 96, 1);
+        obs_module_text("ArZoom.PresentationCursor.Size"),
+        arzoom::kPresentationCursorBaseMinPixels,
+        arzoom::kPresentationCursorBaseMaxPixels, 1);
     obs_property_int_set_suffix(size, " px");
 
     obs_property_t *info = obs_properties_add_text(

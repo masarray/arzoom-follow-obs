@@ -82,7 +82,9 @@ obs_properties_t *phase22_properties(void *data)
 
     obs_property_t *area = obs_properties_add_int_slider(
         spotlight, SETTING_SPOTLIGHT_AREA_SCALE,
-        obs_module_text("ArZoom.Spotlight.AreaSize"), 50, 200, 5);
+        obs_module_text("ArZoom.Spotlight.AreaSize"),
+        static_cast<int>(arzoom::kSpotlightAreaMinPercent),
+        static_cast<int>(arzoom::kSpotlightAreaMaxPercent), 5);
     obs_property_int_set_suffix(area, " %");
 
     obs_property_t *dim = obs_properties_add_int_slider(

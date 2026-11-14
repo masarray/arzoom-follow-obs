@@ -5,6 +5,10 @@
 
 namespace arzoom {
 
+/* Single source of truth for Spotlight area limits across all OBS wrappers. */
+inline constexpr float kSpotlightAreaMinPercent = 50.0f;
+inline constexpr float kSpotlightAreaMaxPercent = 400.0f;
+
 enum class SpotlightMode {
     SmartFocus,
     Cursor,
@@ -120,7 +124,8 @@ inline SpotlightVec2 spotlight_focus_half_size_px(SpotlightShape shape,
 {
     const float w = std::max(viewport_width, 1.0f);
     const float h = std::max(viewport_height, 1.0f);
-    const float scale = std::clamp(area_scale_percent, 50.0f, 200.0f) / 100.0f;
+    const float scale = std::clamp(area_scale_percent, kSpotlightAreaMinPercent,
+                                   kSpotlightAreaMaxPercent) / 100.0f;
 
     if (shape == SpotlightShape::Circle) {
         const float radius = std::max(84.0f, std::min(w, h) * 0.158f) * scale;
