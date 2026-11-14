@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>How to Install and Use ArZoom v0.7.2 in OBS</title>
-  <meta name="description" content="Install ArZoom stable v0.7.2 for OBS Windows, enable Smart Camera, use luminous click feedback, opt-in shortcut keycaps and configure Spotlight and hotkeys.">
+  <title>How to Install and Use ArZoom v0.7.3 in OBS</title>
+  <meta name="description" content="Install ArZoom stable v0.7.3 for OBS Windows, enable Smart Camera, use luminous click feedback, opt-in shortcut keycaps and configure Spotlight and hotkeys.">
   <meta name="keywords" content="install ArZoom OBS, ArZoom Scene Camera, OBS zoom hotkey, OBS spotlight, OBS presentation camera guide">
   <meta name="theme-color" content="#07111f">
   <link rel="canonical" href="https://masarray.github.io/arzoom-follow-obs/guide.html">
@@ -15,12 +15,12 @@
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <header class="site-header"><div class="container nav"><a class="brand" href="index.html">Ar<span>Zoom</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="index.html">Home</a><a href="troubleshooting.html">Troubleshooting</a><a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a><a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe">Download</a></nav></div></header>
+  <header class="site-header"><div class="container nav"><a class="brand" href="index.html">Ar<span>Zoom</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="index.html">Home</a><a href="troubleshooting.html">Troubleshooting</a><a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a><a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe">Download</a></nav></div></header>
 
   <main id="main" class="container">
     <header class="page-hero">
-      <span class="eyebrow">ArZoom v0.7.2 setup guide</span>
-      <h1>Set up ArZoom v0.7.2 for clean OBS presentations.</h1>
+      <span class="eyebrow">ArZoom v0.7.3 setup guide</span>
+      <h1>Set up ArZoom v0.7.3 for clean OBS presentations.</h1>
       <p class="lead">Start with Smart Camera and Click feedback. Add Shortcut keys or Spotlight when needed, with advanced adjustments kept out of the way until you request them.</p>
     </header>
 
@@ -30,14 +30,14 @@
       <h2>Before you begin</h2>
       <ul>
         <li>Windows 10 or Windows 11, 64-bit.</li>
-        <li>OBS Studio on Windows x64. Build baseline: OBS 31.1.1; functional smoke recording supplied from OBS 33.0.1 at 1920×1080, 60 FPS.</li>
+        <li>OBS Studio on Windows x64. Build baseline: OBS 31.1.1; prior v0.7.2 functional smoke recording supplied from OBS 33.0.1 at 1920×1080/60 FPS (not validation of new cursor features).</li>
         <li>For scene-wide pointer-driven behavior, use one visible top-level Display Capture whose monitor and transform can be resolved deterministically.</li>
         <li>Download the latest ArZoom Windows installer.</li>
       </ul>
 
       <h2>1. Download and install</h2>
-      <p><a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe">Download the latest Windows installer</a></p>
-      <p>Close OBS completely before running the v0.7.2 installer. The package supports standard OBS and portable/custom installation roots; if upgrading, back up your working setup first. <a href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Manual-v0.7.2-windows-x64.zip">Manual ZIP</a> · <a href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/SHA256SUMS.txt">SHA-256 checksums</a> · <a href="https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2">Release notes</a>.</p>
+      <p><a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Setup-windows-x64.exe">Download the latest Windows installer</a></p>
+      <p>Close OBS completely before running the v0.7.3 installer. The package supports standard OBS and portable/custom installation roots; if upgrading, back up your working setup first. <a href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/ArZoom-OBS-Manual-v0.7.3-windows-x64.zip">Manual ZIP</a> · <a href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.3/SHA256SUMS.txt">SHA-256 checksums</a> · <a href="https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3">Release notes</a>.</p>
 
       <h2>2. Prepare the presentation scene</h2>
       <p>Use one visible top-level Display Capture as the presentation owner. Fullscreen is simplest, but deterministic positive axis-aligned scaled/inset and crop-aware layouts are also supported.</p>
@@ -69,7 +69,7 @@
       </div>
 
       <h2>6. Enable Spotlight only when useful</h2>
-      <p>In the ArZoom filter properties, enable <strong>Enable spotlight</strong>. The v0.7.2 recommended defaults are:</p>
+      <p>In the ArZoom filter properties, enable <strong>Enable spotlight</strong>. The v0.7.3 recommended defaults are:</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Spotlight setting</th><th>Stable default</th></tr></thead>
@@ -84,17 +84,17 @@
           </tbody>
         </table>
       </div>
-      <p>Spotlight starts Off. Switching <strong>Enable spotlight</strong> on reveals the main focus controls; activate <strong>Show advanced options</strong> to adjust shape, animation speed, edge softness, display selection and focus anchor. Hiding Advanced does not reset settings.</p>
+      <p>Spotlight starts Off. <strong>Focus Area now spans 50–400%</strong> with the same 170% default. At 300–400%, the lit area may occupy most of a small canvas. Switching <strong>Enable spotlight</strong> on reveals main focus controls; <strong>Show advanced options</strong> exposes shape, animation speed, edge softness, display selection and focus anchor. Hiding Advanced does not reset settings.</p>
 
       <h2>7. Understand Cinematic Spotlight with Zoom</h2>
       <p><strong>Toggle Zoom ON</strong> starts the cinematic focus choreography: the aperture begins larger than the frame, closes smoothly to the focus Circle, and brings in the configured background dim gently. <strong>Toggle Zoom OFF</strong> reverses the motion and restores full bright context.</p>
       <p>The animation is time-based and can reverse cleanly if you toggle Zoom again before it finishes.</p>
 
       <h2>8. Zoom In / Zoom Out is resize-only</h2>
-      <div class="callout"><strong>v0.7.2 behavior lock:</strong> while Zoom is already active, Zoom + and Zoom − must not replay the cinematic iris. Camera magnification, Presentation Cursor, and Spotlight only grow or shrink smoothly.</div>
+      <div class="callout"><strong>v0.7.3 behavior lock:</strong> while Zoom is already active, Zoom + and Zoom − must not replay the cinematic iris. Camera magnification, Presentation Cursor, and Spotlight only grow or shrink smoothly.</div>
 
       <h2>9. Presentation Cursor</h2>
-      <p>v0.7.2 defaults to <strong>ArZoom Classic Hand</strong>. Seven built-in cursor styles remain available. Cursor size follows the exact live camera zoom.</p>
+      <p>v0.7.3 defaults to <strong>Premium Hand Chrome</strong>, with <strong>13 cursor styles</strong> including Blue Sleeve Hand, Cartoon Hand Pointer and 3D Hand Pointer. Cursor size is <strong>24–160 px</strong>, scaling with camera zoom to a maximum of 512 output pixels. Very large rendered pointers may soften; the fingertip hotspot remains anchored.</p>
       <div class="callout warning"><strong>Avoid double cursor:</strong> when ArZoom Presentation Cursor is enabled, disable native cursor capture in the underlying Display Capture.</div>
 
       <h2>10. Click feedback and shortcut keycaps</h2>
@@ -146,6 +146,6 @@
     </article>
   </main>
 
-  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · v0.7.2 setup guide</div><div class="footer-links"><a href="index.html">Home</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Report a problem</a></div></div></footer>
+  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · v0.7.3 setup guide</div><div class="footer-links"><a href="index.html">Home</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Report a problem</a></div></div></footer>
 </body>
 </html>

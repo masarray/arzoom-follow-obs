@@ -11,6 +11,7 @@ on:
       # One explicit, version-locked release branch. Unlike main, creating
       # this branch is a deliberate publish command by repository maintainer.
       - 'release/v0.7.2'
+      - 'release/v0.7.3'
   workflow_dispatch:
     inputs:
       approve_stable_release:
@@ -33,7 +34,7 @@ concurrency:
 jobs:
   windows:
     name: Build and publish Windows installer
-    if: ${{ (github.event_name == 'push' && (github.ref_type == 'tag' || github.ref == 'refs/heads/release/v0.7.2')) || (github.ref == 'refs/heads/main' && inputs.approve_stable_release == true) }}
+    if: ${{ (github.event_name == 'push' && (github.ref_type == 'tag' || github.ref == 'refs/heads/release/v0.7.2' || github.ref == 'refs/heads/release/v0.7.3')) || (github.ref == 'refs/heads/main' && inputs.approve_stable_release == true) }}
     runs-on: windows-2022
 
     steps:
@@ -75,8 +76,8 @@ jobs:
               throw "The explicit release tag must match buildspec.json version v$version."
             }
             if ($env:GITHUB_REF_TYPE -eq 'branch' -and
-                $env:GITHUB_REF -ne 'refs/heads/release/v0.7.2') {
-              throw "Explicit release branch is limited to the approved v0.7.2 version."
+                $env:GITHUB_REF -ne "refs/heads/release/v$version") {
+              throw "Explicit release branch must match the approved buildspec version."
             }
             # The explicit tag/branch must point at current main HEAD.
             # No stale or side-branch code is permitted in public stable.
