@@ -114,3 +114,10 @@ arzoom_configure_test_target(arzoom-click-benchmark)
 
 add_executable(arzoom-presenter-benchmark arzoom-presenter-benchmark.cpp)
 arzoom_configure_test_target(arzoom-presenter-benchmark)
+
+# Pure native-UI disclosure policy, no OBS/Qt runtime required.
+add_executable(arzoom-compact-properties-test
+  arzoom-compact-properties-test.cpp)
+arzoom_configure_test_target(arzoom-compact-properties-test)
+add_test(NAME arzoom-presentation-compact-properties
+  COMMAND arzoom-compact-properties-test)
