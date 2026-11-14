@@ -245,6 +245,12 @@ void phase24_render(void *data, gs_effect_t *effect)
         }
     }
 
+    /* If the optional atlas allocation/upload could not provide a real
+     * image, retain the transparent sampler but do not force a useless
+     * keycap-only fullscreen pass. The core camera/click remains available. */
+    if (texture == wrapper->keycap_fallback)
+        opacity = 0.0f;
+
     gs_effect_set_texture(wrapper->keycap_atlas_param, texture);
     vec2 dimensions;
     vec2_set(&dimensions,
