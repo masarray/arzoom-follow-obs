@@ -154,6 +154,13 @@ bool should_visualize_shortcut(
     if (chord.key == ShortcutKey::Unknown)
         return false;
 
+    // An unrecognized modifier bit is *not* evidence of an action chord.
+    // Fail closed rather than revealing an ordinary printable character.
+    constexpr std::uint8_t kKnownModifiers =
+        ShortcutCtrl | ShortcutShift | ShortcutAlt | ShortcutWin;
+    if ((chord.modifiers & ~kKnownModifiers) != 0)
+        return false;
+
     // Modified keys represent explicit actions. We show the action chord but
     // never reconstruct text or clipboard content.
     if (chord.modifiers != 0)
