@@ -15,7 +15,7 @@
 | ADR-04 | Port Arssyut's **portable shortcut semantic reducer + physical keycap model** | Tested privacy/geometry behavior; bounded five-keycap frame |
 | ADR-05 | Implement **one opt-in module-owned Windows input observer**, not Arssyut Raw Input registration inside OBS | Windows explicitly warns library Raw Input registrations can steal the host's per-class window target |
 | ADR-06 | Render keycaps as a retained native CPU raster/OBS dynamic texture sampled in the existing Draw effect | No per-frame glyph raster/texture creation and no D3D11 device ownership collision |
-| ADR-07 | Any optional click-triggered auto-zoom is an **intent request** to the existing planner, not a second camera | Preserve manual controls, freeze, overview, fail-safe mapping and settled HOLD |
+| ADR-07 | Clicks/keycaps remain presentation-only; **no click-triggered automatic zoom** | Explicit owner scope; no camera wake, zoom timer or intent reducer added |
 | ADR-08 | Keep ArZoom Single frozen baseline and integrate Multi only at its M5 canonical pointer gate | Draft PR #34's M0/M1/M2A is not yet approved for camera/render wiring |
 | ADR-09 | No `arzoom-filter-v25.cpp` include-wrapper patch for new features | The existing v2→v24 phase stack needs explicit bounded integration seams, not more nested override state |
 | ADR-10 | Shader parameter publication is one explicit, complete, neutralized frame contract | Previous P5 D3D11 shader ABI omissions caused black output when Spotlight was Off |
@@ -209,44 +209,15 @@ Every path into `obs_source_process_filter_end` must have the full shader ABI; n
 
 Reference: https://docs.obsproject.com/reference-sources and https://docs.obsproject.com/reference-libobs-graphics-effects
 
-## 10. Zoom Follow parity and optional assist
+## 10. Zoom Follow preservation, not auto-zoom porting
 
-### What each product actually runs
+**Product decision (2026-11-14): do not port Arssyut's click-triggered auto-zoom.** This excludes its ~3-second click hold, motion-tail extension, auto-focus intent arbitration, automatic camera activation and any alternate camera engine. No experimental flag is needed.
 
-| Concern | ArZoom Scene Camera | Arssyut |
-| --- | --- | --- |
-| Semantic framing | SceneViewportPlanner on proven Display Capture→scene mapping | Per-source `PresenterAwareSmartCamera` via `ArZoomCameraAdapter` |
-| Kinematics | SceneKinematicMotion, bounded jerk, tracking→settle continuity, exact HOLD | ArZoom gimbal/Cinematic policy for recorder frame |
-| Activation | OBS Toggle/Hold/Zoom +/-/Overview/Reset/Freeze controls | Manual controls plus click-initiated temporary auto-zoom |
-| Output | OBS scene-source filter, native scene composition | WGC/D3D11 recorder compositor |
-| Current risk | Invalid/ambiguous OBS display mapping and shader ABI | Recorder-specific camera input and timing don't transfer directly |
-
-**Decision:** ArZoom Scene Camera is stronger for the accepted OBS scene-wide use case and must remain default. Arssyut contributes a useful *intent policy*, not a new animation engine.
-
-### Optional `ZoomIntentReducer` after A/B validation
-
-Only if demanded by presenter testing, add a bounded policy feeding the existing camera:
-
-~~~text
-manual toggle / momentary hold / presenter control
-   + optional click-intent time window
-   + valid authoritative mapped pointer
-   -> one effective zoom request
-   -> existing SceneViewportPlanner / SceneKinematicMotion
-~~~
-
-Arssyut reference: zoom initiated by click, about 3 s hold and 0.75 s extension while pointer activity continues. Treat as configurable **experimental defaults**; do not make global defaults or hard-code them without direct OBS A/B.
-
-Arbitration invariants:
-- explicit Reset/Full Frame clears automatic intent; explicit Zoom Off cancels pending auto wake;
-- Overview Peek preserves exact shot and returns correctly;
-- Freeze holds exact visible camera shot; automatic click cannot unfreeze;
-- invalid pointer mapping cannot trigger a guessed new camera target;
-- camera zoom motion remains continuous and time-based;
-- Spotlight consumes camera state read-only; click ring On/Off does not change zoom-trigger policy;
-- no active new mode by default and no silent behavior change to existing scenes.
-
-The optional mode can be rejected entirely if it increases accidental camera jumps. Evidence comes from equivalent scripted cursor traces **and** live presenter walkthrough, not an assumption that Arssyut's recorder policy is better.
+- ArZoom Scene Camera's one accepted SceneViewportPlanner (WHERE), SceneKinematicMotion (HOW), stable P4.1 mapping/jerk/hysteresis/settle, exact HOLD, and manual Toggle/Hold/Freeze/Overview/Zoom +/-/Reset remain authoritative.
+- Arssyut's camera adapter uses ArZoom's PresenterAwareSmartCamera and is not a reason to replace the OBS scene camera.
+- Click input continues to drive **visual feedback only** (plus existing accepted presentation-cursor animation), never zoom/Spotlight focus intent or another semantic planner.
+- Test identical pointer/click traces with Click Feedback enabled/disabled, with and without keycaps; output camera center/zoom and existing presenter transitions must match exactly.
+- Review OBS 1080p60 output for smooth camera follow, but only fix a verified existing regression under the protected P4.1/P5 contracts, never add a click zoom gesture.
 
 ## 11. Single/Multi and multi-filter ownership
 
@@ -272,7 +243,6 @@ Retain original saved `click_visual_enabled` and all established presenter/Spotl
 - `shortcut_keycaps_enabled` default **false**;
 - `shortcut_keycaps_size` default `standard`;
 - `shortcut_keycaps_position` default `bottom_center`; initial version needn't expose arbitrary X/Y;
-- `auto_focus_assist_enabled` default **false** only if later accepted and shipped.
 
 UI runtime status has independent booleans/diagnostics: `renderer_ready`, `keycap_input_ready`, `mapped_pointer_valid`, `active_presentation_filter`. Do not claim active just because the checkbox is checked. Locale keys must exist in both EN and ID.
 
@@ -308,7 +278,7 @@ No new full-screen draw pass, no per-frame heap allocation, GDI raster, font ini
 4. Integrate host-safe observer with explicit startup/shutdown and off-by-default privacy.
 5. Prepare retained atlas and shared shader ABI **as one coherent reviewed change**. Neutral default allows no-keycap behavior.
 6. Measure and run real OBS recordings; if black frame/hitch, revert the overlay seam without reverting the camera baseline.
-7. Run optional camera-intent A/B separately; never block the core click/keycap release on experimental auto zoom.
+7. Run P4.1/P5 Zoom Follow parity tests without modifying camera intent; click-triggered automatic zoom is out of scope.
 8. Merge only after checks and direct OBS acceptance; preserve PR #34 independent state.
 
 ## 15. Exact phase exit gates
@@ -319,7 +289,7 @@ No new full-screen draw pass, no per-frame heap allocation, GDI raster, font ini
 | Semantic keycaps | privacy/unit/Win-chord test outputs, bounded generation counters | ordinary typing visible or plaintext retained |
 | Observer | Windows OBS opt-in hotkey and lifecycle recording, no lost keystrokes | host Raw Input collision, keyboard suppression, stale hook callback, OBS freeze |
 | GPU keycaps | asset preview + OBS recording, shader ABI matrix, retained texture evidence | per-frame uploads/allocs, extra full-frame pass, unbound texture, keycap shifts with camera |
-| Follow A/B | motion trace parity, live presenter validation, regression proof | pointer lost, target oscillation, unintended zoom, duplicate camera truth |
+| Follow parity | P4.1/P5 motion trace parity, presenter hotkey behavior, no overlay-to-camera dependency | pointer lost, target oscillation, changed Zoom intent or duplicate camera truth |
 | Release | supported OBS versions, package/install, repeatable direct OBS sign-off | failed scene restoration, black output or incomplete validation |
 
 ## 16. Explicit limitations
@@ -327,5 +297,5 @@ No new full-screen draw pass, no per-frame heap allocation, GDI raster, font ini
 - This is a **code-grounded architecture proposal**, not a compiled/tested implementation.
 - The exact existing render ownership entry point must be revalidated against the live branch immediately before the first code PR; `v18/v21/v24` are candidate integration sites, not preapproved edit instructions.
 - Arssyut's accepted clip proves its own recorder output, not OBS output or full GPU portability.
-- The optional auto-zoom is intentionally not a shipped commitment until controlled comparison demonstrates value.
+- Arssyut click-triggered auto-zoom is explicitly out of scope and must not be implemented.
 - ArZoom Multi remains a separate in-progress effort; its runtime implementation must not be inferred from this document.
