@@ -45,8 +45,15 @@ void presentation_timeline()
     timeline.step(copy, 1.0f / 60.0f);
     require(timeline.active() && timeline.frame().generation == 2,
             "next semantic chord did not replace previous overlay");
-    timeline.reset();
+    timeline.reset(copy.generation);
     require(!timeline.active(), "disable/deactivate retained keycaps");
+    timeline.step(copy, 0.05f);
+    require(!timeline.active(),
+            "reactivating replayed the last shortcut without a new key press");
+    timeline.step({{presentation::ShortcutKey::V,
+                     presentation::ShortcutCtrl}, 3}, 0.05f);
+    require(timeline.active() && timeline.frame().generation == 3,
+            "new shortcut after reactivation was dropped");
 }
 
 void invariant_against_plain_typing()
