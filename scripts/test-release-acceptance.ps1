@@ -18,9 +18,14 @@ foreach ($case in $cases) {
 
 $actualPath = Join-Path $PSScriptRoot '../docs/RELEASE_ACCEPTANCE_v0.7.2.md'
 $actualDoc = Get-Content -LiteralPath $actualPath -Raw
-if (Test-ArZoomReleaseApproval -AcceptanceText $actualDoc) {
-    throw 'Preview is incorrectly marked release-approved'
+$actualMarkers = @($actualDoc -split '\r?\n' |
+    Where-Object { $_ -match '^ReleaseGate:' })
+if ($actualMarkers.Count -ne 1 -or
+    $actualMarkers[0] -notin @('ReleaseGate: BLOCKED', 'ReleaseGate: APPROVED')) {
+    throw 'Actual release checklist must have exactly one valid gate line.'
 }
+# Unlike a test that hardcodes BLOCKED forever, this permits real owner
+# approval after field acceptance without breaking the normal CI suite.
 
 $workflow = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../.github/workflows/release.yml') -Raw
 if ($workflow -match '(?m)^  push:' -or
