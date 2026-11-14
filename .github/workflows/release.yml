@@ -50,12 +50,9 @@ jobs:
             throw "Missing release acceptance record: $acceptancePath"
           }
           $acceptance = Get-Content -LiteralPath $acceptancePath -Raw
-          # Exactly one authoritative gate line. A prose example mentioning
-          # APPROVED must never bypass a BLOCKED header.
-          $gateLines = @($acceptance -split "`r?`n" |
-            Where-Object { $_ -match '^ReleaseGate:' })
-          if ($gateLines.Count -ne 1 -or
-              $gateLines[0] -ne 'ReleaseGate: APPROVED') {
+          # Reuse the same fail-closed predicate exercised by Windows CI.
+          . ./scripts/release-acceptance.ps1
+          if (-not (Test-ArZoomReleaseApproval -AcceptanceText $acceptance)) {
             throw "Public release blocked: exactly one APPROVED gate is required."
           }
           $testedSha = $env:TESTED_COMMIT_SHA
