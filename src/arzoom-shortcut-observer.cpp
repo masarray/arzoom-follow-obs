@@ -1,5 +1,6 @@
 #include "arzoom-shortcut-observer.hpp"
 #include "arzoom-shortcut-visualizer.hpp"
+#include <obs-module.h>
 
 #include <atomic>
 #include <cstdint>
@@ -31,6 +32,7 @@ bool message_queue_ready = false;
 /* Hook-thread-owned only. Zero contention and no callback allocations. */
 std::array<bool, kVirtualKeyCapacity> keys_down{};
 std::uint32_t sequence = 0;
+bool right_alt_down = false;
 
 presentation::ShortcutKey canonical_key(DWORD code) noexcept
 {
@@ -121,6 +123,12 @@ LRESULT CALLBACK shortcut_hook(int code, WPARAM message, LPARAM data)
             const bool released =
                 message == WM_KEYUP || message == WM_SYSKEYUP;
             if (pressed || released) {
+                /* Right Alt often enters international text (AltGr), even
+                 * when Windows synthesizes/marks Ctrl inconsistently. */
+                if (vk == VK_RMENU ||
+                    (vk == VK_MENU &&
+                     (key->flags & LLKHF_EXTENDED) != 0))
+                    right_alt_down = pressed;
                 const bool duplicate = pressed && keys_down[vk];
                 keys_down[vk] = pressed;
                 if (pressed && !duplicate && !is_modifier(vk)) {
@@ -136,6 +144,8 @@ LRESULT CALLBACK shortcut_hook(int code, WPARAM message, LPARAM data)
                         (chord.modifiers & ShortcutWin) == 0 &&
                         is_textual_shortcut_key(chord.key);
                     if (!shift_typing && !altgr_typing &&
+                        !(right_alt_down &&
+                          is_textual_shortcut_key(chord.key)) &&
                         should_visualize_shortcut(chord)) {
                         ++sequence;
                         if (sequence == 0) ++sequence;
@@ -171,6 +181,7 @@ void observer_thread()
             UnhookWindowsHookEx(hook);
             hook = nullptr;
             keys_down.fill(false);
+            right_alt_down = false;
         } else if (need && !hook) {
             HMODULE module = nullptr;
             GetModuleHandleExW(
@@ -179,6 +190,14 @@ void observer_thread()
                 reinterpret_cast<LPCWSTR>(&shortcut_hook), &module);
             hook = SetWindowsHookExW(
                 WH_KEYBOARD_LL, shortcut_hook, module, 0);
+            if (!hook)
+                blog(LOG_WARNING,
+                     "[ArZoom] Shortcut observer unavailable (Win32 %lu); "
+                     "other presentation effects remain available",
+                     GetLastError());
+            else
+                blog(LOG_INFO,
+                     "[ArZoom] Optional keyboard shortcut observer active");
         }
     };
     sync_hook();
@@ -189,6 +208,7 @@ void observer_thread()
     }
     if (hook) UnhookWindowsHookEx(hook);
     keys_down.fill(false);
+    right_alt_down = false;
     hook_thread_id.store(0, std::memory_order_release);
 }
 
