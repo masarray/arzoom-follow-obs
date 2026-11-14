@@ -87,7 +87,8 @@ void phase24_tick(void *data, float seconds)
 
     const bool keycaps_wanted =
         wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
-        phase1->enabled.load(std::memory_order_acquire);
+        phase1->enabled.load(std::memory_order_acquire) &&
+        phase1->context && obs_source_showing(phase1->context);
 
     /* A hidden source does not have to install a process-global hook at
      * OBS startup. It subscribes on its first active video tick and leaves
