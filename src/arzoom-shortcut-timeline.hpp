@@ -16,11 +16,13 @@ public:
     static constexpr float kFadeOut = 0.220f;
     static constexpr float kDuration = kFadeIn + kHold + kFadeOut;
 
-    void reset() noexcept
+    /* Consume a generation when pausing. Otherwise a source reactivated
+     * during the same shortcut hold may replay an old event. */
+    void reset(std::uint32_t consumed_generation = 0) noexcept
     {
         frame_ = {};
         age_ = kDuration;
-        last_generation_ = 0;
+        last_generation_ = consumed_generation;
     }
 
     void step(Snapshot latest, float dt) noexcept
