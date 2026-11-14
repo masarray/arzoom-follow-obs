@@ -37,6 +37,13 @@ $assets = @(
         MaxBytes = 16384
         HotspotX = 23
         HotspotY = 7
+    },
+    @{
+        File = 'blue-sleeve-hand.png'
+        Sha256 = '9dbe57dce2405deeb785d78c366abb863521f6494ace4c35bfd17de0b516bfb0'
+        MaxBytes = 16384
+        HotspotX = 37
+        HotspotY = 5
     }
 )
 
@@ -74,7 +81,8 @@ foreach ($asset in $assets) {
             }
             if ($asset.File -eq 'premium-chrome-arrow.png' -or
                 $asset.File -eq 'hand-3d-pointer.png' -or
-                $asset.File -eq 'cartoon-hand-pointer.png') {
+                $asset.File -eq 'cartoon-hand-pointer.png' -or
+                $asset.File -eq 'blue-sleeve-hand.png') {
                 # A technically valid PNG can still look dirty at video scale.
                 # Require a single connected, legible silhouette on both
                 # dark and light backgrounds at native 32/48/64 px sizes.
