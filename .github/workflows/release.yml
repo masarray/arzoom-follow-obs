@@ -9,6 +9,10 @@ on:
         required: true
         type: boolean
         default: false
+      tested_commit_sha:
+        description: "Exact Git commit SHA tested in OBS (must match this main revision)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -30,6 +34,8 @@ jobs:
       - name: Read release version and validate branding
         id: version
         shell: pwsh
+        env:
+          TESTED_COMMIT_SHA: ${{ inputs.tested_commit_sha }}
         run: |
           $spec = Get-Content -LiteralPath "buildspec.json" -Raw | ConvertFrom-Json
           $version = [string]$spec.version
@@ -47,8 +53,9 @@ jobs:
           if ($acceptance -notmatch '(?m)^ReleaseGate: APPROVED\s*$') {
             throw "Public release blocked: physical OBS validation not approved."
           }
-          if (-not $acceptance.Contains("Exact accepted commit: $env:GITHUB_SHA")) {
-            throw "Release gate does not match exact commit $env:GITHUB_SHA"
+          $testedSha = $env:TESTED_COMMIT_SHA
+          if ($testedSha -ne $env:GITHUB_SHA) {
+            throw "The explicitly approved tested SHA differs from the selected main commit."
           }
           $readme = Get-Content -LiteralPath "README.md" -Raw
           if (-not $readme.Contains("version-$version")) {
