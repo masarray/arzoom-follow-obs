@@ -86,13 +86,22 @@ void phase24_tick(void *data, float seconds)
     if (!phase1)
         return;
 
+    /* OBS can count showing references on the filtered target rather than
+     * the individual effect wrapper, depending on scene/preview topology.
+     * Support either form while never observing an entirely hidden target. */
+    obs_source_t *target = phase1->context
+                               ? obs_filter_get_target(phase1->context)
+                               : nullptr;
+    const bool presenting =
+        (phase1->context && obs_source_showing(phase1->context)) ||
+        (target && obs_source_showing(target));
     const bool keycaps_wanted =
         arzoom::shortcut::ObserverActivation{
             wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
                 wrapper->keycap_shader_ready &&
                 wrapper->keycap_fallback != nullptr,
             phase1->enabled.load(std::memory_order_acquire),
-            phase1->context && obs_source_showing(phase1->context)
+            presenting
         }.subscribe();
 
     /* A hidden source does not have to install a process-global hook at
