@@ -61,6 +61,12 @@ jobs:
           if (-not $readme.Contains("version-$version")) {
             throw "README still advertises an older version; sync docs first."
           }
+          $landing = Get-Content -LiteralPath "docs/index.html" -Raw
+          $guide = Get-Content -LiteralPath "docs/guide.html" -Raw
+          if (-not $landing.Contains('"softwareVersion": "' + $version + '"') -or
+              -not $guide.Contains("ArZoom v$version")) {
+            throw "The landing page or setup guide still advertises the previous stable version."
+          }
           if (-not (Test-Path -LiteralPath "packaging/windows/arzoom.ico" -PathType Leaf)) {
             throw "Windows installer icon is missing: packaging/windows/arzoom.ico"
           }
