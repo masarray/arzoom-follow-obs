@@ -38,8 +38,8 @@ void preset_metadata_is_safe_and_unique()
     }
     require(ids.size() == arzoom::kCursorPresets.size(),
             "preset id count changed unexpectedly");
-    require(arzoom::kCursorPresets.size() == 8,
-            "built-in palette must include the approved Premium Hand");
+    require(arzoom::kCursorPresets.size() == 9,
+            "both original and chrome Premium Hands must remain available");
 }
 
 void style_helpers_are_unambiguous()
@@ -59,17 +59,32 @@ void style_helpers_are_unambiguous()
             "Classic Hand preset missing");
     require(arzoom::find_cursor_preset("sticker_hand") != nullptr,
             "Sticker Hand preset missing");
-    const arzoom::CursorPreset *premium =
-        arzoom::find_cursor_preset(arzoom::kCursorStyleDefault);
-    require(premium &&
-                premium->visual == arzoom::BuiltinCursorVisual::PremiumHand &&
-                arzoom::cursor_is_raster_preset(*premium),
-            "new filters must default to the bundled Premium Hand asset");
-    require(near(premium->hotspot_x, 29.0f / 160.0f) &&
-                near(premium->hotspot_y, 17.0f / 160.0f),
-            "Premium Hand hotspot is no longer at the index fingertip");
-    require(premium->recommended_size_px >= 60.0f,
-            "Premium Hand must be readable at normal presentation scale");
+    const auto *legacy = arzoom::find_cursor_preset(
+        arzoom::kCursorStylePremiumHand);
+    const auto *chrome = arzoom::find_cursor_preset(
+        arzoom::kCursorStylePremiumHandChrome);
+    require(legacy && chrome &&
+                arzoom::kCursorStyleDefault == arzoom::kCursorStylePremiumHandChrome &&
+                arzoom::cursor_is_raster_preset(*legacy) &&
+                arzoom::cursor_is_raster_preset(*chrome),
+            "Chrome must default while original Premium Hand remains selectable");
+    require(std::string(arzoom::cursor_raster_asset_filename(*legacy)) ==
+                "cursors/premium-hand.png" &&
+                std::string(arzoom::cursor_raster_asset_filename(*chrome)) ==
+                "cursors/premium-hand-chrome.png",
+            "raster image names must not accidentally alias");
+    require(near(legacy->hotspot_x, 29.0f / 160.0f) &&
+                near(legacy->hotspot_y, 17.0f / 160.0f),
+            "original Premium Hand hotspot changed");
+    require(near(chrome->hotspot_x, 38.0f / 160.0f) &&
+                near(chrome->hotspot_y, 11.0f / 160.0f),
+            "Chrome cursor hotspot must align to the actual index fingertip");
+    require(chrome->visual == arzoom::BuiltinCursorVisual::PremiumHandChrome &&
+                chrome->recommended_size_px >= 60.0f,
+            "Chrome cursor must be a visible distinct raster preset");
+    require(arzoom::cursor_raster_asset_filename(
+                *arzoom::find_cursor_preset("classic_hand")) == nullptr,
+            "procedural styles must not require raster assets");
 }
 
 void tactile_curve_has_press_rebound_and_settle()
