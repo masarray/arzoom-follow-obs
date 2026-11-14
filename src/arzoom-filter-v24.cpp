@@ -103,7 +103,8 @@ void phase24_tick(void *data, float seconds)
             wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
                 wrapper->keycap_shader_ready &&
                 wrapper->keycap_fallback != nullptr,
-            phase1->enabled.load(std::memory_order_acquire),
+            phase1->enabled.load(std::memory_order_acquire) &&
+                phase1->context && obs_source_enabled(phase1->context),
             presenting
         }.subscribe();
 
