@@ -55,6 +55,17 @@ void test_privacy_policy(TestContext &test)
         "Modified digit action is visible");
 
     test.expect(
+        !should_visualize_shortcut(
+            {ShortcutKey::C, 0x80}),
+        "Unsupported modifier cannot leak an ordinary typed character");
+
+    test.expect(
+        !should_visualize_shortcut(
+            {ShortcutKey::C,
+                static_cast<std::uint8_t>(ShortcutCtrl | 0x80)}),
+        "Mixed unsupported modifier also fails closed");
+
+    test.expect(
         should_visualize_shortcut(
             {ShortcutKey::F12, 0}),
         "Function key is visible");
@@ -68,6 +79,12 @@ void test_privacy_policy(TestContext &test)
 void test_canonical_keycaps(TestContext &test)
 {
     using namespace arzoom::presentation;
+
+    const auto hidden =
+        build_keyboard_overlay(
+            {ShortcutKey::C, 0x80}, 6);
+    test.expect(hidden.keycap_count == 0,
+                "Invalid modifier chord generates zero rendered keycaps");
 
     const auto frame =
         build_keyboard_overlay(
