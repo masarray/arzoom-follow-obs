@@ -4,6 +4,7 @@
 #include "arzoom-shortcut-timeline.hpp"
 #include "arzoom-keycap-rasterizer.hpp"
 #include "arzoom-properties-ux-obs.hpp"
+#include "arzoom-keycap-runtime-policy.hpp"
 #include <mutex>
 
 #define SETTING_KEYCAP_VISUAL "shortcut_keycaps_enabled"
@@ -86,9 +87,11 @@ void phase24_tick(void *data, float seconds)
         return;
 
     const bool keycaps_wanted =
-        wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
-        phase1->enabled.load(std::memory_order_acquire) &&
-        phase1->context && obs_source_showing(phase1->context);
+        arzoom::shortcut::ObserverActivation{
+            wrapper->keycaps_enabled.load(std::memory_order_acquire),
+            phase1->enabled.load(std::memory_order_acquire),
+            phase1->context && obs_source_showing(phase1->context)
+        }.subscribe();
 
     /* A hidden source does not have to install a process-global hook at
      * OBS startup. It subscribes on its first active video tick and leaves
@@ -181,7 +184,8 @@ void phase24_render(void *data, gs_effect_t *effect)
     /* P0 D3D11 invariant: every declared texture sampler must have a valid,
      * live fallback before ANY shared Draw, even if this effect is Off.
      * Missing optional resources fail safely to source pass-through. */
-    if (!wrapper->keycap_shader_ready) {
+    if (arzoom::shortcut::use_legacy_presentation(
+            wrapper->keycap_shader_ready)) {
         /* Mismatched legacy effect files do not have the new keycap ABI.
          * Preserve the existing Zoom/Click/Cursor engine instead of blanking
          * the entire plugin for a missing optional presentation feature. */
