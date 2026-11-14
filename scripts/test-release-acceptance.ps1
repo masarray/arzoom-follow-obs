@@ -31,7 +31,7 @@ $workflow = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../.github/workfl
 # The only publish-triggering push is a deliberate signed-off version
 # tag; ordinary main pushes cannot publish. The tag must be version-matched
 # and the publish job still enforces the owner-approval record.
-if ($workflow -notmatch "(?ms)^  push:\\s*tags:\\s*- 'v\\*'" -or
+if ($workflow -notmatch "(?ms)^  push:\s*tags:\s*- 'v\*'" -or
     $workflow -match '(?m)^    branches:' -or
     $workflow -notmatch 'approve_stable_release' -or
     $workflow -notmatch 'tested_commit_sha' -or
