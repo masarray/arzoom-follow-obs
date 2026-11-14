@@ -28,10 +28,16 @@ if ($actualMarkers.Count -ne 1 -or
 # approval after field acceptance without breaking the normal CI suite.
 
 $workflow = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../.github/workflows/release.yml') -Raw
-if ($workflow -match '(?m)^  push:' -or
+# The only publish-triggering push is a deliberate signed-off version
+# tag; ordinary main pushes cannot publish. The tag must be version-matched
+# and the publish job still enforces the owner-approval record.
+if ($workflow -notmatch "(?ms)^  push:\\s*tags:\\s*- 'v\\*'" -or
+    $workflow -match '(?m)^    branches:' -or
     $workflow -notmatch 'approve_stable_release' -or
     $workflow -notmatch 'tested_commit_sha' -or
-    $workflow -notmatch 'Test-ArZoomReleaseApproval') {
-    throw 'Release workflow no longer enforces explicit manual approval'
+    $workflow -notmatch 'Test-ArZoomReleaseApproval' -or
+    $workflow -notmatch 'The release tag must point to the current main commit' -or
+    $workflow -notmatch 'The explicit release tag must match buildspec.json') {
+    throw 'Release workflow no longer enforces explicit tag / owner approval'
 }
 Write-Host '[PASS] Release gate fails closed: six cases + preview/trigger safeguards.'
