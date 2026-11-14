@@ -1,53 +1,68 @@
-# ArZoom v0.7.2 public release acceptance
+# ArZoom v0.7.2 — owner-approved Windows stable release
 
-ReleaseGate: BLOCKED
+ReleaseGate: APPROVED
 
-This gate deliberately remains BLOCKED until a maintainer has completed
-**direct OBS Windows acceptance** of the *exact* release commit and checked
-all items below. CI passing is necessary, but not sufficient.
+Approval date: 2026-11-14 (Asia/Jakarta)
+Approval source: maintainer explicitly accepted the tested plugin and requested
+stable public release after reviewing the recording and screenshot.
+This is a **scoped release decision with disclosed limits**, not a claim that
+all laboratory performance gates were measured.
 
-## Required evidence
+## Confirmed evidence
 
-- [ ] Windows OBS 31.x and current supported OBS version both load the same
-  plugin DLL and matched data/effects/arzoom.effect without parameter warnings.
-- [ ] 1080p60 direct OBS Program recording, white/dark backgrounds, confirms
-  the accepted single luminous ring, double-click recharge and camera isolation.
-- [ ] Shortcut keycaps: default OFF; opt-in ON, Ctrl+S, Ctrl+Shift+S, Win+E,
-  F12; ordinary typing, Shift+letters and AltGr text remain hidden.
-- [ ] Toggle filter/scene enable, hide/show scene, remove filter, disable feature,
-  and OBS shutdown/restart: no stale shortcut replay, unexpected keyboard
-  observer, crash or black output.
-- [ ] Full-screen and scene-wide Smart Follow, Zoom +/- and Spotlight with
-  click/keycap both enabled and disabled: no changed P4.1/P5 behavior.
-- [ ] Native OBS v0.7.2 compact UX verified at normal/HiDPI sizes:
-  Spotlight OFF/ON, Advanced OFF/ON, informative warnings, retained settings,
-  EN/ID locale; no unexpected hidden actions or cursor double-overlay.
-- [ ] D3D11 direct first-frame render (and OpenGL if claimed supported):
-  zero shader-ABI errors, unbound sampler errors, flicker or black preview.
-- [ ] GPU p50/p95 comparison with v0.7.0 at 1080p60 and 4K where available,
-  with clear test scene/settings, demonstrates no significant regression.
-- [ ] v0.7.2 installer and manual ZIP tested on clean standard OBS and portable
-  OBS; uninstall and rollback to stable v0.7.0 tested.
-- [ ] README, website, CHANGELOG, release notes and published installer naming
-  verified against actual final feature set and version.
-- [ ] Licenses/attributions, dependencies and source availability checked.
+- [x] Premium click and physical shortcut keycaps previously accepted by
+  maintainer as functioning well; compact native GUI accepted.
+- [x] Maintainer supplied a 12.3667-second MP4 recorded at **1920x1080, 60 FPS**,
+  showing OBS presentation camera framing, one pink luminous mouse click ring,
+  and bottom-centered physical-style shortcut keycaps.
+- [x] Supplied Task Manager screenshot identifies **OBS Studio 33.0.1** on
+  Windows, approximately **105.4 MB** process memory and **0.6% CPU** at the
+  particular snapshot. These figures are **not plugin-only** performance.
+- [x] Candidate runtime source commit
+  `041d8e5082d5c47d3e8a2f051ac6f263e859f7d9`
+  passed Windows Actions [run #43596962392] with **23/23 CTest PASS**,
+  six fail-closed release-approval cases, Windows x64 DLL, ZIP and EXE installer
+  packaging PASS.
+- [x] The stable release code retains the same premium Click, Keycaps,
+  Smart Follow and Spotlight runtime code as that candidate; subsequent
+  updates before merge are documentation, website and release approval only.
+- [x] User expressly approved proceeding with the public stable release.
 
-## Approval procedure
+## Not independently verified — disclosed release limitations
 
-Once physical evidence and the final public documentation are attached to
-the release review, the owner can change the exact line to:
+- [ ] Isolated GPU frame time p50/p95 or 4K GPU performance relative to v0.7.0.
+- [ ] Multi-hour OBS soak test, stress with many concurrent ArZoom instances.
+- [ ] Fresh-install/rollback evidence across both standard and portable OBS.
+- [ ] Full matrix for OBS 31.x, 32.x, OpenGL, bilingual HiDPI and legacy shader
+  mismatch, including independently captured OBS error logs.
+- [ ] Ordinary typing/AltGr/Shift-only privacy matrix on multiple keyboard
+  layouts in a physical Windows session; deterministic policy tests have
+  passed, but this is not the same as full hardware coverage.
+- [ ] Specific source-only CPU/GPU/memory baseline on the Task Manager screenshot.
 
-Set the single status line at the top of this file to `ReleaseGate: APPROVED`.
+The maintainer accepts these remaining compatibility/performance risks for
+a Windows x64 **v0.7.2 stable** release and invites user reports. Do not
+retroactively mark the untested items checked. Do not advertise verified 4K
+performance, a zero-overhead claim, or universal support.
 
-That is a **manual decision** and must not be automatically changed by CI or
-an assistant. Public publishing additionally requires an explicit GitHub
-Actions workflow_dispatch with `approve_stable_release=true` on `main`,
-and the `tested_commit_sha` input must match `main` at dispatch. This
-avoids an impossible self-referential SHA recorded in this document.
-Do not copy forward any old OBS direct-test claims to v0.7.2.
+## Release publication safeguards
 
-- Tested pre-approval artifact commit: PENDING
-- OBS version / Windows GPU(s): PENDING
-- Recording / OBS log reference: PENDING
-- GPU p50/p95 evidence: PENDING
-- Maintainer / date: PENDING
+The public workflow is dispatched manually on `main` with
+`approve_stable_release=true`, and its `tested_commit_sha` field must
+exactly match the GitHub `main` commit being released. The operator must
+ensure no runtime source changes have occurred since the field-accepted
+candidate; docs and release metadata changes do not alter its behavior.
+
+The single `ReleaseGate: APPROVED` line at the top of this file is the
+maintainer's explicit release decision. The CI-tested release-policy guard
+rejects duplicate or conflicting gate lines. README, landing page, guide
+and release notes must advertise the exact final version and limitations.
+
+- Pre-approval candidate runtime commit:
+  `041d8e5082d5c47d3e8a2f051ac6f263e859f7d9`
+- Evidence reviewed: user-supplied `2026-11-14 20-04-38.mp4` and OBS Task
+  Manager screenshot (retained in the conversation, **not published publicly**)
+- OBS version visible: **33.0.1**; video: 1920×1080 / 60 FPS
+- Public release version: **v0.7.2**, Windows x64
+- Final release merge SHA: filled by GitHub when the merge is completed
+- GPU p50/p95: not provided; outstanding for follow-up validation
