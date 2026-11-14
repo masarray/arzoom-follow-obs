@@ -1,5 +1,10 @@
 #include "arzoom-filter-v23.cpp"
 #include "arzoom-spotlight-zoom-resize.hpp"
+#include "arzoom-shortcut-observer.hpp"
+#include "arzoom-shortcut-timeline.hpp"
+#include "arzoom-keycap-rasterizer.hpp"
+
+#define SETTING_KEYCAP_VISUAL "shortcut_keycaps_enabled"
 
 /*
  * P5.6 Zoom +/- intent separation
@@ -24,6 +29,19 @@ namespace {
 struct Phase24Filter {
     Phase23Filter *phase23 = nullptr;
     arzoom::SpotlightZoomResizeState spotlight_resize{};
+
+    /* One optional global input owner, scoped per enabled OBS filter.
+     * Video tick owns timeline; render owns graphics resources. */
+    std::atomic<bool> keycaps_enabled{false};
+    arzoom::shortcut::Timeline keycaps{};
+    arzoom::presentation::KeycapRasterizer keycap_rasterizer{};
+    uint32_t uploaded_generation = 0;
+    gs_texture_t *keycap_texture = nullptr;
+    gs_texture_t *keycap_fallback = nullptr;
+    gs_eparam_t *keycap_atlas_param = nullptr;
+    gs_eparam_t *keycap_size_param = nullptr;
+    gs_eparam_t *keycap_opacity_param = nullptr;
+    bool keycap_shader_ready = false;
 };
 
 ArZoomFilter *phase24_phase1(Phase24Filter *filter)
@@ -45,6 +63,14 @@ void phase24_tick(void *data, float seconds)
     ArZoomFilter *phase1 = phase24_phase1(wrapper);
     if (!phase1)
         return;
+
+    if (wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
+        phase1->enabled.load(std::memory_order_acquire)) {
+        wrapper->keycaps.step(
+            arzoom::shortcut::snapshot(), std::clamp(seconds, 0.0f, 0.10f));
+    } else {
+        wrapper->keycaps.reset();
+    }
 
     const bool zoom_requested =
         phase1->requested_zoom.load(std::memory_order_acquire);
@@ -83,6 +109,19 @@ void phase24_update(void *data, obs_data_t *settings)
      * Mode/master lifecycle is still owned by phase52/phase51. */
     phase52_update(phase23->phase51, settings);
 
+    const bool next_keycaps =
+        obs_data_get_bool(settings, SETTING_KEYCAP_VISUAL);
+    const bool prior_keycaps = wrapper->keycaps_enabled.exchange(
+        next_keycaps, std::memory_order_acq_rel);
+    if (next_keycaps != prior_keycaps) {
+        if (next_keycaps)
+            arzoom::shortcut::subscribe();
+        else {
+            arzoom::shortcut::unsubscribe();
+            wrapper->keycaps.reset();
+        }
+    }
+
     const bool previous_link =
         phase23->link_to_zoom.load(std::memory_order_acquire);
     const bool next_link =
@@ -106,14 +145,103 @@ void phase24_update(void *data, obs_data_t *settings)
 void phase24_render(void *data, gs_effect_t *effect)
 {
     auto *wrapper = static_cast<Phase24Filter *>(data);
-    if (wrapper && wrapper->phase23)
-        phase23_render(wrapper->phase23, effect);
+    if (!wrapper || !wrapper->phase23) return;
+    Phase51Filter *phase51 = wrapper->phase23->phase51;
+    ArZoomFilter *phase1 = phase24_phase1(wrapper);
+    if (!phase1 || !phase1->context) return;
+
+    /* P0 D3D11 invariant: every declared texture sampler must have a valid,
+     * live fallback before ANY shared Draw, even if this effect is Off.
+     * Missing optional resources fail safely to source pass-through. */
+    if (!wrapper->keycap_shader_ready || !wrapper->keycap_fallback) {
+        obs_source_skip_video_filter(phase1->context);
+        return;
+    }
+
+    gs_texture_t *texture = wrapper->keycap_fallback;
+    float opacity = 0.0f;
+    const bool active =
+        wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
+        phase1->enabled.load(std::memory_order_acquire) &&
+        wrapper->keycaps.active();
+
+    if (active) {
+        const auto &frame = wrapper->keycaps.frame();
+        if (frame.generation != wrapper->uploaded_generation) {
+            if (!wrapper->keycap_texture) {
+                wrapper->keycap_texture = gs_texture_create(
+                    arzoom::presentation::KeycapRasterizer::kWidth,
+                    arzoom::presentation::KeycapRasterizer::kHeight,
+                    GS_RGBA, 1, nullptr, GS_DYNAMIC);
+            }
+            if (wrapper->keycap_texture) {
+                const QImage &raster = wrapper->keycap_rasterizer.image(frame);
+                if (!raster.isNull()) {
+                    gs_texture_set_image(
+                        wrapper->keycap_texture, raster.constBits(),
+                        static_cast<uint32_t>(raster.bytesPerLine()), false);
+                    wrapper->uploaded_generation = frame.generation;
+                }
+            }
+        }
+        if (wrapper->keycap_texture &&
+            wrapper->uploaded_generation == frame.generation) {
+            texture = wrapper->keycap_texture;
+            opacity = wrapper->keycaps.opacity();
+        }
+    }
+
+    gs_effect_set_texture(wrapper->keycap_atlas_param, texture);
+    vec2 dimensions;
+    vec2_set(&dimensions,
+             arzoom::presentation::KeycapRasterizer::kWidth,
+             arzoom::presentation::KeycapRasterizer::kHeight);
+    gs_effect_set_vec2(wrapper->keycap_size_param, &dimensions);
+    gs_effect_set_float(wrapper->keycap_opacity_param, opacity);
+
+    /* Keycap-only is still one shared PSZoom pass. The accepted P5 solo
+     * render helper already primes zoom, click-neutral, cursor fallback,
+     * Spotlight and the OBS pass. No additional fullscreen draw is needed. */
+    if (opacity > 0.005f &&
+        !phase21_presentation_required(phase51)) {
+        if (!phase21_prime_neutral_spotlight_abi(phase51) ||
+            !wrapper->phase23->cinematic_shader_ready) {
+            obs_source_skip_video_filter(phase1->context);
+            return;
+        }
+        gs_effect_set_float(
+            wrapper->phase23->cinematic_scale_param, 1.0f);
+        gs_effect_set_float(
+            wrapper->phase23->cinematic_dim_mix_param, 1.0f);
+        phase18_spotlight_only_render(
+            phase51, phase1, phase51_phase2(phase51),
+            phase51_phase35(phase51));
+        return;
+    }
+
+    phase23_render(wrapper->phase23, effect);
 }
 
 obs_properties_t *phase24_properties(void *data)
 {
     auto *wrapper = static_cast<Phase24Filter *>(data);
-    return phase23_properties(wrapper ? wrapper->phase23 : nullptr);
+    obs_properties_t *props =
+        phase23_properties(wrapper ? wrapper->phase23 : nullptr);
+    if (!props) return nullptr;
+    obs_properties_t *group = obs_properties_create();
+    obs_properties_add_bool(
+        group, SETTING_KEYCAP_VISUAL,
+        obs_module_text("ArZoom.Keycaps.Enabled"));
+    obs_property_t *info = obs_properties_add_text(
+        group, "shortcut_keycap_info",
+        obs_module_text("ArZoom.Keycaps.Info"), OBS_TEXT_INFO);
+    obs_property_text_set_info_type(info, OBS_TEXT_INFO_NORMAL);
+    obs_property_text_set_info_word_wrap(info, true);
+    obs_properties_add_group(
+        props, "shortcut_keycap_group",
+        obs_module_text("ArZoom.Keycaps.Group"),
+        OBS_GROUP_NORMAL, group);
+    return props;
 }
 
 void phase24_deactivate(void *data)
@@ -122,6 +250,7 @@ void phase24_deactivate(void *data)
     if (!wrapper || !wrapper->phase23)
         return;
     wrapper->spotlight_resize.reset();
+    wrapper->keycaps.reset();
     phase23_deactivate(wrapper->phase23);
 }
 
@@ -130,6 +259,17 @@ void phase24_destroy(void *data)
     auto *wrapper = static_cast<Phase24Filter *>(data);
     if (!wrapper)
         return;
+    if (wrapper->keycaps_enabled.exchange(
+            false, std::memory_order_acq_rel)) {
+        arzoom::shortcut::unsubscribe();
+    }
+    /* The OBS callback is not guaranteed to hold a graphics context. */
+    obs_enter_graphics();
+    if (wrapper->keycap_texture)
+        gs_texture_destroy(wrapper->keycap_texture);
+    if (wrapper->keycap_fallback)
+        gs_texture_destroy(wrapper->keycap_fallback);
+    obs_leave_graphics();
     phase23_destroy(wrapper->phase23);
     delete wrapper;
 }
@@ -149,9 +289,47 @@ void *phase24_create(obs_data_t *settings, obs_source_t *context)
     wrapper->phase23 = phase23;
     wrapper->spotlight_resize.reset();
 
+    ArZoomFilter *phase1 = phase24_phase1(wrapper);
+    if (phase1 && phase1->effect) {
+        wrapper->keycap_atlas_param = gs_effect_get_param_by_name(
+            phase1->effect, "keycap_atlas");
+        wrapper->keycap_size_param = gs_effect_get_param_by_name(
+            phase1->effect, "keycap_size_px");
+        wrapper->keycap_opacity_param = gs_effect_get_param_by_name(
+            phase1->effect, "keycap_opacity");
+        wrapper->keycap_shader_ready =
+            wrapper->keycap_atlas_param && wrapper->keycap_size_param &&
+            wrapper->keycap_opacity_param;
+    }
+
+    /* Permanent transparent atlas prevents D3D11 undeclared-sampler
+     * black frames on camera/cursor/Spotlight first use and all idle passes. */
+    const uint8_t transparent[4] = {0, 0, 0, 0};
+    const uint8_t *pixels = transparent;
+    obs_enter_graphics();
+    wrapper->keycap_fallback =
+        gs_texture_create(1, 1, GS_RGBA, 1, &pixels, 0);
+    obs_leave_graphics();
+
+    if (obs_data_get_bool(settings, SETTING_KEYCAP_VISUAL)) {
+        wrapper->keycaps_enabled.store(true, std::memory_order_release);
+        arzoom::shortcut::subscribe();
+    }
+    if (!wrapper->keycap_shader_ready || !wrapper->keycap_fallback) {
+        blog(LOG_WARNING,
+             "[ArZoom] Keycap shader/safety atlas not ready; "
+             "shared video pass safely disabled until repaired");
+    }
+
     blog(LOG_INFO,
          "[ArZoom] P5.6 Zoom +/- resize-only Spotlight coupling ready");
     return wrapper;
+}
+
+void phase24_defaults(obs_data_t *settings)
+{
+    phase23_defaults(settings);
+    obs_data_set_default_bool(settings, SETTING_KEYCAP_VISUAL, false);
 }
 
 struct Phase24SourceInfoOverride {
@@ -163,7 +341,7 @@ struct Phase24SourceInfoOverride {
         arzoom_filter_info.video_render = phase24_render;
         arzoom_filter_info.update = phase24_update;
         arzoom_filter_info.get_properties = phase24_properties;
-        arzoom_filter_info.get_defaults = phase23_defaults;
+        arzoom_filter_info.get_defaults = phase24_defaults;
         arzoom_filter_info.deactivate = phase24_deactivate;
     }
 };
