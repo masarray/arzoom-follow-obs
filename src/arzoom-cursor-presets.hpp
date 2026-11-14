@@ -50,14 +50,14 @@ inline constexpr const char *kCursorStyleCustom = "custom";
  */
 inline constexpr std::array<CursorPreset, 9> kCursorPresets{{
     /* Approved transparent image; click hotspot measured at index fingertip. */
-    {kCursorStylePremiumHand, "ArZoom.PresentationCursor.Preset.PremiumHand",
-     BuiltinCursorVisual::PremiumHand, 28, 0.260f,
-     29.0f / 160.0f, 17.0f / 160.0f, 64.0f},
-    /* Metallic chrome artwork; separate ID preserves the approved original. */
+    /* New default first in the picker; original is still selectable. */
     {kCursorStylePremiumHandChrome,
      "ArZoom.PresentationCursor.Preset.PremiumHandChrome",
      BuiltinCursorVisual::PremiumHandChrome, 28, 0.260f,
      38.0f / 160.0f, 11.0f / 160.0f, 64.0f},
+    {kCursorStylePremiumHand, "ArZoom.PresentationCursor.Preset.PremiumHand",
+     BuiltinCursorVisual::PremiumHand, 28, 0.260f,
+     29.0f / 160.0f, 17.0f / 160.0f, 64.0f},
     {"prism", "ArZoom.PresentationCursor.Preset.Prism",
      BuiltinCursorVisual::Prism, 28, 0.280f, 0.19375f, 0.10625f, 52.0f},
     {"outline", "ArZoom.PresentationCursor.Preset.Outline",
