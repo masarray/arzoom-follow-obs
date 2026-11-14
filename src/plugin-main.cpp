@@ -16,7 +16,7 @@ bool arzoom_register_scene_camera_tools();
 
 namespace {
 constexpr const char *kPhase4BuildIdentity =
-    "v0.7.1-premium-physical-trial";
+    "v0.7.2-premium-compact-ux-trial";
 }
 
 bool obs_module_load(void)
