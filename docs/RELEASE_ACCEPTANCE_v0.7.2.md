@@ -47,11 +47,14 @@ performance, a zero-overhead claim, or universal support.
 
 ## Release publication safeguards
 
-The public workflow is dispatched manually on `main` with
-`approve_stable_release=true`, and its `tested_commit_sha` field must
-exactly match the GitHub `main` commit being released. The operator must
-ensure no runtime source changes have occurred since the field-accepted
-candidate; docs and release metadata changes do not alter its behavior.
+Public publishing is an **explicit release action**, never an ordinary
+`main` push. It may be launched either by manual workflow dispatch on
+`main` (`approve_stable_release=true` and `tested_commit_sha` matching
+the exact selected commit), or by deliberately creating the matching
+`v0.7.2` tag at the **current `main` HEAD**. Both paths verify this one
+owner-approved release gate, exact versioned assets, reviewed notes and
+README/website version alignment. The operator must ensure no runtime
+source changes occurred after the field-accepted candidate.
 
 The single `ReleaseGate: APPROVED` line at the top of this file is the
 maintainer's explicit release decision. The CI-tested release-policy guard
