@@ -68,9 +68,12 @@ void phase24_set_observer(Phase24Filter *wrapper, bool required)
     if (!wrapper) return;
     std::lock_guard<std::mutex> lock(wrapper->observer_mutex);
     if (wrapper->observer_subscribed == required) return;
-    if (required) arzoom::shortcut::subscribe();
-    else arzoom::shortcut::unsubscribe();
-    wrapper->observer_subscribed = required;
+    if (required)
+        wrapper->observer_subscribed = arzoom::shortcut::subscribe();
+    else {
+        arzoom::shortcut::unsubscribe();
+        wrapper->observer_subscribed = false;
+    }
 }
 
 void phase24_tick(void *data, float seconds)
