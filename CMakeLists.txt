@@ -45,6 +45,8 @@ target_sources(
     src/arzoom-shortcut-observer.hpp
     src/arzoom-shortcut-observer.cpp
     src/arzoom-shortcut-timeline.hpp
+    src/arzoom-properties-ux-policy.hpp
+    src/arzoom-properties-ux-obs.hpp
     src/arzoom-keycap-rasterizer.hpp
     src/arzoom-keycap-rasterizer.cpp
     src/arzoom-presenter-controls.hpp
