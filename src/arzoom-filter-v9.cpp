@@ -187,7 +187,8 @@ void phase353_update(void *data, obs_data_t *settings)
         /* Settings updates are rare. Rebuilding here keeps the wrapper simple
          * and guarantees the old non-tactile atlas can never win after a size,
          * style, or unrelated property update. */
-        load_tactile_builtin_preset(filter->phase352, *preset);
+        if (!arzoom::cursor_is_raster_preset(*preset))
+            load_tactile_builtin_preset(filter->phase352, *preset);
     }
 }
 
