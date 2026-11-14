@@ -2,6 +2,7 @@
 
 #include <QPainterPath>
 #include <QTransform>
+#include <util/bmem.h>
 
 /*
  * Phase 3.5 built-in cursor expansion
@@ -299,8 +300,107 @@ bool load_extended_cursor_preset(Phase352Filter *filter,
     return true;
 }
 
+/* Bundled Premium Hand uses the same fixed 28-frame P3.5 atlas as all
+ * previous cursors. The PNG is loaded only on a preset switch; video_tick
+ * merely advances a frame index and PSZoom samples the existing cursor_atlas.
+ * No image decode, QPainter or texture allocation on audio/video callbacks. */
+bool load_premium_hand_preset(Phase352Filter *filter,
+                              const arzoom::CursorPreset &preset)
+{
+    Phase35Filter *phase35 = phase35_from_352(filter);
+    if (!phase35 || !arzoom::cursor_preset_is_valid(preset) ||
+        !arzoom::cursor_is_raster_preset(preset))
+        return false;
+
+    char *asset_path = obs_module_file("cursors/premium-hand.png");
+    QImage source;
+    if (asset_path) {
+        source.load(QString::fromUtf8(asset_path), "PNG");
+        bfree(asset_path);
+    }
+    if (source.isNull() ||
+        source.width() != kBuiltinCursorFrameSize ||
+        source.height() != kBuiltinCursorFrameSize ||
+        !source.hasAlphaChannel()) {
+        blog(LOG_WARNING,
+             "[ArZoom] Premium Hand PNG missing, invalid or not transparent");
+        return false;
+    }
+
+    QImage atlas(kBuiltinCursorFrameSize * kBuiltinCursorColumns,
+                 kBuiltinCursorFrameSize * kBuiltinCursorRows,
+                 QImage::Format_RGBA8888);
+    if (atlas.isNull())
+        return false;
+    atlas.fill(Qt::transparent);
+
+    const QPointF fingertip(
+        preset.hotspot_x * kBuiltinCursorFrameSize,
+        preset.hotspot_y * kBuiltinCursorFrameSize);
+    QPainter painter(&atlas);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    for (size_t i = 0; i < preset.frame_count; ++i) {
+        const float tactile =
+            arzoom::cursor_tactile_press(i, preset.frame_count);
+        const float press = std::max(0.0f, tactile);
+        const float rebound = std::max(0.0f, -tactile);
+        const qreal scale_x = 1.0 - 0.055 * press + 0.035 * rebound;
+        const qreal scale_y = 1.0 - 0.075 * press + 0.045 * rebound;
+        const qreal x = static_cast<qreal>(i % kBuiltinCursorColumns) *
+                        kBuiltinCursorFrameSize;
+        const qreal y = static_cast<qreal>(i / kBuiltinCursorColumns) *
+                        kBuiltinCursorFrameSize;
+        painter.save();
+        painter.translate(x + fingertip.x(), y + fingertip.y());
+        painter.scale(scale_x, scale_y);
+        painter.translate(-fingertip);
+        painter.drawImage(QPointF(0.0, 0.0), source);
+        painter.restore();
+    }
+    painter.end();
+
+    const uint8_t *pixels = atlas.constBits();
+    gs_texture_t *texture = nullptr;
+    obs_enter_graphics();
+    texture = gs_texture_create(
+        static_cast<uint32_t>(atlas.width()),
+        static_cast<uint32_t>(atlas.height()),
+        GS_RGBA, 1, &pixels, 0);
+    obs_leave_graphics();
+    if (!texture)
+        return false;
+
+    gs_texture_t *previous = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(phase35->asset_mutex);
+        previous = phase35->atlas_texture;
+        phase35->atlas_texture = texture;
+        phase35->frame_width = kBuiltinCursorFrameSize;
+        phase35->frame_height = kBuiltinCursorFrameSize;
+        phase35->atlas_columns = kBuiltinCursorColumns;
+        phase35->atlas_rows = kBuiltinCursorRows;
+        phase35->frame_count = preset.frame_count;
+        phase35->asset_error.clear();
+    }
+    destroy_cursor_texture(previous);
+
+    phase35->hotspot_x.store(preset.hotspot_x, std::memory_order_release);
+    phase35->hotspot_y.store(preset.hotspot_y, std::memory_order_release);
+    phase35->current_frame.store(0, std::memory_order_release);
+    queue_playback_configuration(
+        filter->phase351, preset.frame_count, preset.play_seconds);
+
+    blog(LOG_INFO,
+         "[ArZoom] Premium Hand ready: one cached atlas, %zu tactile frames",
+         preset.frame_count);
+    return true;
+}
+
 struct Phase354Filter {
     Phase353Filter *phase353 = nullptr;
+    /* Avoid rebuilding the raster atlas when unrelated OBS settings change. */
+    std::string loaded_raster_style;
 };
 
 void phase354_update(void *data, obs_data_t *settings)
@@ -312,10 +412,30 @@ void phase354_update(void *data, obs_data_t *settings)
     phase353_update(filter->phase353, settings);
 
     const std::string style = resolved_style(settings);
-    if (const arzoom::CursorPreset *preset =
-            arzoom::find_cursor_preset(style.c_str())) {
-        if (extended_cursor_visual(preset->visual))
-            load_extended_cursor_preset(filter->phase353->phase352, *preset);
+    const arzoom::CursorPreset *preset =
+        arzoom::find_cursor_preset(style.c_str());
+    if (preset && arzoom::cursor_is_raster_preset(*preset)) {
+        if (filter->loaded_raster_style != style) {
+            if (!load_premium_hand_preset(
+                    filter->phase353->phase352, *preset)) {
+                /* A missing optional packaged asset must not black out the
+                 * pointer or change camera/click feedback. Keep the previous
+                 * stable procedural Classic Hand as an independent fallback. */
+                blog(LOG_WARNING,
+                     "[ArZoom] Premium Hand asset unavailable; "
+                     "falling back to Classic Hand");
+                if (const arzoom::CursorPreset *fallback =
+                        arzoom::find_cursor_preset("classic_hand"))
+                    load_extended_cursor_preset(
+                        filter->phase353->phase352, *fallback);
+            }
+            filter->loaded_raster_style = style;
+        }
+    } else {
+        filter->loaded_raster_style.clear();
+        if (preset && extended_cursor_visual(preset->visual))
+            load_extended_cursor_preset(
+                filter->phase353->phase352, *preset);
     }
 }
 
