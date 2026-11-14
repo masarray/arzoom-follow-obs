@@ -20,7 +20,9 @@ trap 'rm -rf "$work"' EXIT
 
 gh release download "$tag" --repo "$repo" --pattern "$source" --dir "$work"
 gh release download "$tag" --repo "$repo" --pattern SHA256SUMS.txt --dir "$work"
-expected="$(awk -v f="$source" '$2==f {print tolower($1)}' "$work/SHA256SUMS.txt")"
+# SHA256SUMS.txt was emitted on Windows (CRLF). Strip CR before awk compares
+# the filename; otherwise the final field includes a hidden carriage return.
+expected="$(tr -d '\r' < "$work/SHA256SUMS.txt" | awk -v f="$source" '$2==f {print tolower($1)}')"
 [[ "$expected" =~ ^[a-f0-9]{64}$ ]] || { echo "Missing validated source SHA256 entry" >&2; exit 1; }
 actual="$(sha256sum "$work/$source" | cut -d' ' -f1)"
 [[ "$actual" == "$expected" ]] || { echo "Versioned ZIP SHA256 mismatch" >&2; exit 1; }
