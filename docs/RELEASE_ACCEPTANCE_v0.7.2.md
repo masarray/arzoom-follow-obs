@@ -37,7 +37,7 @@ all items below. CI passing is necessary, but not sufficient.
 Once physical evidence and the final public documentation are attached to
 the release review, the owner can change the exact line to:
 
-ReleaseGate: APPROVED
+Set the single status line at the top of this file to `ReleaseGate: APPROVED`.
 
 That is a **manual decision** and must not be automatically changed by CI or
 an assistant. Public publishing additionally requires an explicit GitHub
