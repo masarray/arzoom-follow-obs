@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 
 namespace arzoom {
 
@@ -29,11 +30,11 @@ inline float click_lifetime_seconds(ClickType type)
 {
     switch (type) {
     case ClickType::Right:
-        return 0.50f;
+        return 0.90f;
     case ClickType::Middle:
-        return 0.32f;
+        return 0.84f;
     case ClickType::Left:
-        return 0.44f;
+        return 0.88f;
     case ClickType::None:
     default:
         return 0.0f;
@@ -73,8 +74,30 @@ public:
         if (type == ClickType::None)
             return;
 
+        // A bad coordinate must not generate a misleading pulse or enter
+        // the shader's uniform state. Mapping owners must fail safe.
+        if (!std::isfinite(content_position.x) ||
+            !std::isfinite(content_position.y))
+            return;
         content_position.x = std::clamp(content_position.x, 0.0f, 1.0f);
         content_position.y = std::clamp(content_position.y, 0.0f, 1.0f);
+
+        // Arssyut P4R.3: a quick second click at the same target recharges
+        // one single-ring pulse instead of producing stacked concentric rings.
+        // Four bounded comparisons, no allocations and no camera intent.
+        constexpr float kRetriggerSeconds = 0.12f;
+        constexpr float kRetriggerRadiusSquared = 0.000225f;
+        for (auto &event : events_) {
+            if (!event.active() || event.type != type ||
+                event.age_seconds > kRetriggerSeconds)
+                continue;
+            const float dx = event.content_position.x - content_position.x;
+            const float dy = event.content_position.y - content_position.y;
+            if (dx * dx + dy * dy > kRetriggerRadiusSquared)
+                continue;
+            event = {content_position, 0.0f, type, next_generation()};
+            return;
+        }
 
         size_t slot = kSlotCount;
         for (size_t i = 0; i < kSlotCount; ++i) {
@@ -92,10 +115,7 @@ public:
             }
         }
 
-        ++generation_;
-        if (generation_ == 0)
-            generation_ = 1;
-        events_[slot] = {content_position, 0.0f, type, generation_};
+        events_[slot] = {content_position, 0.0f, type, next_generation()};
     }
 
     bool has_active() const
@@ -118,6 +138,14 @@ public:
     const ClickEvent &slot(size_t index) const { return events_[index]; }
 
 private:
+    uint32_t next_generation()
+    {
+        ++generation_;
+        if (generation_ == 0)
+            generation_ = 1;
+        return generation_;
+    }
+
     std::array<ClickEvent, kSlotCount> events_{};
     uint32_t generation_ = 0;
 };
