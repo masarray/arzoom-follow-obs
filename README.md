@@ -5,12 +5,12 @@
 </p>
 
 <p align="center">
-  <strong>Scene-wide Smart Camera + Presenter Controls + GPU Spotlight for OBS.</strong><br>
+  <strong>Smart Camera, Premium Click Feedback, Shortcut Keycaps & Spotlight for OBS.</strong><br>
   Zoom where you are explaining, stay steady while you teach, and guide attention without rewriting the OBS scene.
 </p>
 
 <p align="center">
-  <a href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe"><img alt="Download ArZoom installer" src="https://img.shields.io/badge/Download-Windows%20installer-2563eb?style=for-the-badge&logo=windows11&logoColor=white"></a>
+  <a href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe"><img alt="Download ArZoom installer" src="https://img.shields.io/badge/Download-Windows%20installer-2563eb?style=for-the-badge&logo=windows11&logoColor=white"></a>
   <a href="https://masarray.github.io/arzoom-follow-obs/"><img alt="ArZoom website" src="https://img.shields.io/badge/Open-Setup%20guide-0f766e?style=for-the-badge"></a>
 </p>
 
@@ -23,7 +23,9 @@
 
 ArZoom is a native OBS presentation-camera plugin for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming.
 
-**v0.7.2 is the Windows stable release.** It preserves the accepted P4.1 smart viewport and P5 cinematic Spotlight, and adds premium single-ring mouse click feedback, optional physical shortcut keycaps, and a compact native OBS Properties interface. Mouse clicks **never** activate auto zoom.
+**[v0.7.2 is the current Windows stable release](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2).** It preserves the accepted P4.1 smart viewport and P5 cinematic Spotlight, and adds premium single-ring mouse click feedback, optional physical shortcut keycaps, and a compact native OBS Properties interface. Mouse clicks **never** activate auto zoom.
+
+**Official v0.7.2 downloads:** [Windows installer](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe) · [Portable/manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Manual-v0.7.2-windows-x64.zip) · [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/SHA256SUMS.txt) · [Release notes](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2). These are pinned to the published stable version, not a development build.
 
 **Privacy:** shortcut keycaps are OFF by default. When switched on, the Windows keyboard observer displays recognized action chords, not ordinary typing; it does not store typed text or clipboard history. Disable the optional feature during sensitive work.
 
@@ -77,7 +79,7 @@ Toggle Zoom ON/OFF owns the cinematic open/close choreography. While Zoom is alr
 
 ### D3D11-safe shared shader ABI
 
-Direct OBS testing found and fixed a real black-frame failure in the P5 development path. Every shared Draw parameter now receives deterministic values before processed rendering. The accepted build has zero click/Zoom/cursor black-preview regression and no Spotlight Properties rebuild flicker in direct OBS testing.
+An earlier P5 regression caused black output when shader parameters were not initialized. The stable renderer now primes shared Draw parameters deterministically and preserves a safe fallback when the optional keycap shader ABI is unavailable. A full renderer/backend matrix is not claimed for v0.7.2.
 
 ## Scene Camera architecture
 
@@ -119,11 +121,11 @@ Architecture invariants:
 
 ### Recommended: Windows installer
 
-**[Download ArZoom-OBS-Setup-windows-x64.exe](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe)**
+**[Download ArZoom-OBS-Setup-windows-x64.exe](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe)**
 
 Close OBS completely before installation. The installer supports Standard OBS Studio and OBS Portable/custom roots containing `bin\64bit\obs64.exe`.
 
-A manual ZIP and SHA-256 checksums are also published with each stable release.
+The [manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Manual-v0.7.2-windows-x64.zip) and [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/SHA256SUMS.txt) are published alongside this installer. Download the [v0.7.2 release notes](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2) for upgrade details.
 
 ## Recommended workflow
 
@@ -133,7 +135,8 @@ A manual ZIP and SHA-256 checksums are also published with each stable release.
 4. Disable old per-source ArZoom filters while Scene Camera is active to avoid double zoom.
 5. If using ArZoom Presentation Cursor, disable the native Display Capture cursor to avoid a double cursor.
 6. Assign presenter controls in **OBS Settings → Hotkeys**.
-7. For Spotlight, enable **Spotlight controls** and leave **Cinematic Spotlight with Zoom** enabled for the recommended v0.7.2 presentation behavior.
+7. In native filter Properties, turn **Enable spotlight** on only when required. Use **Animate with zoom** for the optional cinematic transition; Spotlight is Off by default.
+8. Leave **Show shortcut keys** Off unless your tutorial needs visible action shortcuts; turn **Show advanced options** on for monitor/precision settings.
 
 The existing per-source **ArZoom Filter** remains available for the lightest Display Capture-only workflow.
 
@@ -169,7 +172,9 @@ Profile-persistent OBS hotkeys include:
 
 Seven built-in ArZoom cursor presets are available, including **Classic Hand** and **Sticker Hand**. Cursor size follows the exact live camera zoom and keeps its hotspot aligned through camera motion.
 
-Click feedback is GPU-native, content-anchored, bounded, and cannot wake or retarget camera intent.
+Click feedback is GPU-native, content-anchored and bounded. Left/right/middle clicks create a single luminous ring; quick repeated clicks at the same point recharge it. Click feedback never starts automatic Zoom.
+
+Optional **Shortcut keys** render physical-style keycaps bottom-center for recognized action chords, with no normal-typing history. The Windows observer is opt-in and disabled when the feature is not in use; see the [privacy policy](docs/privacy.html).
 
 ## Performance principles
 
@@ -181,7 +186,8 @@ ArZoom does not require AI, OCR, image recognition, cloud processing, or frame a
 |---|---|
 | Operating system | Windows 10/11 x64 |
 | Build baseline | OBS Studio 31.1.1 |
-| Direct accepted field environment | OBS 32.1.2 / D3D11 |
+| v0.7.2 user-supplied functional recording | OBS 33.0.1 · 1920×1080/60 FPS (short smoke test) |
+| Earlier P5 verification | OBS 32.1.2 / D3D11 (previous baseline, not full v0.7.2 matrix) |
 | Scene Camera | Supported |
 | Per-source Display Capture filter | Supported |
 | Scene-wide Smart Follow | One proven top-level Display Capture; deterministic axis-aligned fullscreen/scale/inset/crop mapping |
@@ -196,7 +202,7 @@ ArZoom does not require AI, OCR, image recognition, cloud processing, or frame a
 
 ## Engineering gates
 
-The v0.7.2 audited Windows candidate passed **23/23 deterministic tests**, six release-gate safety cases, and Windows DLL, ZIP and installer compilation/packaging. A supplied 1920×1080/60 FPS OBS recording demonstrates click/keycap presentation on OBS 33.0.1. This short smoke recording is not an isolated GPU benchmark or evidence of long-duration, clean-install, or 4K acceptance; see [`docs/RELEASE_ACCEPTANCE_v0.7.2.md`](docs/RELEASE_ACCEPTANCE_v0.7.2.md).
+The [published v0.7.2 stable release](https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2) was built after **23/23 deterministic tests**, six release-gate safety cases, and Windows DLL, ZIP and installer compilation/packaging. A supplied 1920×1080/60 FPS OBS recording demonstrates click/keycap presentation on OBS 33.0.1. This short smoke recording is not an isolated GPU benchmark or evidence of long-duration, clean-install, or 4K acceptance; see [`docs/RELEASE_ACCEPTANCE_v0.7.2.md`](docs/RELEASE_ACCEPTANCE_v0.7.2.md).
 
 Run locally on Windows PowerShell:
 

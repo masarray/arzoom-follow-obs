@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ArZoom Troubleshooting — OBS Zoom Plugin Help</title>
-  <meta name="description" content="Fix common ArZoom OBS plugin problems including missing filters, missing or unsaved hotkeys, monitor mapping, cursor follow, black frames, and installation issues.">
+  <title>ArZoom v0.7.2 Troubleshooting — OBS Camera, Click & Keycaps</title>
+  <meta name="description" content="Troubleshoot ArZoom stable v0.7.2 for OBS: missing filters, scene-camera hotkeys, keyboard keycaps, luminous click feedback, shader warnings, and monitor mapping.">
   <meta name="keywords" content="ArZoom troubleshooting, OBS zoom plugin not working, OBS hotkey not saving, OBS filter missing, mouse follow zoom problem">
   <meta name="theme-color" content="#07111f">
   <link rel="canonical" href="https://masarray.github.io/arzoom-follow-obs/troubleshooting.html">
@@ -15,11 +15,11 @@
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <header class="site-header"><div class="container nav"><a class="brand" href="index.html">Ar<span>Zoom</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="index.html">Home</a><a href="guide.html">Setup guide</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Issues</a><a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe">Download</a></nav></div></header>
+  <header class="site-header"><div class="container nav"><a class="brand" href="index.html">Ar<span>Zoom</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="index.html">Home</a><a href="guide.html">Setup guide</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Issues</a><a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs/releases/download/v0.7.2/ArZoom-OBS-Setup-windows-x64.exe">Download</a></nav></div></header>
 
   <main id="main" class="container">
     <header class="page-hero">
-      <span class="eyebrow">Troubleshooting</span>
+      <span class="eyebrow">ArZoom v0.7.2 · Support</span>
       <h1>Fix the most common ArZoom setup problems.</h1>
       <p class="lead">Start with the symptom you see. Most problems are caused by an incomplete install, an older mixed-version package, an unassigned hotkey, or incorrect monitor mapping.</p>
     </header>
@@ -36,7 +36,7 @@
       <p>The plugin DLL and data directory must both be present. A DLL without the shader resources is not a complete installation.</p>
 
       <h2>The filter exists, but says “No properties available”</h2>
-      <p>This behavior was fixed in v0.1.2. Remove the empty filter, install the newest release, restart OBS, and add the filter again.</p>
+      <p>That is not expected in stable v0.7.2. Close OBS, reinstall the complete matching <a href="https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.2">v0.7.2 package</a>, then restart OBS. Confirm the plugin DLL and shader/data folder are both from the same version; attach the OBS log to a report if the issue persists.</p>
 
       <h2>The hotkey row does not appear</h2>
       <ol>
@@ -46,36 +46,26 @@
         <li>Clear both Hotkeys search fields.</li>
         <li>Search for <code>ArZoom</code> in the text filter.</li>
       </ol>
-      <p>The expected row is:</p>
-      <pre><code>ArZoom — Toggle Zoom &amp; Mouse Follow</code></pre>
-      <p>v0.1.3 and newer register this as one global frontend hotkey.</p>
+      <p>Look for the ArZoom presenter controls including <strong>Toggle Zoom</strong>, <strong>Hold Zoom</strong>, <strong>Freeze Camera</strong> and Spotlight commands. Optional bindings need not all be assigned.</p>
 
       <h2>The hotkey disappears after restarting OBS</h2>
-      <p>Install v0.1.4 or newer. Then:</p>
-      <ol>
-        <li>Assign the ArZoom shortcut.</li>
-        <li>Click <strong>Apply</strong> or <strong>OK</strong> in OBS Settings.</li>
-        <li>Return to the ArZoom filter.</li>
-        <li>Click <strong>Save current hotkey now</strong>.</li>
-        <li>Close OBS normally and reopen it.</li>
-      </ol>
-      <p>ArZoom v0.1.4 explicitly stores and reloads the binding from the active OBS profile.</p>
+      <p>In <strong>OBS Settings → Hotkeys</strong>, assign the desired ArZoom commands and select <strong>Apply</strong> or <strong>OK</strong>. Close OBS normally and reopen the same OBS profile. If a binding is still lost, check for profile switching, duplicate ArZoom installations, and hotkey conflicts. Manual shortcut-saving controls, if needed, are under <strong>Show advanced options</strong> in the filter Properties.</p>
 
       <h2>The hotkey is visible but does nothing</h2>
       <ul>
         <li>Check that the ArZoom filter is enabled using the eye icon.</li>
         <li>Confirm the Display Capture source is visible in the active scene.</li>
-        <li>Try the <strong>Test zoom / toggle</strong> button inside the filter.</li>
+        <li>Confirm that the correct scene is selected and <strong>Toggle Zoom</strong> is assigned under OBS Settings → Hotkeys.</li>
         <li>Use a different shortcut to rule out a conflict.</li>
         <li>Check whether OBS hotkeys are disabled while another application has focus by your OBS Hotkey Focus Behavior setting.</li>
       </ul>
 
       <h2>Zoom works, but the viewport does not follow the mouse</h2>
       <ol>
-        <li>Set <strong>Mouse follow</strong> to <code>Smart</code> or <code>Centered</code>.</li>
-        <li>Set <strong>Target monitor</strong> to <code>Auto</code>.</li>
-        <li>Confirm the filter is attached to the intended Display Capture source.</li>
-        <li>If Auto mapping is wrong, manually select the captured monitor.</li>
+        <li>Set <strong>Follow</strong> to <code>Smart Camera</code> (not a fixed framing mode).</li>
+        <li>For Scene Camera, keep one visible top-level Display Capture as the unambiguous presentation owner.</li>
+        <li>Open <strong>Show advanced options</strong> and check the <strong>Display</strong> setting.</li>
+        <li>Ensure the Display Capture's scene transform is supported (positive, axis-aligned fullscreen, scale/inset, or provable crop).</li>
       </ol>
       <p>Fixed mode intentionally does not follow new cursor positions.</p>
 
@@ -85,16 +75,16 @@
       <h2>The motion feels too active</h2>
       <ul>
         <li>Use <strong>Smart</strong> follow.</li>
-        <li>Increase the Stable safe zone.</li>
-        <li>Use <strong>Smooth</strong> movement.</li>
+        <li>Increase <strong>Follow range</strong>.</li>
+        <li>Use a calmer <strong>Motion</strong> setting.</li>
         <li>Reduce Zoom amount.</li>
       </ul>
       <p>For long tutorials, start around 1.70×–2.00× with a 28%–35% safe zone.</p>
 
       <h2>The motion feels too slow</h2>
       <ul>
-        <li>Change Movement from Smooth to Balanced or Fast.</li>
-        <li>Reduce the Stable safe zone if the viewport waits too long before following.</li>
+        <li>Try <strong>Motion</strong> Balanced or Fast.</li>
+        <li>Reduce <strong>Follow range</strong> if the viewport waits too long before following.</li>
         <li>Avoid an excessive zoom level, because a smaller visible viewport requires more panning.</li>
       </ul>
 
@@ -107,6 +97,25 @@
         <li>Reinstall one matching version of the complete package.</li>
       </ol>
       <div class="callout warning"><strong>For a live event:</strong> switch to a fallback scene without ArZoom before investigating further.</div>
+
+      <h2>Shortcut keycaps do not appear</h2>
+      <ul>
+        <li>In filter Properties, enable <strong>Show shortcut keys</strong>. It is Off by default.</li>
+        <li>Keep the ArZoom filter enabled with its eye icon and the source or scene visible in OBS.</li>
+        <li>Try a recognized action chord such as <kbd>Ctrl</kbd> + <kbd>S</kbd> or <kbd>F12</kbd>; normal typing, Shift-only letters and AltGr text are intentionally hidden.</li>
+        <li>Check the OBS log for optional keycap shader/atlas warnings. Reinstall the matching plugin DLL and data files if there is a version mismatch.</li>
+        <li>Some secure-desktop or protected system shortcuts cannot be displayed. Keep the feature Off while handling sensitive information.</li>
+      </ul>
+
+      <h2>Click ring is invisible or does not follow the captured content</h2>
+      <ul>
+        <li>Enable <strong>Show click feedback</strong> in ArZoom Properties.</li>
+        <li>Check which Display Capture is the unambiguous presentation owner, and whether its monitor/scene transform can be mapped.</li>
+        <li>Try a normal left/right/middle click. A rapid second click at one target refreshes one ring; clicking never triggers automatic zoom.</li>
+      </ul>
+
+      <h2>Spotlight settings or advanced options are missing</h2>
+      <p>The v0.7.2 Properties interface intentionally starts compact. Enable <strong>Enable spotlight</strong> to reveal its primary controls, and switch on <strong>Show advanced options</strong> for Shape, Animation speed, Edge softness and precise camera adjustments. Hidden values are retained.</p>
 
       <h2>The plugin is installed twice</h2>
       <p>Portable OBS and system-installed OBS can load plugins from different directories. Search for duplicate <code>arzoom.dll</code> and <code>data/obs-plugins/arzoom</code> locations. Keep only the matching package used by the OBS instance you launch.</p>
@@ -121,7 +130,7 @@
 
       <h2>What to include in a bug report</h2>
       <ul>
-        <li>ArZoom version</li>
+        <li>ArZoom version (current stable: v0.7.2)</li>
         <li>OBS Studio version</li>
         <li>Windows version</li>
         <li>GPU model</li>
