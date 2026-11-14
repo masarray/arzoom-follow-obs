@@ -30,7 +30,7 @@
     "applicationCategory": "MultimediaApplication",
     "applicationSubCategory": "OBS Studio plugin",
     "operatingSystem": "Windows 10, Windows 11",
-    "softwareVersion": "0.7.0",
+    "softwareVersion": "0.7.2",
     "image": "https://masarray.github.io/arzoom-follow-obs/assets/og-image.png",
     "description": "A native OBS presentation-camera plugin with deterministic scene mapping, Kinematic Smart Viewport motion, presenter controls, Presentation Cursor, GPU click feedback, and Cinematic Spotlight.",
     "downloadUrl": "https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe",
@@ -59,7 +59,7 @@
   <main id="main">
     <section class="container hero">
       <div>
-        <span class="eyebrow">ArZoom v0.7.0 · Stable Smart Camera + Spotlight</span>
+        <span class="eyebrow">ArZoom v0.7.2 · Smart Camera + Premium Presentation</span>
         <h1>Zoom the scene. Guide the viewer's attention.</h1>
         <p class="lead">ArZoom processes the composed OBS scene, follows presentation context with smooth kinematic motion, and can add a cinematic GPU Spotlight that closes into focus when Zoom starts and opens back to full context when Zoom ends.</p>
         <div class="hero-actions">
@@ -93,15 +93,17 @@
       <div class="container">
         <div class="section-heading">
           <span class="eyebrow">Complete presentation system</span>
-          <h2 id="feature-title">Camera, mapping, controls, cursor, clicks, and Spotlight in one native plugin.</h2>
+          <h2 id="feature-title">Camera, click feedback, keycaps, and focus controls in one native plugin.</h2>
         </div>
         <div class="grid three">
           <article class="card"><div class="icon">S</div><h3>Smart contextual follow</h3><p>Local work remains calm; meaningful movement gets prompt pointer acquisition and useful final framing.</p></article>
           <article class="card"><div class="icon">K</div><h3>Smooth kinematic motion</h3><p>Explicit velocity/acceleration state, jerk-limited changes, far cruise, precision braking, and exact HOLD.</p></article>
           <article class="card"><div class="icon">M</div><h3>Deterministic mapping</h3><p>One top-level Display Capture can be fullscreen, scaled/inset, or cropped when its axis-aligned mapping is provable.</p></article>
           <article class="card"><div class="icon">F</div><h3>Follow-cursor Spotlight</h3><p>Stable default: Circle, 170% area, 35% dim, 40 px softness, with Smart Focus and Click-to-lock alternatives.</p></article>
-          <article class="card"><div class="icon">C</div><h3>Presentation Cursor</h3><p>Seven built-in tactile cursor styles; v0.7.0 defaults to ArZoom Classic Hand and scales with live camera zoom.</p></article>
+          <article class="card"><div class="icon">C</div><h3>Presentation Cursor</h3><p>Seven built-in tactile cursor styles; v0.7.2 defaults to ArZoom Classic Hand and scales with live camera zoom.</p></article>
           <article class="card"><div class="icon">H</div><h3>Presenter Controls</h3><p>Toggle/Hold Zoom, Freeze, Smart Follow, Zoom +/−, Reset, Overview Peek, Toggle Spotlight, and Hold Spotlight.</p></article>
+          <article class="card"><div class="icon">•</div><h3>Premium click ring</h3><p>One luminous Sky / Rose / Amber pulse; rapid double-clicks recharge one ring. Clicking does not trigger auto zoom.</p></article>
+          <article class="card"><div class="icon">⌘</div><h3>Optional shortcut keycaps</h3><p>Raised physical-style action keycaps at the bottom of the video; normal typing stays hidden, and the feature starts Off.</p></article>
         </div>
       </div>
     </section>
@@ -109,7 +111,7 @@
     <section class="section alt" aria-labelledby="cinematic-title">
       <div class="container grid two">
         <div>
-          <span class="eyebrow">v0.7.0 Spotlight choreography</span>
+          <span class="eyebrow">v0.7.2 Spotlight choreography</span>
           <h2 id="cinematic-title">Cinematic when you toggle Zoom. Quiet when you only resize.</h2>
           <p class="lead">Toggle Zoom ON/OFF owns the cinematic iris. Zoom In / Zoom Out never replay it: camera, cursor, and Spotlight only resize smoothly from the current live zoom.</p>
         </div>
@@ -133,7 +135,7 @@
 
     <section class="section alt" aria-labelledby="setup-title">
       <div class="container">
-        <div class="section-heading"><span class="eyebrow">Recommended v0.7.0 setup</span><h2 id="setup-title">Start presenting in a few steps.</h2></div>
+        <div class="section-heading"><span class="eyebrow">Recommended v0.7.2 setup</span><h2 id="setup-title">Start presenting in a few steps.</h2></div>
         <div class="steps">
           <article class="step"><div><h3>Install</h3><p>Close OBS and run the Windows installer.</p></div></article>
           <article class="step"><div><h3>Toggle Scene Camera</h3><p>Choose <strong>Tools → ArZoom — Toggle Scene Camera</strong>.</p></div></article>
@@ -152,7 +154,8 @@
         <details><summary>Does Spotlight activate automatically when I add the filter?</summary><p>No. The master Spotlight controls remain Off by default. After you enable them, the recommended cinematic Zoom-linked behavior is ready.</p></details>
         <details><summary>What happens when I press Zoom + or Zoom −?</summary><p>While Zoom is active, only magnification changes. The cinematic Spotlight iris does not restart.</p></details>
         <details><summary>Can Smart Follow work when Display Capture is not fullscreen?</summary><p>Yes when one top-level Display Capture has a deterministic positive axis-aligned scaled/inset or crop-aware mapping. Ambiguous ownership still fails safe.</p></details>
-        <details><summary>Is v0.7.0 stable?</summary><p>Yes. The accepted candidate passed 19/19 deterministic tests, Windows build/package gates, and direct OBS trials including the D3D11 Spotlight/render fixes.</p></details>
+        <details><summary>Is v0.7.2 stable?</summary><p>Yes. The Windows candidate passed 23/23 regression tests plus installer and release-guard checks. A 1080p60 OBS recording demonstrates Click and Keycaps; extended GPU benchmarking and clean portable-install evidence are not part of that short recording.</p></details>
+        <details><summary>Does shortcut keycaps capture my typing?</summary><p>Off by default. When enabled, it displays recognized action shortcuts only; regular typing and AltGr text remain hidden. Disable the feature during sensitive work. <a href="privacy.html">Privacy details</a>.</p></details>
         <details><summary>Does ArZoom collect telemetry?</summary><p>No. ArZoom has no analytics service and does not transmit captured frames, cursor data, clicks, or settings.</p></details>
       </div>
     </section>
@@ -168,6 +171,6 @@
     </section>
   </main>
 
-  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · v0.7.0 · GPL-2.0-or-later</div><div class="footer-links"><a href="guide.html">Guide</a><a href="troubleshooting.html">Troubleshooting</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Issues</a></div></div></footer>
+  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · v0.7.2 · GPL-2.0-or-later</div><div class="footer-links"><a href="guide.html">Guide</a><a href="troubleshooting.html">Troubleshooting</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Issues</a></div></div></footer>
 </body>
 </html>
