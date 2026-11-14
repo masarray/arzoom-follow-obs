@@ -14,6 +14,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+#include <system_error>
 
 namespace arzoom::shortcut {
 namespace {
@@ -220,17 +221,31 @@ void wake_hook() noexcept
 
 } // namespace
 
-void subscribe()
+bool subscribe()
 {
-    std::unique_lock<std::mutex> lock(lifecycle_mutex);
-    if (++user_count != 1) return;
+    std::lock_guard<std::mutex> lock(lifecycle_mutex);
+    if (user_count != 0) {
+        ++user_count;
+        return true;
+    }
     opt_in_active.store(true, std::memory_order_release);
     published.store(0, std::memory_order_release);
     if (!worker.joinable()) {
-        worker = std::thread(observer_thread);
-        ready_cv.wait(lock, [] { return message_queue_ready; });
+        /* Spawn without waiting for the hook thread's message queue:
+         * an OBS video_tick must NEVER block on observer startup. The worker
+         * primes its own queue and checks opt_in_active on entry. */
+        try {
+            worker = std::thread(observer_thread);
+        } catch (const std::system_error &) {
+            opt_in_active.store(false, std::memory_order_release);
+            blog(LOG_WARNING,
+                 "[ArZoom] Could not start shortcut observer worker");
+            return false;
+        }
     }
+    user_count = 1;
     wake_hook();
+    return true;
 }
 
 void unsubscribe()
@@ -260,13 +275,18 @@ void shutdown()
 {
     std::thread old;
     {
-        std::lock_guard<std::mutex> lock(lifecycle_mutex);
+        /* A worker may still be booting because subscribe is nonblocking.
+         * Waiting is allowed only here, never from video_tick/render. */
+        std::unique_lock<std::mutex> lock(lifecycle_mutex);
         user_count = 0;
         opt_in_active.store(false, std::memory_order_release);
         published.store(0, std::memory_order_release);
-        const DWORD id = hook_thread_id.load(std::memory_order_acquire);
-        if (id) PostThreadMessageW(id, WM_QUIT, 0, 0);
-        old = std::move(worker);
+        if (worker.joinable()) {
+            ready_cv.wait(lock, [] { return message_queue_ready; });
+            const DWORD id = hook_thread_id.load(std::memory_order_acquire);
+            if (id) PostThreadMessageW(id, WM_QUIT, 0, 0);
+            old = std::move(worker);
+        }
     }
     if (old.joinable()) old.join();
     std::lock_guard<std::mutex> lock(lifecycle_mutex);
@@ -277,7 +297,7 @@ void shutdown()
 
 #else
 namespace arzoom::shortcut {
-void subscribe() {}
+bool subscribe() { return false; }
 void unsubscribe() {}
 Snapshot snapshot() noexcept { return {}; }
 void shutdown() {}
