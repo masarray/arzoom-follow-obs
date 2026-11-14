@@ -13,7 +13,7 @@ Turn ArZoom into a premium, easily operated live-presentation camera for OBS wit
 
 1. **Click visual** that looks and feels at least as good as the accepted Arssyut P4R.3 emissive single ring, including consistent readable feedback over white/dark UIs.
 2. **Realistic keyboard shortcut keycaps** based on Arssyut's accepted physical keycap appearance and privacy-respecting semantic chord reducer.
-3. **Smarter Zoom Follow experience** based on a careful comparison of ArZoom and Arssyut semantics; no blind replacement of ArZoom's established scene camera or mapping engine.
+3. **Preserve and regression-protect Zoom Follow** while improving the click/keycap presentation layers; Arssyut's click-triggered automatic zoom is explicitly excluded.
 
 Success means better video output, calmer and more predictable presenter interaction, lower setup friction, and no new OBS black-frame, input, or rendering regression.
 
@@ -84,15 +84,12 @@ The precise pixel thresholds and blend curves are **reference values from Arssyu
 
 **Important usability boundary:** scene-level filter shows keycaps relative to the OBS scene output. Per-source filter may produce keycaps only inside that source's rendered area; do not promise a global bottom-of-scene overlay from a per-source filter.
 
-### P2 — Zoom Follow behavior refinement
+### P2 — Zoom Follow regression protection (no new auto-zoom)
 
-1. **Keep the stable default**: ArZoom P4.1 SceneViewportPlanner (WHERE) and SceneKinematicMotion (HOW), Smart Zone semantics, direct OBS accepted tracking/settling, exact HOLD, Overview Peek, manual hotkeys, scene mapping and P5 cinematic interaction.
-2. Reuse **Arssyut's intent lesson**, not its camera as a drop-in replacement: optional **Auto Focus Assist** may request a temporary zoom after a meaningful click. Start from its approximately 3 s click zoom / 0.75 s motion-tail policy only as a controlled A/B prototype.
-3. Avoid surprising live zoom: Auto Focus Assist is **Off by default**, disarmed on Reset/explicit Zoom Off or missing valid mapping, and cannot supersede Freeze/Overview/manual presenter intent.
-4. Click feedback On/Off must remain independent from auto camera intent: a ring can appear without zoom and zoom can run without rings.
-5. Any enhancement must pass existing 2×/4× pointer acquisition, reversal, jitter, hysteresis, braking, stop/restart, and exact HOLD tests before a default behavior change is considered.
-
-A new auto-zoom control is a **later decision gate**. This PRD does not mandate enabling it in the next release.
+1. Preserve accepted ArZoom P4.1 SceneViewportPlanner (WHERE), SceneKinematicMotion (HOW), Smart Zone semantics, exact HOLD, manual hotkeys, Overview Peek, and P5 cinematic interactions.
+2. **Explicit exclusion:** do not port Arssyut click-triggered auto-zoom, click zoom hold, motion-tail zoom activation, or any click-to-focus camera wake policy. A click only generates a visual click event, and only the already accepted presenter interactions may request zoom.
+3. Click Feedback and Keycaps are strictly presentation-only. Automated parity traces must prove camera center, zoom, velocity and mode are unchanged with features enabled or disabled.
+4. Preserve Single's mapping baseline and respect PR #34's Multi implementation gates.
 
 ## 5. UX / properties hierarchy
 
@@ -101,7 +98,7 @@ Use existing OBS properties; avoid a second configuration UI or modal windows.
 - **Quick Setup:** existing Enable ArZoom, Zoom Amount, Camera Focus, Motion / Preview / Reset.
 - **Presentation Feedback:** Click Feedback [On]; click style [Premium Single Ring] (Classic in Advanced); Shortcut Keycaps [Off]; concise privacy note.
 - **Spotlight / Presenter Controls:** preserve P5 defaults and hotkey semantics.
-- **Advanced (collapsed):** click size/intensity presets, keycap size (Compact/Standard/Large), safe bottom margin, optional future Auto Focus Assist (experimental), input diagnostics.
+- **Advanced (collapsed):** click size/intensity presets, keycap size (Compact/Standard/Large), safe bottom margin, input diagnostics.
 
 No OBS property-sheet rebuilding per animation frame or hotkey event. Runtime status should reflect actual input-hook/renderer readiness, not merely an enabled checkbox.
 
@@ -136,7 +133,7 @@ No OBS property-sheet rebuilding per animation frame or hotkey event. Runtime st
 | M1 — Click V2 | Port Arssyut P4R.3 single-ring math, clean same-target retrigger, minimal OBS shader adapter | CI + dark/white click video approved |
 | M2 — Shortcut semantic/input | Port portable policy and physical keycap model; implement OBS-safe optional input observer | Privacy, Win chords, failure, lifecycle tests |
 | M3 — Keycap render/UX | Retained keycap atlas and OBS shader texture, locale/settings, compact visual polish | Direct OBS visuals + shader ABI + performance |
-| M4 — camera A/B | Benchmark current ArZoom against optional Arssyut-style click-intent reducer; no default swap | Deterministic traces + presenter trial; may be cancelled |
+| M4 — Zoom Follow parity | Verify click/keycaps never affect existing camera and manual presenter behavior | Existing P4.1/P5 trajectory and presenter gates pass unchanged |
 | M5 — integration/release | Single stability, release documentation/package, Multi readiness assessment | Explicit direct OBS sign-off |
 
 Each milestone should be a coherent reviewable PR with one owner, tests, measured evidence and a rollback path. Do not bundle an unproven camera redesign into the click/keycap shipment.
@@ -146,7 +143,7 @@ Each milestone should be a coherent reviewable PR with one owner, tests, measure
 1. **OBS host Raw Input ownership:** Windows documents one registered target per device class in a process and explicitly warns libraries not to register Raw Input independently. The ARD selects a separate opt-in keyboard capture strategy; implementation still needs a host-conflict trial.
 2. **Shader ABI:** adding a texture without fully neutralizing every Draw path can recreate the historical D3D11 black-preview bug.
 3. **Different rendering APIs:** Arssyut's D3D11 shader and GDI texture cannot be pasted verbatim into OBS `gs_effect`; port semantics and visual math, adapt resources.
-4. **Live camera surprise:** a click-triggered auto zoom helps recordings but could be disruptive in a live stream. Must remain opt-in until measured and human-reviewed.
+4. **No click auto-zoom:** forbidden by the product scope, irrespective of Arssyut implementation.
 5. **Multi concurrency:** PR #34 is an active isolated camera/topology effort; its next gate, not this project, determines when Multi overlay integration is safe.
 6. **Native cursor:** Arssyut's accepted P4R.3 uses a captured Windows cursor; ArZoom has seven native presentation-cursor presets. Do not replace or duplicate ArZoom's cursor while porting click/keycaps.
 
