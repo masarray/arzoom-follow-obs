@@ -376,8 +376,8 @@ float3 apply_keycap_overlay(float3 base, float2 output_uv,
         0.50 - 0.50 * size_uv.x,
         1.0 - (42.0 * scale / safe_viewport.y) - size_uv.y);
     const float2 local_uv = (output_uv - top_left) / size_uv;
-    if (any(local_uv < float2(0.0, 0.0)) ||
-        any(local_uv > float2(1.0, 1.0)))
+    if (local_uv.x < 0.0 || local_uv.x > 1.0 ||
+        local_uv.y < 0.0 || local_uv.y > 1.0)
         return base;
 
     const float4 keycaps = keycap_atlas.Sample(keycapSampler, local_uv);
