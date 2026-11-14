@@ -4,6 +4,7 @@
 #include "arzoom-shortcut-timeline.hpp"
 #include "arzoom-keycap-rasterizer.hpp"
 #include "arzoom-properties-ux-obs.hpp"
+#include <mutex>
 
 #define SETTING_KEYCAP_VISUAL "shortcut_keycaps_enabled"
 
@@ -34,7 +35,16 @@ struct Phase24Filter {
     /* One optional global input owner, scoped per enabled OBS filter.
      * Video tick owns timeline; render owns graphics resources. */
     std::atomic<bool> keycaps_enabled{false};
+    /* video_tick/render/deactivate can be called in different OBS phases.
+     * Copy the bounded semantic frame under this short lock, then render
+     * outside it. No pixel/Qt/GPU work is performed while locked. */
+    std::mutex keycaps_mutex;
     arzoom::shortcut::Timeline keycaps{};
+
+    /* One shared module hook, but subscriptions are scoped to active
+     * participating filter instances. Never hook merely on source load. */
+    std::mutex observer_mutex;
+    bool observer_subscribed = false;
     arzoom::presentation::KeycapRasterizer keycap_rasterizer{};
     uint32_t uploaded_generation = 0;
     gs_texture_t *keycap_texture = nullptr;
@@ -52,6 +62,16 @@ ArZoomFilter *phase24_phase1(Phase24Filter *filter)
                : nullptr;
 }
 
+void phase24_set_observer(Phase24Filter *wrapper, bool required)
+{
+    if (!wrapper) return;
+    std::lock_guard<std::mutex> lock(wrapper->observer_mutex);
+    if (wrapper->observer_subscribed == required) return;
+    if (required) arzoom::shortcut::subscribe();
+    else arzoom::shortcut::unsubscribe();
+    wrapper->observer_subscribed = required;
+}
+
 void phase24_tick(void *data, float seconds)
 {
     auto *wrapper = static_cast<Phase24Filter *>(data);
@@ -65,12 +85,22 @@ void phase24_tick(void *data, float seconds)
     if (!phase1)
         return;
 
-    if (wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
-        phase1->enabled.load(std::memory_order_acquire)) {
-        wrapper->keycaps.step(
-            arzoom::shortcut::snapshot(), std::clamp(seconds, 0.0f, 0.10f));
-    } else {
-        wrapper->keycaps.reset();
+    const bool keycaps_wanted =
+        wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
+        phase1->enabled.load(std::memory_order_acquire);
+
+    /* A hidden source does not have to install a process-global hook at
+     * OBS startup. It subscribes on its first active video tick and leaves
+     * when deactivated, disabled or destroyed. */
+    phase24_set_observer(wrapper, keycaps_wanted);
+    const arzoom::shortcut::Snapshot current =
+        arzoom::shortcut::snapshot();
+    {
+        std::lock_guard<std::mutex> lock(wrapper->keycaps_mutex);
+        if (keycaps_wanted)
+            wrapper->keycaps.step(current, std::clamp(seconds, 0.0f, 0.10f));
+        else
+            wrapper->keycaps.reset(current.generation);
     }
 
     const bool zoom_requested =
@@ -112,14 +142,12 @@ void phase24_update(void *data, obs_data_t *settings)
 
     const bool next_keycaps =
         obs_data_get_bool(settings, SETTING_KEYCAP_VISUAL);
-    const bool prior_keycaps = wrapper->keycaps_enabled.exchange(
-        next_keycaps, std::memory_order_acq_rel);
-    if (next_keycaps != prior_keycaps) {
-        if (next_keycaps)
-            arzoom::shortcut::subscribe();
-        else
-            arzoom::shortcut::unsubscribe();
-    }
+    wrapper->keycaps_enabled.store(
+        next_keycaps, std::memory_order_release);
+    /* Settings can change while OBS is not ticking this filter.
+     * Disable promptly; enable is deferred to the next live video tick. */
+    if (!next_keycaps)
+        phase24_set_observer(wrapper, false);
 
     const bool previous_link =
         phase23->link_to_zoom.load(std::memory_order_acquire);
@@ -152,20 +180,32 @@ void phase24_render(void *data, gs_effect_t *effect)
     /* P0 D3D11 invariant: every declared texture sampler must have a valid,
      * live fallback before ANY shared Draw, even if this effect is Off.
      * Missing optional resources fail safely to source pass-through. */
-    if (!wrapper->keycap_shader_ready || !wrapper->keycap_fallback) {
+    if (!wrapper->keycap_shader_ready) {
+        /* Mismatched legacy effect files do not have the new keycap ABI.
+         * Preserve the existing Zoom/Click/Cursor engine instead of blanking
+         * the entire plugin for a missing optional presentation feature. */
+        phase23_render(wrapper->phase23, effect);
+        return;
+    }
+    if (!wrapper->keycap_fallback) {
+        /* A shader that DECLARES keycap_atlas must never draw unbound. */
         obs_source_skip_video_filter(phase1->context);
         return;
     }
 
     gs_texture_t *texture = wrapper->keycap_fallback;
     float opacity = 0.0f;
-    const bool active =
-        wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
-        phase1->enabled.load(std::memory_order_acquire) &&
-        wrapper->keycaps.active();
+    arzoom::presentation::KeyboardOverlayFrame frame{};
+    if (wrapper->keycaps_enabled.load(std::memory_order_acquire) &&
+        phase1->enabled.load(std::memory_order_acquire)) {
+        std::lock_guard<std::mutex> lock(wrapper->keycaps_mutex);
+        if (wrapper->keycaps.active()) {
+            frame = wrapper->keycaps.frame();
+            opacity = wrapper->keycaps.opacity();
+        }
+    }
 
-    if (active) {
-        const auto &frame = wrapper->keycaps.frame();
+    if (opacity > 0.0f) {
         if (frame.generation != wrapper->uploaded_generation) {
             if (!wrapper->keycap_texture) {
                 wrapper->keycap_texture = gs_texture_create(
@@ -186,7 +226,6 @@ void phase24_render(void *data, gs_effect_t *effect)
         if (wrapper->keycap_texture &&
             wrapper->uploaded_generation == frame.generation) {
             texture = wrapper->keycap_texture;
-            opacity = wrapper->keycaps.opacity();
         }
     }
 
@@ -282,7 +321,11 @@ void phase24_deactivate(void *data)
     if (!wrapper || !wrapper->phase23)
         return;
     wrapper->spotlight_resize.reset();
-    wrapper->keycaps.reset();
+    phase24_set_observer(wrapper, false);
+    {
+        std::lock_guard<std::mutex> lock(wrapper->keycaps_mutex);
+        wrapper->keycaps.reset(arzoom::shortcut::snapshot().generation);
+    }
     phase23_deactivate(wrapper->phase23);
 }
 
@@ -291,10 +334,8 @@ void phase24_destroy(void *data)
     auto *wrapper = static_cast<Phase24Filter *>(data);
     if (!wrapper)
         return;
-    if (wrapper->keycaps_enabled.exchange(
-            false, std::memory_order_acq_rel)) {
-        arzoom::shortcut::unsubscribe();
-    }
+    wrapper->keycaps_enabled.store(false, std::memory_order_release);
+    phase24_set_observer(wrapper, false);
     /* The OBS callback is not guaranteed to hold a graphics context. */
     obs_enter_graphics();
     if (wrapper->keycap_texture)
@@ -343,15 +384,19 @@ void *phase24_create(obs_data_t *settings, obs_source_t *context)
         gs_texture_create(1, 1, GS_RGBA, 1, &pixels, 0);
     obs_leave_graphics();
 
-    if (obs_data_get_bool(settings, SETTING_KEYCAP_VISUAL)) {
-        wrapper->keycaps_enabled.store(true, std::memory_order_release);
-        arzoom::shortcut::subscribe();
-    }
-    if (!wrapper->keycap_shader_ready || !wrapper->keycap_fallback) {
+    wrapper->keycaps_enabled.store(
+        obs_data_get_bool(settings, SETTING_KEYCAP_VISUAL),
+        std::memory_order_release);
+    /* No keyboard hook is registered on load. First active video_tick
+     * reconciles the opt-in state; deactivate always unsubscribes. */
+    if (!wrapper->keycap_shader_ready)
         blog(LOG_WARNING,
-             "[ArZoom] Keycap shader/safety atlas not ready; "
-             "shared video pass safely disabled until repaired");
-    }
+             "[ArZoom] Keycap ABI unavailable: keycaps disabled, "
+             "legacy camera and click pipeline preserved");
+    else if (!wrapper->keycap_fallback)
+        blog(LOG_WARNING,
+             "[ArZoom] Keycap sampler safety allocation failed: "
+             "shader draw will use fail-safe source pass-through");
 
     blog(LOG_INFO,
          "[ArZoom] P5.6 Zoom +/- resize-only Spotlight coupling ready");
