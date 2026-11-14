@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.7.0" src="https://img.shields.io/badge/version-0.7.0-0f766e">
+  <img alt="Version 0.7.2" src="https://img.shields.io/badge/version-0.7.2-0f766e">
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?logo=windows11&logoColor=white">
   <img alt="OBS Studio plugin" src="https://img.shields.io/badge/OBS%20Studio-native%20plugin-302e31?logo=obsstudio&logoColor=white">
   <a href="LICENSE"><img alt="GPL 2.0 or later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue"></a>
@@ -23,17 +23,23 @@
 
 ArZoom is a native OBS presentation-camera plugin for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming.
 
-> **Upcoming v0.7.2 preview:** Premium single-ring click feedback, opt-in shortcut keycaps and a compact OBS Properties interface are under final review in [PR #39](https://github.com/masarray/arzoom-follow-obs/pull/39). The keyboard observer is off by default and should only run for visibly used filters after opt-in. **v0.7.0 remains the latest stable download** until direct OBS acceptance and publication are completed. Mouse clicks never activate Arssyut-style auto zoom.
+**v0.7.2 is the Windows stable release.** It preserves the accepted P4.1 smart viewport and P5 cinematic Spotlight, and adds premium single-ring mouse click feedback, optional physical shortcut keycaps, and a compact native OBS Properties interface. Mouse clicks **never** activate auto zoom.
 
-**v0.7.0 is the current Windows stable release.** It keeps the accepted v0.6.0 P4.1 generalized mapping + Kinematic Smart Viewport baseline and adds the accepted P5 Spotlight presentation layer, cinematic Zoom-linked focus animation, zero-refresh Spotlight controls, and resize-only Spotlight behavior for Zoom +/-.
+**Privacy:** shortcut keycaps are OFF by default. When switched on, the Windows keyboard observer displays recognized action chords, not ordinary typing; it does not store typed text or clipboard history. Disable the optional feature during sensitive work.
 
-> **Current status:** Phase 0 through P5 Spotlight are shipped on Windows. The stable camera/mapping contract remains [`docs/P4_1_STABLE_BASELINE.md`](docs/P4_1_STABLE_BASELINE.md); the accepted Spotlight contract is [`docs/P5_STABLE_BASELINE.md`](docs/P5_STABLE_BASELINE.md).
 
 <p align="center">
   <img alt="ArZoom Scene Camera running in OBS Studio" src="docs/assets/product-screenshot.png" width="920">
 </p>
 
-## Highlights in v0.7.0
+## Highlights in v0.7.2
+
+### Premium click, shortcut keycaps, and compact controls
+
+- One luminous expanding ring highlights left, right, and middle clicks; rapid clicks on the same target recharge a single pulse rather than stacking circles.
+- Optional raised physical shortcut keycaps appear bottom-center when recognized action shortcuts are pressed. Normal typing, Shift-only printable characters, and AltGr text remain hidden. **Default OFF.**
+- Simplified native OBS Properties: concise labels and contextual help, one hotkey entry point, Spotlight controls that expand when enabled, and advanced settings available when requested.
+- The click and shortcut presentation layers do not alter the scene-camera authority or automatic zoom intent.
 
 ### Cinematic Spotlight with Zoom
 
@@ -127,7 +133,7 @@ A manual ZIP and SHA-256 checksums are also published with each stable release.
 4. Disable old per-source ArZoom filters while Scene Camera is active to avoid double zoom.
 5. If using ArZoom Presentation Cursor, disable the native Display Capture cursor to avoid a double cursor.
 6. Assign presenter controls in **OBS Settings → Hotkeys**.
-7. For Spotlight, enable **Spotlight controls** and leave **Cinematic Spotlight with Zoom** enabled for the recommended v0.7.0 presentation behavior.
+7. For Spotlight, enable **Spotlight controls** and leave **Cinematic Spotlight with Zoom** enabled for the recommended v0.7.2 presentation behavior.
 
 The existing per-source **ArZoom Filter** remains available for the lightest Display Capture-only workflow.
 
@@ -171,7 +177,7 @@ ArZoom does not require AI, OCR, image recognition, cloud processing, or frame a
 
 ## Compatibility
 
-| Item | v0.7.0 support |
+| Item | v0.7.2 support |
 |---|---|
 | Operating system | Windows 10/11 x64 |
 | Build baseline | OBS Studio 31.1.1 |
@@ -190,7 +196,7 @@ ArZoom does not require AI, OCR, image recognition, cloud processing, or frame a
 
 ## Engineering gates
 
-The Windows pipeline runs deterministic P0–P5 tests before packaging. The v0.7.0 accepted candidate passed **19/19 deterministic tests**, Windows C++/shader compilation, installer packaging, and direct OBS acceptance.
+The v0.7.2 audited Windows candidate passed **23/23 deterministic tests**, six release-gate safety cases, and Windows DLL, ZIP and installer compilation/packaging. A supplied 1920×1080/60 FPS OBS recording demonstrates click/keycap presentation on OBS 33.0.1. This short smoke recording is not an isolated GPU benchmark or evidence of long-duration, clean-install, or 4K acceptance; see [`docs/RELEASE_ACCEPTANCE_v0.7.2.md`](docs/RELEASE_ACCEPTANCE_v0.7.2.md).
 
 Run locally on Windows PowerShell:
 
