@@ -38,8 +38,8 @@ void preset_metadata_is_safe_and_unique()
     }
     require(ids.size() == arzoom::kCursorPresets.size(),
             "preset id count changed unexpectedly");
-    require(arzoom::kCursorPresets.size() == 11,
-            "all legacy pointer presets and 3D Hand must stay available");
+    require(arzoom::kCursorPresets.size() == 12,
+            "all existing cursor presets and Cartoon Hand must stay available");
 }
 
 void style_helpers_are_unambiguous()
@@ -106,6 +106,21 @@ void style_helpers_are_unambiguous()
                 near(hand3d->hotspot_y, 15.0f / 160.0f) &&
                 hand3d->recommended_size_px >= 64.0f,
             "3D Hand Pointer hotspot must be on the fingertip at a readable size");
+    const auto *cartoon =
+        arzoom::find_cursor_preset(arzoom::kCursorStyleCartoonHandPointer);
+    require(cartoon && arzoom::cursor_is_raster_preset(*cartoon) &&
+                cartoon->visual == arzoom::BuiltinCursorVisual::CartoonHandPointer,
+            "Cartoon Hand must be independently selectable");
+    require(std::string(arzoom::cursor_raster_asset_filename(*cartoon)) ==
+                "cursors/cartoon-hand-pointer.png",
+            "Cartoon Hand must load its own bundled PNG");
+    require(near(cartoon->hotspot_x, 23.0f / 160.0f) &&
+                near(cartoon->hotspot_y, 7.0f / 160.0f) &&
+                cartoon->recommended_size_px >= 64.0f,
+            "Cartoon Hand fingertip and readable preset size changed");
+    require(std::string(arzoom::cursor_raster_asset_filename(*cartoon)) !=
+                arzoom::cursor_raster_asset_filename(*hand3d),
+            "Cartoon Hand must not alias the original 3D Hand sprite");
     require(arzoom::find_cursor_preset(arzoom::kCursorStyleDefault) == chrome,
             "New optional presets must not change the approved default");
     require(arzoom::cursor_raster_asset_filename(
