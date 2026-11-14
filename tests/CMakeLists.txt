@@ -40,6 +40,13 @@ arzoom_configure_test_target(arzoom-shortcut-visualizer-test)
 add_test(NAME arzoom-presentation-shortcut-privacy-and-keycaps
   COMMAND arzoom-shortcut-visualizer-test)
 
+add_executable(arzoom-shortcut-timeline-test
+  arzoom-shortcut-timeline-test.cpp
+  ../src/arzoom-shortcut-visualizer.cpp)
+arzoom_configure_test_target(arzoom-shortcut-timeline-test)
+add_test(NAME arzoom-presentation-shortcut-timeline
+  COMMAND arzoom-shortcut-timeline-test)
+
 add_executable(arzoom-phase3-presenter-test arzoom-phase3-presenter-test.cpp)
 arzoom_configure_test_target(arzoom-phase3-presenter-test)
 add_test(NAME arzoom-phase3-presenter-controls COMMAND arzoom-phase3-presenter-test)
