@@ -1,6 +1,6 @@
 # ArZoom Premium — code audit and public release gate (2026-11-14)
 
-**Release decision: HOLD stable v0.7.2 until direct Windows OBS evidence.**
+**Release audit conclusion: owner-approved scoped stable v0.7.2 on 2026-11-14 after the uploaded OBS 33.0.1 1080p60 functional clip, with explicitly documented unresolved 4K/GPU p50–p95 and clean-install test limits.**
 Audited current development head on PR #39, stacked on user-accepted functional
 checkpoint PR #38. `main` and public v0.7.0 remain unchanged. PR #34 ArZoom Multi
 stays independent and is explicitly not part of the premium Single release.
