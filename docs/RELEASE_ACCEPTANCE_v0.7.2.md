@@ -41,10 +41,12 @@ ReleaseGate: APPROVED
 
 That is a **manual decision** and must not be automatically changed by CI or
 an assistant. Public publishing additionally requires an explicit GitHub
-Actions workflow_dispatch with `approve_stable_release=true` on `main`.
+Actions workflow_dispatch with `approve_stable_release=true` on `main`,
+and the `tested_commit_sha` input must match `main` at dispatch. This
+avoids an impossible self-referential SHA recorded in this document.
 Do not copy forward any old OBS direct-test claims to v0.7.2.
 
-- Exact accepted commit: PENDING
+- Tested pre-approval artifact commit: PENDING
 - OBS version / Windows GPU(s): PENDING
 - Recording / OBS log reference: PENDING
 - GPU p50/p95 evidence: PENDING
