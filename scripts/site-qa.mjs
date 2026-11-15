@@ -10,6 +10,8 @@ for (const [width, height] of [[1920,1080], [1440,900], [768,1024], [390,844], [
   const errors = [];
   page.on('pageerror', err => errors.push(err.message));
   await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  // Lazy chapter artwork is intentionally deferred. Force the test to decode it before checking assets.
+  await page.evaluate(async () => { await Promise.all([...document.images].map(async image => { image.loading = 'eager'; try { await image.decode(); } catch (_) {} })); });
   await page.screenshot({ path: out + '/home-' + width + '.png', fullPage: true, animations: 'disabled' });
   const m = await page.evaluate(() => ({
     viewport: innerWidth,
