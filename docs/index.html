@@ -3,20 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ArZoom v0.7.3 for OBS — Smart Zoom, Click Feedback & Shortcut Keycaps</title>
-  <meta name="description" content="Download the latest stable ArZoom for OBS Studio on Windows. Smooth scene-wide Smart Camera zoom, luminous click feedback, optional physical shortcut keycaps, compact native controls and cinematic Spotlight.">
+  <title>ArZoom for OBS — Make every detail easier to follow</title>
+  <meta name="description" content="Free native OBS Studio plugin for Windows. Guide your audience with smooth zoom, cinematic Spotlight, pointer presets and click feedback.">
   <meta name="keywords" content="OBS zoom plugin, OBS scene zoom, OBS spotlight, OBS mouse follow zoom, screen capture zoom, OBS tutorial plugin, OBS shortcut keycaps, OBS click feedback, OBS presentation camera">
   <meta name="author" content="Mas Ari">
-  <meta name="theme-color" content="#07111f">
+  <meta name="theme-color" content="#090f1a">
   <link rel="canonical" href="https://masarray.github.io/arzoom-follow-obs/">
   <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="assets/favicon-192.png" type="image/png" sizes="192x192">
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" sizes="180x180">
+  <link rel="preload" as="image" href="assets/product-screenshot.png" fetchpriority="high">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="landing.css">
+  <script src="site.js" defer></script>
   <meta property="og:type" content="website">
-  <meta property="og:title" content="ArZoom v0.7.3 — Smart Camera, Click Feedback & Keycaps for OBS">
-  <meta property="og:description" content="Stable Windows OBS plugin: smooth camera zoom, single luminous click rings, optional shortcut keycaps, and cinematic Spotlight.">
+  <meta property="og:title" content="ArZoom for OBS — Make every detail easier to follow">
+  <meta property="og:description" content="Smooth zoom, cinematic Spotlight and clear cursor feedback. Free native OBS plugin for Windows.">
   <meta property="og:url" content="https://masarray.github.io/arzoom-follow-obs/">
   <meta property="og:site_name" content="ArZoom for OBS">
   <meta property="og:image" content="https://masarray.github.io/arzoom-follow-obs/assets/og-image.png">
@@ -33,7 +36,7 @@
     "operatingSystem": "Windows 10, Windows 11",
     "softwareVersion": "0.7.3",
     "image": "https://masarray.github.io/arzoom-follow-obs/assets/og-image.png",
-    "description": "ArZoom v0.7.3 for Windows x64: stable Smart Camera zoom, single luminous click feedback, optional shortcut keycaps, compact native settings and cinematic Spotlight.",
+    "description": "Make screen presentations clearer with presenter-controlled zoom, Spotlight and pointer feedback inside OBS Studio.",
     "downloadUrl": "https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe",
     "softwareHelp": "https://masarray.github.io/arzoom-follow-obs/guide.html",
     "codeRepository": "https://github.com/masarray/arzoom-follow-obs",
@@ -42,138 +45,18 @@
   }
   </script>
 </head>
-<body>
+<body class="landing">
   <a class="skip-link" href="#main">Skip to content</a>
-  <header class="site-header">
-    <div class="container nav">
-      <a class="brand" href="index.html" aria-label="ArZoom home"><img src="assets/arzoom-logo-96.png" alt="" width="38" height="38"><span>ArZoom</span></a>
-      <nav class="nav-links" aria-label="Primary navigation">
-        <a href="#features">Features</a>
-        <a href="guide.html">Setup guide</a>
-        <a href="troubleshooting.html">Troubleshooting</a>
-        <a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a>
-        <a class="button primary small" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe">Download</a>
-      </nav>
-    </div>
-  </header>
+  <header class="site-header"><div class="container nav"><a class="brand" href="index.html" aria-label="ArZoom home"><img src="assets/arzoom-logo-96.png" alt="" width="32" height="32"><span>ArZoom</span><small>for OBS</small></a><nav id="site-nav" class="nav-links" aria-label="Primary navigation"><a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="guide.html">Guide</a><a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a><a class="button primary small nav-cta" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe">Download <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 3v10m0 0 4-4m-4 4L6 9M4 16h12"/></svg></a></nav><button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button></div></header>
 
   <main id="main">
-    <section class="container hero">
-      <div>
-        <span class="eyebrow">ArZoom <span data-latest-stable-version>v0.7.3</span> · Windows stable release</span>
-        <h1>Smart camera zoom, clicks and shortcuts. Built into OBS.</h1>
-        <p class="lead">Guide viewers with smooth scene-wide zoom, a clean luminous ring for mouse clicks, and optional physical shortcut keycaps. Add cinematic Spotlight when you need focus—all inside native OBS, without click-triggered auto zoom.</p>
-        <div class="hero-actions">
-          <a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe" download>Download latest installer · EXE</a>
-          <a class="button secondary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip" download>Download portable · ZIP</a>
-        </div>
-        <p class="hero-note">Direct downloads from the latest public stable release · <a href="guide.html">Installation guide</a> · <a href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/SHA256SUMS.txt">SHA-256 checksums</a></p>
-        <p class="hero-note">Windows 10/11 x64 · OBS 31.1.1 build baseline · prior v0.7.2 OBS smoke recording · new cursor features validated in Windows CI · GPL-2.0-or-later</p>
-      </div>
-      <figure class="product-shot">
-        <img src="assets/product-screenshot.png" alt="ArZoom Scene Camera controls running in OBS Studio" width="1600" height="900">
-        <figcaption><span><kbd>Tools</kbd> Toggle Scene Camera</span><span>Native OBS plugin</span></figcaption>
-      </figure>
-    </section>
-
-    <section class="section alt" aria-labelledby="made-for">
-      <div class="container">
-        <div class="section-heading">
-          <span class="eyebrow">Presenter-first</span>
-          <h2 id="made-for">A stabilized camera operator and focus director inside OBS.</h2>
-          <p>Small pointing gestures can stay calm. Meaningful relocation is acquired promptly, moved smoothly, and settled exactly. Spotlight can then narrow the viewer's attention without becoming a second camera planner.</p>
-        </div>
-        <div class="grid three">
-          <article class="card"><div class="icon">01</div><h3>Scene-wide camera</h3><p>Display Capture, webcam, browser, logo, and nested content zoom together after normal OBS composition.</p></article>
-          <article class="card"><div class="icon">02</div><h3>Kinematic Smart Viewport</h3><p>Planner decides where to frame; jerk-limited motion decides how to get there without stop-start searching.</p></article>
-          <article class="card"><div class="icon">03</div><h3>Premium presentation feedback</h3><p>One luminous click ring per target, optional shortcut keycaps, and uncluttered native OBS controls. Spotlight remains available when you enable it.</p></article>
-        </div>
-      </div>
-    </section>
-
-    <section id="features" class="section" aria-labelledby="feature-title">
-      <div class="container">
-        <div class="section-heading">
-          <span class="eyebrow">Complete presentation system</span>
-          <h2 id="feature-title">Camera, click feedback, keycaps, and focus controls in one native plugin.</h2>
-        </div>
-        <div class="grid three">
-          <article class="card"><div class="icon">S</div><h3>Smart contextual follow</h3><p>Local work remains calm; meaningful movement gets prompt pointer acquisition and useful final framing.</p></article>
-          <article class="card"><div class="icon">K</div><h3>Smooth kinematic motion</h3><p>Explicit velocity/acceleration state, jerk-limited changes, far cruise, precision braking, and exact HOLD.</p></article>
-          <article class="card"><div class="icon">M</div><h3>Deterministic mapping</h3><p>One top-level Display Capture can be fullscreen, scaled/inset, or cropped when its axis-aligned mapping is provable.</p></article>
-          <article class="card"><div class="icon">F</div><h3>Follow-cursor Spotlight</h3><p>Focus Area adjustable from 50–400%. The default stays Circle, 170% focus, 35% dim and 40 px softness; Smart Focus and Click-to-lock also remain.</p></article>
-          <article class="card"><div class="icon">C</div><h3>Presentation Cursor</h3><p>13 built-in styles, including Blue Sleeve Hand, Cartoon and 3D hands. Premium Hand Chrome default, 24–160 px base size, follows zoom with a 512 px cap.</p></article>
-          <article class="card"><div class="icon">H</div><h3>Presenter hotkeys</h3><p>Toggle/Hold Zoom, Freeze, Smart Follow, Zoom +/−, Reset, Overview Peek, Toggle Spotlight, and Hold Spotlight.</p></article>
-          <article class="card"><div class="icon">L</div><h3>Premium click ring</h3><p>One luminous Sky / Rose / Amber pulse; rapid double-clicks recharge one ring. Clicking does not trigger auto zoom.</p></article>
-          <article class="card"><div class="icon">K</div><h3>Optional shortcut keycaps</h3><p>Raised physical-style action keycaps at the bottom of the video; normal typing stays hidden, and the feature starts Off.</p></article>
-        </div>
-      </div>
-    </section>
-
-    <section class="section alt" aria-labelledby="cinematic-title">
-      <div class="container grid two">
-        <div>
-          <span class="eyebrow">v0.7.3 Spotlight choreography</span>
-          <h2 id="cinematic-title">Cinematic when you toggle Zoom. Quiet when you only resize.</h2>
-          <p class="lead">Toggle Zoom ON/OFF owns the cinematic iris. Zoom In / Zoom Out never replay it: camera, cursor, and Spotlight only resize smoothly from the current live zoom.</p>
-        </div>
-        <div class="card">
-          <h3>Stable defaults</h3>
-          <p>Spotlight starts Off. When enabled: Follow cursor · Circle · 170% area · 35% dim · 40 px softness · Balanced cinematic speed. Advanced settings stay hidden until requested.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" aria-labelledby="safety-title">
-      <div class="container grid two">
-        <div>
-          <span class="eyebrow">Scene-safe and lightweight</span>
-          <h2 id="safety-title">Presentation transforms stay inside the filter output.</h2>
-          <p class="lead">No persistent scene-item rewriting, no duplicate scene render, no helper source, no CPU frame readback, and no AI/OCR pipeline.</p>
-        </div>
-        <div class="card"><h3>Fails safe instead of guessing</h3><p>Ambiguous Display Capture ownership or unsupported geometry disables pointer-driven mapping rather than choosing the wrong presentation target.</p></div>
-      </div>
-    </section>
-
-    <section class="section alt" aria-labelledby="setup-title">
-      <div class="container">
-        <div class="section-heading"><span class="eyebrow">Recommended stable setup</span><h2 id="setup-title">Start presenting in a few steps.</h2></div>
-        <div class="steps">
-          <article class="step"><div><h3>Install</h3><p>Close OBS and run the Windows installer.</p></div></article>
-          <article class="step"><div><h3>Toggle Scene Camera</h3><p>Choose <strong>Tools → ArZoom — Toggle Scene Camera</strong>.</p></div></article>
-          <article class="step"><div><h3>Configure</h3><p>Choose <strong>Tools → ArZoom — Configure Scene Camera</strong>.</p></div></article>
-          <article class="step"><div><h3>Choose presentation effects</h3><p>Click feedback highlights mouse actions. Enable Spotlight if needed; shortcut keycaps are optional and Off by default.</p></div></article>
-          <article class="step"><div><h3>Assign hotkeys</h3><p>Set Toggle Zoom, Zoom +/−, Spotlight controls, and any other presenter actions you want.</p></div></article>
-        </div>
-        <p style="margin-top:1.3rem"><a class="button secondary" href="guide.html">Open complete setup guide</a></p>
-      </div>
-    </section>
-
-    <section class="section faq" aria-labelledby="faq-title">
-      <div class="container">
-        <div class="section-heading"><span class="eyebrow">FAQ</span><h2 id="faq-title">Before you install</h2></div>
-        <details><summary>Does Scene Camera modify my scene layout?</summary><p>No. Scene-wide presentation transforms are applied in the filter output. ArZoom does not persistently rewrite scene-item transforms.</p></details>
-        <details><summary>Does Spotlight activate automatically when I add the filter?</summary><p>No. The master Spotlight controls remain Off by default. After you enable them, the recommended cinematic Zoom-linked behavior is ready.</p></details>
-        <details><summary>What happens when I press Zoom + or Zoom −?</summary><p>While Zoom is active, only magnification changes. The cinematic Spotlight iris does not restart.</p></details>
-        <details><summary>Can Smart Follow work when Display Capture is not fullscreen?</summary><p>Yes when one top-level Display Capture has a deterministic positive axis-aligned scaled/inset or crop-aware mapping. Ambiguous ownership still fails safe.</p></details>
-        <details><summary>What does the current stable line include?</summary><p><a href="https://github.com/masarray/arzoom-follow-obs/releases/tag/v0.7.3">ArZoom v0.7.3</a> adds 13 pointer styles, Spotlight up to 400% and cursor size to 160 px. Windows CI passed; the previous v0.7.2 OBS recording covers retained click/keycap functions, not these new settings. New-feature direct-OBS proof, 4K benchmarks and a full clean-install matrix are not claimed.</p></details>
-        <details><summary>Does the optional keycap overlay track typing?</summary><p>Keycaps start Off. When enabled on a visible filter, a Windows keyboard observer shows recognized action shortcuts only; ordinary typing and AltGr text are suppressed, and no typing history is stored. Keep the feature Off during sensitive work. <a href="privacy.html">Privacy details</a>.</p></details>
-        <details><summary>Can I use multiple Display Captures for Smart Follow?</summary><p>Stable v0.7.3 resolves one unambiguous top-level Display Capture. Automated multiple-capture target selection is a separate, not-yet-released ArZoom Multi feature.</p></details>
-        <details><summary>Does ArZoom collect telemetry?</summary><p>No. ArZoom has no analytics service and does not transmit captured frames, cursor data, clicks, or settings.</p></details>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="container cta">
-        <div><h2>Present with clearer focus and less effort.</h2><p>Download stable v0.7.3 for native OBS zoom, expanded Spotlight, hand pointers and precise click feedback.</p></div>
-        <div class="hero-actions">
-          <a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe" download>Latest installer · EXE</a>
-          <a class="button secondary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip" download>Latest portable · ZIP</a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer"><div class="container footer-row"><div>ArZoom for OBS · <span data-latest-stable-version>v0.7.3</span> · GPL-2.0-or-later</div><div class="footer-links"><a href="guide.html">Guide</a><a href="troubleshooting.html">Troubleshooting</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs/issues">Issues</a></div></div></footer>
+<section class="hero container"><div class="hero-copy"><p class="eyebrow"><span class="eyebrow-line"></span>THE PRESENTATION CAMERA FOR OBS</p><h1>Make every detail<br><em>easier to follow.</em></h1><p class="hero-lead">Smooth zoom. Cinematic Spotlight. A pointer your viewers can actually see. Everything works right inside OBS Studio.</p><div class="hero-actions"><a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 3v10m0 0 4-4m-4 4L6 9M4 16h12"/></svg>Download for Windows</a><a class="button outline" href="#showcase">See ArZoom in OBS <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4 10h12m0 0-5-5m5 5-5 5"/></svg></a></div><p class="hero-micro">Free &amp; open source <span>·</span> Windows 10/11 x64 <span>·</span> Native OBS plugin</p></div>
+<div class="hero-stage" id="showcase"><div class="stage-label"><span class="status-dot"></span>INSIDE OBS STUDIO <span>Actual ArZoom interface</span></div><figure class="product-window"><img src="assets/product-screenshot.png" alt="Actual ArZoom Scene Camera settings displayed inside OBS Studio" width="1600" height="900" fetchpriority="high"><figcaption><span>Native controls. No separate app to learn.</span><span>OBS Studio · Windows</span></figcaption></figure></div><div class="hero-tail"><span>For people who teach, build, explain and create.</span><span>Explore the possibilities ↓</span></div></section>
+<section class="capability-band"><div class="container"><p>One native plugin.<br><strong>A clearer story on screen.</strong></p><div><span>SMART CAMERA</span><span>SPOTLIGHT</span><span>POINTER & CLICKS</span><span>PRESENTER HOTKEYS</span></div></div></section>
+<section class="features container" id="features"><p class="eyebrow"><span class="eyebrow-line"></span>BUILT FOR BETTER EXPLANATIONS</p><h2>Keep attention on<br>what matters.</h2><p class="features-lead">Every tool has one job: make your screen easier to understand without interrupting your flow.</p><article class="chapter "><div class="chapter-copy"><span class="chapter-number">01 / SMART CAMERA</span><h3>Zoom into the important part. Smoothly.</h3><p>Move closer to the detail you’re explaining, then return to the bigger picture. Smart Follow helps keep your work in frame.</p><a href="guide.html">Explore Smart Camera <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4 10h12m0 0-5-5m5 5-5 5"/></svg></a></div><div class="chapter-visual"><span class="visual-label">FRAMING CONCEPT · ILLUSTRATION</span><div class="camera-canvas" aria-hidden="true"><div class="demo-rail"></div><div class="demo-editor"><span>presentation.cpp</span><i></i><i></i><i></i><i></i><i></i><b class="focus-rect"></b></div></div><div class="diagram-foot"><span>Full screen</span><span>→</span><span>Focused detail</span><em>2.0×</em></div></div></article><article class="chapter reverse"><div class="chapter-copy"><span class="chapter-number">02 / CINEMATIC SPOTLIGHT</span><h3>Give one detail the spotlight.</h3><p>Dim the distractions while the important area stays bright. Shape, size and softness are yours to control.</p><a href="guide.html">Discover Spotlight <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4 10h12m0 0-5-5m5 5-5 5"/></svg></a></div><div class="chapter-visual"><span class="visual-label">SPOTLIGHT EFFECT · ILLUSTRATION</span><div class="spotlight-stage" aria-hidden="true"><div class="mock-document"><b></b><i></i><i></i><i></i><i></i></div><div class="spotlight-shade"></div><div class="spotlight-circle"></div></div><div class="diagram-foot"><span>Dim the surroundings.</span><span>Keep the focus.</span></div></div></article><article class="chapter "><div class="chapter-copy"><span class="chapter-number">03 / PRESENTATION CURSOR & CLICKS</span><h3>Make every movement easy to see.</h3><p>Pick a pointer that suits your style, adjust its size and highlight clicks with a clean visual ring. Even a small action becomes clear.</p><a href="guide.html">See pointer options <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4 10h12m0 0-5-5m5 5-5 5"/></svg></a></div><div class="chapter-visual"><span class="visual-label">PRESENTATION CURSOR · ACTUAL ASSETS</span><div class="cursor-gallery"><div class="cursor-cell"><span class="click-halo"></span><img src="assets/premium-hand-chrome.png" alt="Premium Hand Chrome preset" loading="lazy" width="160" height="160"><small>Premium Hand</small></div><div class="cursor-cell"><img src="assets/blue-sleeve-hand.png" alt="Blue Sleeve Hand preset" loading="lazy" width="160" height="160"><small>Blue Sleeve</small></div><div class="cursor-cell"><img src="assets/cartoon-hand-pointer.png" alt="Cartoon Hand preset" loading="lazy" width="160" height="160"><small>Cartoon Hand</small></div></div><div class="diagram-foot"><span>Real cursor presets from ArZoom.</span></div></div></article><article class="chapter reverse"><div class="chapter-copy"><span class="chapter-number">04 / PRESENTER CONTROLS</span><h3>Stay in control. Stay in the moment.</h3><p>Zoom, freeze the view or switch Spotlight with your own OBS hotkeys. Optional on-screen shortcut keycaps help viewers follow along.</p><a href="guide.html">Set up your controls <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4 10h12m0 0-5-5m5 5-5 5"/></svg></a></div><div class="chapter-visual"><span class="visual-label">PRESENTER SHORTCUTS · ILLUSTRATION</span><div class="keys-panel"><div><span>Zoom in</span><span><kbd>Ctrl</kbd> + <kbd>+</kbd></span></div><div><span>Freeze view</span><span><kbd>F</kbd></span></div><div><span>Spotlight</span><span><kbd>S</kbd></span></div><p>Example keys only. Assign your own shortcuts in OBS.</p></div></div></article></section>
+<section class="steps-band" id="how-it-works"><div class="container steps-layout"><div><p class="eyebrow"><span class="eyebrow-line"></span>SIMPLE TO GET STARTED</p><h2>From install to your next great explanation.</h2><p>ArZoom works inside the OBS setup you already know. No extra desktop application or separate workflow.</p><a href="guide.html" class="inline-link">Read the setup guide <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4 10h12m0 0-5-5m5 5-5 5"/></svg></a></div><ol><li><span>01</span><strong>Install</strong><p>Close OBS and run the Windows installer.</p></li><li><span>02</span><strong>Enable in OBS</strong><p>Open Tools → ArZoom — Toggle Scene Camera.</p></li><li><span>03</span><strong>Present</strong><p>Configure camera, pointer and preferred hotkeys.</p></li></ol></div></section>
+<section class="download-section container" id="download"><div class="download-panel"><div><p class="eyebrow"><span class="eyebrow-line"></span>READY WHEN YOU ARE</p><h2>Better focus starts here.</h2><p>Make your next OBS presentation easier to follow.</p><div class="download-actions"><a class="button primary" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 3v10m0 0 4-4m-4 4L6 9M4 16h12"/></svg>Download installer · EXE</a><a class="button outline" href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip">Manual ZIP <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4 10h12m0 0-5-5m5 5-5 5"/></svg></a></div><p class="download-note">Windows 10/11 x64 · Latest stable <span data-latest-stable-version>v0.7.3</span> · Free & open source</p><p class="download-help">Installer recommended. ZIP contains files for manual OBS plugin installation, not a standalone app. <a href="guide.html">Installation instructions</a> · <a href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/SHA256SUMS.txt">SHA-256 checksums</a></p></div><div class="download-orbit" aria-hidden="true"><div></div><div></div><div></div><img src="assets/arzoom-logo-96.png" alt=""></div></div></section>
+<section class="faq-section container"><div><p class="eyebrow"><span class="eyebrow-line"></span>GOOD TO KNOW</p><h2>A few quick answers.</h2><p>More details in the <a href="guide.html">guide</a> and <a href="troubleshooting.html">troubleshooting</a> pages.</p></div><div class="faq-answers"><details><summary>Is ArZoom a standalone app?</summary><p>No. ArZoom is a native plugin that runs inside OBS Studio on Windows.</p></details><details><summary>Does it work directly inside OBS?</summary><p>Yes. It adds presentation-camera controls to your existing OBS workflow.</p></details><details><summary>How do I install it?</summary><p>Close OBS, run the Windows installer, then reopen OBS and enable Scene Camera from the Tools menu. <a href="guide.html">See the setup guide.</a></p></details><details><summary>Can I change the pointer and Spotlight?</summary><p>Yes. Choose from 13 pointer styles, adjust size and Spotlight focus, and turn on click feedback. Spotlight is off by default.</p></details><details><summary>Is it free and open source?</summary><p>Yes. ArZoom is free and its code is available on <a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a> under GPL-2.0-or-later.</p></details></div></section></main>
+<footer class="site-footer"><div class="container footer-row"><div class="footer-brand"><img src="assets/arzoom-logo-96.png" alt="" width="26" height="26"><strong>ArZoom</strong><span>for OBS</span><small>Present with clarity.</small></div><div class="footer-links"><a href="guide.html">Guide</a><a href="troubleshooting.html">Support</a><a href="privacy.html">Privacy</a><a href="https://github.com/masarray/arzoom-follow-obs">GitHub</a></div><small>© 2026 ArZoom · GPL-2.0-or-later</small></div></footer>
 </body>
 </html>

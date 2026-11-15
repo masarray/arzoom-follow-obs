@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe"><img alt="Download ArZoom installer" src="https://img.shields.io/badge/Download-Windows%20installer-2563eb?style=for-the-badge&logo=windows11&logoColor=white"></a>
-  <a href="https://masarray.github.io/arzoom-follow-obs/"><img alt="ArZoom website" src="https://img.shields.io/badge/Open-Setup%20guide-0f766e?style=for-the-badge"></a>
+  <a href="https://masarray.github.io/arzoom-follow-obs/"><img alt="ArZoom website" src="https://img.shields.io/badge/Explore-ArZoom%20website-0f766e?style=for-the-badge"></a>
 </p>
 
 <p align="center">
@@ -23,9 +23,9 @@
 
 ArZoom is a native OBS presentation-camera plugin for tutorials, engineering training, software demonstrations, online classes, product walkthroughs, and live streaming.
 
-**[Download the latest Windows stable release](https://github.com/masarray/arzoom-follow-obs/releases/latest).** It retains the native P4.1 camera, P5 cinematic Spotlight, click feedback, opt-in shortcut keycaps and compact OBS Properties. This update adds **13 Presentation Cursor presets**, including Blue Sleeve Hand, plus **Spotlight Focus Area to 400%** and **Cursor Size to 160 px**. Mouse clicks **never** activate auto zoom.
+**[Explore ArZoom and download the latest stable Windows installer](https://masarray.github.io/arzoom-follow-obs/).** It retains the native P4.1 camera, P5 cinematic Spotlight, click feedback, opt-in shortcut keycaps and compact OBS Properties. This update adds **13 Presentation Cursor presets**, including Blue Sleeve Hand, plus **Spotlight Focus Area to 400%** and **Cursor Size to 160 px**. Mouse clicks **never** activate auto zoom.
 
-**Latest stable downloads (automatic, version-independent):** [Windows installer](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe) · [Portable/manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip) · [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/SHA256SUMS.txt) · [Release notes](https://github.com/masarray/arzoom-follow-obs/releases/latest). These direct file links always select GitHub's **latest non-prerelease** without requiring visitors to browse the GitHub Releases page.
+**Latest stable downloads (automatic, version-independent):** [Windows installer](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe) · [Manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip) · [SHA-256 checksums](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/SHA256SUMS.txt) · [Release notes](https://github.com/masarray/arzoom-follow-obs/releases/latest). These direct file links always select GitHub's **latest non-prerelease** without requiring visitors to browse the GitHub Releases page.
 
 **Privacy:** shortcut keycaps are OFF by default. When switched on, the Windows keyboard observer displays recognized action chords, not ordinary typing; it does not store typed text or clipboard history. Disable the optional feature during sensitive work.
 
@@ -128,7 +128,7 @@ Architecture invariants:
 
 ### Recommended: Windows installer
 
-**[Download latest ArZoom Windows installer EXE](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe)** · **[Download latest portable/manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip)**
+**[Download latest ArZoom Windows installer EXE](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Setup-windows-x64.exe)** · **[Download latest manual ZIP](https://github.com/masarray/arzoom-follow-obs/releases/latest/download/ArZoom-OBS-Manual-windows-x64.zip)**
 
 Close OBS completely before installation. The installer supports Standard OBS Studio and OBS Portable/custom roots containing `bin\64bit\obs64.exe`.
 
