@@ -17,8 +17,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install lightweight browser driver
         run: npm install --no-save --no-package-lock playwright-core
-      - name: Serve static docs
-        run: python3 -m http.server 8765 --bind 127.0.0.1 --directory docs > /tmp/arzoom-site.log 2>&1 &
+      - name: Prepare the original main site for visual before/after review
+        run: |
+          git fetch --depth=1 origin main
+          mkdir -p site-before
+          git show FETCH_HEAD:docs/index.html > site-before/index.html
+          git show FETCH_HEAD:docs/styles.css > site-before/styles.css
+          git show FETCH_HEAD:docs/latest-release.js > site-before/latest-release.js
+          cp -R docs/assets site-before/assets
+      - name: Serve static sites
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory docs > /tmp/arzoom-site.log 2>&1 &
+          python3 -m http.server 8766 --bind 127.0.0.1 --directory site-before > /tmp/arzoom-before.log 2>&1 &
       - name: Capture viewports and test navigation
         run: node scripts/site-qa.mjs
       - name: Preserve review screenshots
