@@ -27,3 +27,6 @@
 @media(max-width:900px){.docs .nav-links a:not(.button){display:inline}}
 @media(max-width:860px){.docs .container{width:min(calc(100% - 40px),1192px)}.docs .nav{min-height:64px}.docs .menu-toggle{display:flex}.docs .nav-links{display:none;position:absolute;top:100%;left:0;right:0;padding:15px 25px 22px;background:#101b2b;border-bottom:1px solid #34465d;box-shadow:0 22px 30px rgba(0,0,0,.3);flex-direction:column;align-items:stretch;gap:0}.docs .nav-links.open{display:flex}.docs .nav-links a:not(.button){display:block;padding:12px 5px;font-size:15px}.docs .nav-links .button{margin-top:12px}.docs .page-hero{padding-top:53px}.docs .prose{padding-bottom:72px}}
 @media(max-width:640px){.docs .container{width:calc(100% - 32px)}.docs .brand{font-size:17px}.docs .brand img{width:29px;height:29px}.docs .page-hero h1{font-size:31px}.docs .page-hero .lead{font-size:14.5px}.docs .prose h2{font-size:21px}.docs .prose .button{width:100%;margin:3px 0}.docs .footer-row{align-items:flex-start;flex-direction:column}}
+
+/* The original shared stylesheet hides plain nav links below 900px. Restore them only when the new menu opens. */
+@media(max-width:860px){.landing .nav-links.open>a:not(.button){display:block}}
