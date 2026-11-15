@@ -1,0 +1,31 @@
+name: ArZoom website visual QA
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'scripts/site-qa.mjs'
+      - '.github/workflows/site-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install lightweight browser driver
+        run: npm install --no-save --no-package-lock playwright-core
+      - name: Serve static docs
+        run: python3 -m http.server 8765 --bind 127.0.0.1 --directory docs > /tmp/arzoom-site.log 2>&1 &
+      - name: Capture viewports and test navigation
+        run: node scripts/site-qa.mjs
+      - name: Preserve review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arzoom-website-visual-qa
+          path: site-qa-screenshots/
+          retention-days: 14
+          if-no-files-found: warn
