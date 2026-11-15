@@ -5,6 +5,13 @@ const out = 'site-qa-screenshots';
 fs.mkdirSync(out, { recursive: true });
 let failures = [];
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-sandbox'] });
+// Before capture uses original main HTML/CSS; existing official assets are preserved.
+for (const width of [1440, 390]) {
+  const page = await browser.newPage({ viewport: { width, height: width === 1440 ? 900 : 844 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+  await page.goto('http://127.0.0.1:8766/index.html', { waitUntil: 'networkidle' });
+  await page.screenshot({ path: out + '/before-home-' + width + '.png', fullPage: true, animations: 'disabled' });
+  await page.close();
+}
 for (const [width, height] of [[1920,1080], [1440,900], [768,1024], [390,844], [320,740]]) {
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
   const errors = [];
